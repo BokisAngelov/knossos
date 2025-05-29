@@ -1,0 +1,337 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<style>
+  .auth-input-field input, 
+  .auth-input-field select, 
+  .auth-input-field textarea {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    outline: none;
+  }
+  .auth-input-field input:focus, 
+  .auth-input-field select:focus, 
+  .auth-input-field textarea:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+  }
+  
+  /* Style for checkbox lists */
+  .checkbox-list {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-top: 0.5rem;
+  }
+  
+  .checkbox-list label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  
+  .checkbox-list label:hover {
+    background-color: #f3f4f6;
+  }
+  
+  .checkbox-list input[type="checkbox"] {
+    width: auto;
+    margin: 0;
+  }
+</style>
+
+<div class="flex justify-center items-center">
+  <div class="w-full max-w-4xl p-6">
+    <a href="{% if availability %}{% url 'availability_detail' availability.id %}{% else %}{% url 'availability_list' %}{% endif %}" class="inline-flex items-left text-gray-600 hover:text-gray-900">
+      <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+      </svg>
+      {% if availability %}Back to Availability{% else %}Back to Availability List{% endif %}
+    </a>
+  </div>
+</div>
+
+<div class="flex justify-center items-center min-h-[80vh]">
+  <div class="bg-white rounded-lg shadow-md w-full max-w-4xl p-6">
+    <div class="text-center mb-6">
+      <h1 class="text-2xl font-bold text-gray-800">
+        {% if availability %}Edit{% else %}Add{% endif %} Availability
+      </h1>
+      <p class="text-sm text-gray-500 mt-2">
+        {% if availability %}
+          Update availability for {{ availability.excursion.title }}
+        {% else %}
+          Create a new availability period
+        {% endif %}
+      </p>
+    </div>
+
+    {% if messages %}
+    <div class="mb-6">
+      {% for message in messages %}
+        <div class="p-4 mb-4 rounded-md {% if message.tags == 'error' %}bg-red-50 text-red-700{% else %}bg-green-50 text-green-700{% endif %}">
+          {{ message }}
+        </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if form.non_field_errors %}
+    <div class="error-message">
+        {% for error in form.non_field_errors %}
+            <p class="text-red-600">{{ error }}</p>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <form method="post" class="space-y-4" id="availability-form" action="{% if availability %}{% url 'availability_update' availability.id %}{% else %}{% url 'availability_create' %}{% endif %}">
+      {% csrf_token %}
+
+      <!-- Excursion & Status -->
+      <div class="flex gap-4">
+        <div class="flex-[4_4_0%] space-y-1">
+          <label for="{{ form.excursion.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.excursion.label }}</label>
+          <div class="w-full auth-input-field">{{ form.excursion }}</div>
+          {% if form.excursion.errors %}<div class="text-red-500 text-xs mt-1">{{ form.excursion.errors }}</div>{% endif %}
+        </div>
+        <div class="flex-[1_1_0%] space-y-1">
+          <label for="{{ form.status.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.status.label }}</label>
+          <div class="w-full auth-input-field">{{ form.status }}</div>
+          {% if form.status.errors %}<div class="text-red-500 text-xs mt-1">{{ form.status.errors }}</div>{% endif %}
+        </div>
+      </div>
+
+      <!-- Dates: Start/End -->
+      <div class="flex gap-4">
+        <div class="flex-1 space-y-1">
+          <label for="{{ form.start_date.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.start_date.label }}</label>
+          <div class="w-full auth-input-field">{{ form.start_date }}</div>
+          {% if form.start_date.errors %}<div class="text-red-500 text-xs mt-1">{{ form.start_date.errors }}</div>{% endif %}
+        </div>
+        <div class="flex-1 space-y-1">
+          <label for="{{ form.end_date.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.end_date.label }}</label>
+          <div class="w-full auth-input-field">{{ form.end_date }}</div>
+          {% if form.end_date.errors %}<div class="text-red-500 text-xs mt-1">{{ form.end_date.errors }}</div>{% endif %}
+        </div>
+      </div>
+
+      <!-- Times: Start/End -->
+      <div class="flex gap-4">
+        <div class="flex-1 space-y-1">
+          <label for="{{ form.start_time.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.start_time.label }}</label>
+          <div class="w-full auth-input-field">{{ form.start_time }}</div>
+          {% if form.start_time.errors %}<div class="text-red-500 text-xs mt-1">{{ form.start_time.errors }}</div>{% endif %}
+        </div>
+        <div class="flex-1 space-y-1">
+          <label for="{{ form.end_time.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.end_time.label }}</label>
+          <div class="w-full auth-input-field">{{ form.end_time }}</div>
+          {% if form.end_time.errors %}<div class="text-red-500 text-xs mt-1">{{ form.end_time.errors }}</div>{% endif %}
+        </div>
+      </div>
+
+      <!-- Max Guests -->
+      <div class="space-y-1">
+        <label for="{{ form.max_guests.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.max_guests.label }}</label>
+        <div class="w-full auth-input-field">{{ form.max_guests }}</div>
+        {% if form.max_guests.errors %}<div class="text-red-500 text-xs mt-1">{{ form.max_guests.errors }}</div>{% endif %}
+      </div>
+
+      <!-- Region -->
+      <div class="space-y-1">
+        <label for="{{ form.region.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.region.label }}</label>
+        <div class="w-full auth-input-field">{{ form.region }}</div>
+        {% if form.region.errors %}<div class="text-red-500 text-xs mt-1">{{ form.region.errors }}</div>{% endif %}
+      </div>
+
+      <!-- Prices: 3 columns + Discount -->
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="space-y-1">
+          <label for="{{ form.adult_price.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.adult_price.label }}</label>
+          <div class="w-full auth-input-field">{{ form.adult_price }}</div>
+          {% if form.adult_price.errors %}<div class="text-red-500 text-xs mt-1">{{ form.adult_price.errors }}</div>{% endif %}
+        </div>
+        <div class="space-y-1">
+          <label for="{{ form.child_price.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.child_price.label }}</label>
+          <div class="w-full auth-input-field">{{ form.child_price }}</div>
+          {% if form.child_price.errors %}<div class="text-red-500 text-xs mt-1">{{ form.child_price.errors }}</div>{% endif %}
+        </div>
+        <div class="space-y-1">
+          <label for="{{ form.infant_price.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.infant_price.label }}</label>
+          <div class="w-full auth-input-field">{{ form.infant_price }}</div>
+          {% if form.infant_price.errors %}<div class="text-red-500 text-xs mt-1">{{ form.infant_price.errors }}</div>{% endif %}
+        </div>
+        <div class="space-y-1">
+          <label for="{{ form.discount.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.discount.label }}</label>
+          <div class="w-full auth-input-field">{{ form.discount }}</div>
+          {% if form.discount.errors %}<div class="text-red-500 text-xs mt-1">{{ form.discount.errors }}</div>{% endif %}
+        </div>
+      </div>
+
+      <!-- Weekdays -->
+      <div class="space-y-1">
+        <label for="{{ form.weekdays.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.weekdays.label }}</label>
+        <div class="w-full overflow-x-auto">
+          <div class="flex flex-row flex-wrap gap-2">
+            {{ form.weekdays }}
+          </div>
+        </div>
+        {% if form.weekdays.errors %}<div class="text-red-500 text-xs mt-1">{{ form.weekdays.errors }}</div>{% endif %}
+      </div>
+
+      <div class="mt-6 flex gap-4">
+        <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+          {% if availability %}Update{% else %}Create{% endif %} Availability
+        </button>
+        <a href="{% if availability %}{% url 'availability_detail' availability.id %}{% else %}{% url 'availability_list' %}{% endif %}" 
+           class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 px-4 rounded-md text-center focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2">
+          Cancel
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle region checkboxes and price fields visibility
+    const regionCheckboxes = document.querySelectorAll('input[name="region"]');
+    const weekdaysCheckboxes = document.querySelectorAll('input[name="weekdays"]');
+    const allPriceFields = document.querySelectorAll('.price-field');
+
+    function updateVisibleFields() {
+        // First, hide all price fields
+        // allPriceFields.forEach(el => {
+        //     el.closest('.space-y-1').style.display = 'none';
+        // });
+
+        // Then, show price fields for each checked region
+        // regionCheckboxes.forEach(checkbox => {
+        //     if (checkbox.checked) {
+        //         const regionSlug = checkbox.labels[0].innerText.trim().toLowerCase().replace(/\s+/g, '-');
+        //         console.log(regionSlug);
+        //         const fieldsToShow = document.querySelectorAll(`.region-${regionSlug}`);
+        //         fieldsToShow.forEach(el => {
+        //             el.closest('.space-y-1').style.display = 'block';
+        //         });
+        //     }
+        // });
+    }
+
+    // Fix for M2M fields not being selected when editing
+    function checkSelectedValues() {
+        // For region checkboxes
+        const selectedRegionsData = document.querySelector('#id_region').getAttribute('data-initial-values');
+        if (selectedRegionsData) {
+            try {
+                const selectedRegions = JSON.parse(selectedRegionsData);
+                regionCheckboxes.forEach(checkbox => {
+                    if (selectedRegions.includes(parseInt(checkbox.value))) {
+                        checkbox.checked = true;
+                    }
+                });
+            } catch (e) {
+                console.error('Error parsing selected regions:', e);
+            }
+        }
+
+        // For weekdays checkboxes
+        const selectedWeekdaysData = document.querySelector('#id_weekdays').getAttribute('data-initial-values');
+        if (selectedWeekdaysData) {
+            try {
+                const selectedWeekdays = JSON.parse(selectedWeekdaysData);
+                weekdaysCheckboxes.forEach(checkbox => {
+                    if (selectedWeekdays.includes(parseInt(checkbox.value))) {
+                        checkbox.checked = true;
+                    }
+                });
+            } catch (e) {
+                console.error('Error parsing selected weekdays:', e);
+            }
+        }
+
+        // Update price fields visibility after setting checkboxes
+        updateVisibleFields();
+    }
+
+    // Add event listeners to region checkboxes
+    regionCheckboxes.forEach(cb => cb.addEventListener('change', updateVisibleFields));
+    
+    // Initialize checkbox states and visibility
+    checkSelectedValues();
+    // updateVisibleFields();
+  
+    // Form submission handling
+    const form = document.getElementById('availability-form');
+    
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // Get form data
+        const formData = new FormData(form);
+        
+        // Get CSRF token
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        
+        // Submit form using fetch
+        fetch(form.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': csrfToken
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                Swal.fire({
+                    title: 'Success!',
+                    text: data.message || 'Availability saved successfully.',
+                    icon: 'success',
+                    confirmButtonColor: '#3085d6'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        window.location.href = data.redirect_url;
+                    }
+                });
+            } else {
+                // Show error message with detailed errors
+                let errorMessage = data.message;
+                if (data.errors && data.errors.length > 0) {
+                    errorMessage += '\n\n' + data.errors.join('\n');
+                }
+                
+                Swal.fire({
+                    title: 'Error!',
+                    text: errorMessage,
+                    icon: 'error',
+                    confirmButtonColor: '#3085d6'
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            Swal.fire({
+                title: 'Error!',
+                text: 'An error occurred while saving the availability. Please check the form for errors and try again.',
+                icon: 'error',
+                confirmButtonColor: '#3085d6'
+            });
+        });
+    });
+});
+</script>
+{% endblock %}

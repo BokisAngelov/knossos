@@ -1,0 +1,304 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mx-auto py-8 px-4">
+  <div class="bg-white rounded-lg shadow-md p-6">
+    <h1 class="text-2xl font-bold text-gray-800 mb-6 text-center">Manage Categories & Tags</h1>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <!-- Categories Section -->
+      <div class="border-1 rounded-lg p-4">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-xl font-semibold text-gray-700">Categories</h2>
+          <button type="button" id="add-category-btn" class="bg-blue-600 hover:bg-blue-700 text-white text-sm py-1 px-3 rounded-md flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            Add Category
+          </button>
+        </div>
+        
+        <div class="overflow-y-auto max-h-96">
+          <table class="min-w-full" id="categories-table">
+            <tbody>
+              {% for category in categories %}
+                <tr class="border-b hover:bg-gray-50" data-id="{{ category.id }}">
+                  <td class="py-3 px-2 w-full">
+                    <span class="editable-name">{{ category.name }}</span>
+                    <input type="text" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ category.name }}">
+                  </td>
+                  <td class="py-3 px-2 text-right whitespace-nowrap">
+                    <button type="button" class="edit-btn text-blue-600 hover:text-blue-800 mr-2">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                      </svg>
+                    </button>
+                    <button type="button" class="delete-btn text-red-600 hover:text-red-800 mr-2">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                    <button type="button" class="save-btn hidden text-green-600 hover:text-green-800">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                      </svg>
+                    </button>
+                    <button type="button" class="cancel-btn hidden text-gray-600 hover:text-gray-800">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </td>
+                </tr>
+              {% empty %}
+                <tr>
+                  <td colspan="2" class="py-4 text-center text-gray-500">No categories found.</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      
+      <!-- Tags Section -->
+      <div class="border rounded-lg p-4">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-xl font-semibold text-gray-700">Tags</h2>
+          <button type="button" id="add-tag-btn" class="bg-blue-600 hover:bg-blue-700 text-white text-sm py-1 px-3 rounded-md flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            Add Tag
+          </button>
+        </div>
+        
+        <div class="overflow-y-auto max-h-96">
+          <table class="min-w-full" id="tags-table">
+            <tbody>
+              {% for tag in tags %}
+                <tr class="border-b hover:bg-gray-50" data-id="{{ tag.id }}">
+                  <td class="py-3 px-2 w-full">
+                    <span class="editable-name">{{ tag.name }}</span>
+                    <input type="text" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ tag.name }}">
+                  </td>
+                  <td class="py-3 px-2 text-right whitespace-nowrap">
+                    <button type="button" class="edit-btn text-blue-600 hover:text-blue-800 mr-2">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                      </svg>
+                    </button>
+                    <button type="button" class="delete-btn text-red-600 hover:text-red-800 mr-2">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                    <button type="button" class="save-btn hidden text-green-600 hover:text-green-800">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                      </svg>
+                    </button>
+                    <button type="button" class="cancel-btn hidden text-gray-600 hover:text-gray-800">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </td>
+                </tr>
+              {% empty %}
+                <tr>
+                  <td colspan="2" class="py-4 text-center text-gray-500">No tags found.</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Hidden forms for submitting actions -->
+<form id="add-category-form" action="{% url 'manage_categories_tags' %}" method="post" class="hidden">
+  {% csrf_token %}
+  <input type="hidden" name="action_type" value="add_category">
+  <input type="hidden" name="name" id="add-category-name">
+</form>
+
+<form id="edit-category-form" action="{% url 'manage_categories_tags' %}" method="post" class="hidden">
+  {% csrf_token %}
+  <input type="hidden" name="action_type" value="edit_category">
+  <input type="hidden" name="item_id" id="edit-category-id">
+  <input type="hidden" name="name" id="edit-category-name">
+</form>
+
+<form id="delete-category-form" action="{% url 'manage_categories_tags' %}" method="post" class="hidden">
+  {% csrf_token %}
+  <input type="hidden" name="action_type" value="delete_category">
+  <input type="hidden" name="item_id" id="delete-category-id">
+</form>
+
+<form id="add-tag-form" action="{% url 'manage_categories_tags' %}" method="post" class="hidden">
+  {% csrf_token %}
+  <input type="hidden" name="action_type" value="add_tag">
+  <input type="hidden" name="name" id="add-tag-name">
+</form>
+
+<form id="edit-tag-form" action="{% url 'manage_categories_tags' %}" method="post" class="hidden">
+  {% csrf_token %}
+  <input type="hidden" name="action_type" value="edit_tag">
+  <input type="hidden" name="item_id" id="edit-tag-id">
+  <input type="hidden" name="name" id="edit-tag-name">
+</form>
+
+<form id="delete-tag-form" action="{% url 'manage_categories_tags' %}" method="post" class="hidden">
+  {% csrf_token %}
+  <input type="hidden" name="action_type" value="delete_tag">
+  <input type="hidden" name="item_id" id="delete-tag-id">
+</form>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Add Category
+    document.getElementById('add-category-btn').addEventListener('click', function(e) {
+      e.preventDefault();
+      Swal.fire({
+        title: 'Add Category',
+        input: 'text',
+        inputLabel: 'Category name',
+        inputPlaceholder: 'Enter category name',
+        showCancelButton: true,
+        inputValidator: (value) => {
+          if (!value || !value.trim()) {
+            return 'Please enter a category name';
+          }
+        }
+      }).then((result) => {
+        if (result.isConfirmed && result.value) {
+          const form = document.getElementById('add-category-form');
+          document.getElementById('add-category-name').value = result.value.trim();
+          form.submit();
+        }
+      });
+    });
+    
+    // Add Tag
+    document.getElementById('add-tag-btn').addEventListener('click', function(e) {
+      e.preventDefault();
+      Swal.fire({
+        title: 'Add Tag',
+        input: 'text',
+        inputLabel: 'Tag name',
+        inputPlaceholder: 'Enter tag name',
+        showCancelButton: true,
+        inputValidator: (value) => {
+          if (!value || !value.trim()) {
+            return 'Please enter a tag name';
+          }
+        }
+      }).then((result) => {
+        if (result.isConfirmed && result.value) {
+          const form = document.getElementById('add-tag-form');
+          document.getElementById('add-tag-name').value = result.value.trim();
+          form.submit();
+        }
+      });
+    });
+    
+    // Handle category editing
+    setupTableEditing('categories-table', 'category');
+    
+    // Handle tag editing
+    setupTableEditing('tags-table', 'tag');
+    
+    function setupTableEditing(tableId, itemType) {
+      const table = document.getElementById(tableId);
+      
+      if (!table) return;
+      
+      // Edit buttons
+      table.querySelectorAll('.edit-btn').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+          e.preventDefault();
+          const row = this.closest('tr');
+          const nameSpan = row.querySelector('.editable-name');
+          const nameInput = row.querySelector('.edit-input');
+          
+          // Hide the span, show the input
+          nameSpan.classList.add('hidden');
+          nameInput.classList.remove('hidden');
+          nameInput.focus();
+          
+          // Toggle buttons
+          row.querySelectorAll('.edit-btn, .delete-btn').forEach(el => el.classList.add('hidden'));
+          row.querySelectorAll('.save-btn, .cancel-btn').forEach(el => el.classList.remove('hidden'));
+        });
+      });
+      
+      // Save buttons
+      table.querySelectorAll('.save-btn').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+          e.preventDefault();
+          const row = this.closest('tr');
+          const itemId = row.dataset.id;
+          const nameInput = row.querySelector('.edit-input');
+          const newName = nameInput.value.trim();
+          
+          if (newName) {
+            // Update the form and submit
+            document.getElementById(`edit-${itemType}-id`).value = itemId;
+            document.getElementById(`edit-${itemType}-name`).value = newName;
+            document.getElementById(`edit-${itemType}-form`).submit();
+          }
+        });
+      });
+      
+      // Cancel buttons
+      table.querySelectorAll('.cancel-btn').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+          e.preventDefault();
+          const row = this.closest('tr');
+          const nameSpan = row.querySelector('.editable-name');
+          const nameInput = row.querySelector('.edit-input');
+          
+          // Reset input value
+          nameInput.value = nameSpan.textContent;
+          
+          // Show the span, hide the input
+          nameSpan.classList.remove('hidden');
+          nameInput.classList.add('hidden');
+          
+          // Toggle buttons back
+          row.querySelectorAll('.edit-btn, .delete-btn').forEach(el => el.classList.remove('hidden'));
+          row.querySelectorAll('.save-btn, .cancel-btn').forEach(el => el.classList.add('hidden'));
+        });
+      });
+      
+      // Delete buttons
+      table.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+          e.preventDefault();
+          const row = this.closest('tr');
+          const itemId = row.dataset.id;
+          const name = row.querySelector('.editable-name').textContent;
+          
+          Swal.fire({
+            title: 'Are you sure?',
+            text: `Do you want to delete "${name}"?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Yes, delete it!'
+          }).then((result) => {
+            if (result.isConfirmed) {
+              document.getElementById(`delete-${itemType}-id`).value = itemId;
+              document.getElementById(`delete-${itemType}-form`).submit();
+            }
+          });
+        });
+      });
+    }
+  });
+</script>
+{% endblock %} 

@@ -1,0 +1,331 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+
+<div class="container mx-auto px-4 py-8">
+    <!-- Hidden div for pickup groups data -->
+    <div id="pickup-groups-data" data-groups='{{ pickup_groups_json|safe }}' style="display: none;"></div>
+
+    <!-- Header Section -->
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">Pickup Points</h1>
+            <p class="text-sm text-gray-500">Manage your pickup point locations</p>
+        </div>
+        <button type="button" id="add-point-btn" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            Add Pickup Point
+        </button>
+    </div>
+
+    <!-- Search and Filter Section -->
+    <div class="bg-white rounded-lg shadow-md p-4 mb-6">
+        <form method="get" class="flex flex-wrap gap-4">
+            <div class="flex-1 min-w-[200px]">
+                <label for="search" class="sr-only">Search</label>
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                    </div>
+                    <input type="text" name="search" id="search" value="{{ request.GET.search }}" 
+                           class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                           placeholder="Search pickup points...">
+                </div>
+            </div>
+            <div class="flex gap-4">
+                <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    Search
+                </button>
+                <a href="{% url 'pickup_points_list' %}" class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    Clear
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Pickup Points Table -->
+    <div class="bg-white rounded-lg shadow-md overflow-hidden">
+        {% if pickup_points %}
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Address</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pickup Group</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Map</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for point in pickup_points %}
+                        <tr data-id="{{ point.id }}">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="editable-name">{{ point.name }}</span>
+                                <input type="text" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ point.name }}">
+                            </td>
+                            <td class="px-6 py-4">
+                                <span class="editable-address">{{ point.address }}</span>
+                                <input type="text" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ point.address }}">
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="editable-type">{{ point.type|title }}</span>
+                                <select class="edit-input hidden w-full border rounded px-2 py-1 bg-white">
+                                    <option value="hotel" {% if point.type == 'hotel' %}selected{% endif %}>Hotel</option>
+                                    <option value="port" {% if point.type == 'port' %}selected{% endif %}>Port</option>
+                                    <option value="airport" {% if point.type == 'airport' %}selected{% endif %}>Airport</option>
+                                    <option value="bus_station" {% if point.type == 'bus_station' %}selected{% endif %}>Bus Station</option>
+                                    <option value="other" {% if point.type == 'other' %}selected{% endif %}>Other</option>
+                                </select>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="editable-group">{% if point.pickup_group %}{{ point.pickup_group.name }}{% endif %}</span>
+                                <select class="edit-input hidden w-full border rounded px-2 py-1 bg-white">
+                                    {% for group in pickup_groups %}
+                                        <option value="{{ group.id }}" {% if point.pickup_group and point.pickup_group.id == group.id %}selected{% endif %}>{{ group.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="editable-link">
+                                    {% if point.google_maps_link %}
+                                        <a href="{{ point.google_maps_link }}" target="_blank" class="text-blue-600 hover:text-blue-800">View on map</a>
+                                    {% endif %}
+                                </span>
+                                <input type="url" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ point.google_maps_link }}" placeholder="Google Maps link">
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                <button type="button" class="edit-btn text-blue-600 hover:text-blue-800 mr-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                    </svg>
+                                </button>
+                                <button type="button" class="delete-btn text-red-600 hover:text-red-800 mr-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                </button>
+                                <button type="button" class="save-btn hidden text-green-600 hover:text-green-800">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                </button>
+                                <button type="button" class="cancel-btn hidden text-gray-600 hover:text-gray-800">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-12">
+                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <h3 class="mt-2 text-sm font-medium text-gray-900">No pickup points found</h3>
+                <p class="mt-1 text-sm text-gray-500">Get started by adding a new pickup point.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Hidden forms for submitting actions -->
+<form id="add-point-form" action="{% url 'manage_pickup_points' %}" method="post" class="hidden">
+    {% csrf_token %}
+    <input type="hidden" name="action_type" value="add_point">
+    <input type="hidden" name="name" id="add-point-name">
+    <input type="hidden" name="address" id="add-point-address">
+    <input type="hidden" name="type" id="add-point-type">
+    <input type="hidden" name="pickup_group" id="add-point-group">
+    <input type="hidden" name="google_maps_link" id="add-point-google-maps-link">
+</form>
+
+<form id="edit-point-form" action="{% url 'manage_pickup_points' %}" method="post" class="hidden">
+    {% csrf_token %}
+    <input type="hidden" name="action_type" value="edit_point">
+    <input type="hidden" name="item_id" id="edit-point-id">
+    <input type="hidden" name="name" id="edit-point-name">
+    <input type="hidden" name="address" id="edit-point-address">
+    <input type="hidden" name="type" id="edit-point-type">
+    <input type="hidden" name="pickup_group" id="edit-point-group">
+    <input type="hidden" name="google_maps_link" id="edit-point-google-maps-link">
+</form>
+
+<form id="delete-point-form" action="{% url 'manage_pickup_points' %}" method="post" class="hidden">
+    {% csrf_token %}
+    <input type="hidden" name="action_type" value="delete_point">
+    <input type="hidden" name="item_id" id="delete-point-id">
+</form>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Get pickup groups data from the hidden div and handle potential parsing errors
+        let pickupGroupsData = [];
+        try {
+            const groupsElement = document.getElementById('pickup-groups-data');
+            if (groupsElement && groupsElement.dataset.groups) {
+                pickupGroupsData = JSON.parse(groupsElement.dataset.groups);
+            }
+        } catch (e) {
+            console.error('Error parsing pickup groups data:', e);
+        }
+        
+        // Add Pickup Point
+        const addPointBtn = document.getElementById('add-point-btn');
+        function showAddPointModal() {
+            let groupOptions = '';
+            if (Array.isArray(pickupGroupsData)) {
+                pickupGroupsData.forEach(group => {
+                    groupOptions += `<option value="${group.id}">${group.name}</option>`;
+                });
+            }
+            
+            Swal.fire({
+                title: 'Add Pickup Point',
+                html: `
+                    <input id="swal-name" class="swal2-input" placeholder="Name" required>
+                    <input id="swal-address" class="swal2-input" placeholder="Address" required>
+                    <select id="swal-type" class="swal2-input" style="width: 100%; margin: 10px auto; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 0.375rem; background-color: white;" required>
+                        <option value="hotel">Hotel</option>
+                        <option value="port">Port</option>
+                        <option value="airport">Airport</option>
+                        <option value="bus_station">Bus Station</option>
+                        <option value="other">Other</option>
+                    </select>
+                    <select id="swal-group" class="swal2-input" style="width: 100%; margin: 10px auto; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 0.375rem; background-color: white;" required>${groupOptions}</select>
+                    <input id="swal-google-maps-link" class="swal2-input" placeholder="Google Maps Link" type="url">
+                `,
+                focusConfirm: false,
+                showCancelButton: true,
+                confirmButtonText: 'Add Point',
+                preConfirm: () => {
+                    const name = document.getElementById('swal-name').value;
+                    const address = document.getElementById('swal-address').value;
+                    const type = document.getElementById('swal-type').value;
+                    const group = document.getElementById('swal-group').value;
+                    const google_maps_link = document.getElementById('swal-google-maps-link').value;
+
+                    if (!name || !address || !type || !group) {
+                        Swal.showValidationMessage('Please fill in all required fields');
+                        return false;
+                    }
+                    return { name, address, type, group, google_maps_link };
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const form = document.getElementById('add-point-form');
+                    document.getElementById('add-point-name').value = result.value.name;
+                    document.getElementById('add-point-address').value = result.value.address;
+                    document.getElementById('add-point-type').value = result.value.type;
+                    document.getElementById('add-point-group').value = result.value.group;
+                    document.getElementById('add-point-google-maps-link').value = result.value.google_maps_link;
+                    form.submit();
+                }
+            });
+        }
+        if (addPointBtn) {
+            addPointBtn.addEventListener('click', showAddPointModal);
+        }
+
+        // Setup table editing
+        const table = document.querySelector('table');
+        if (table) {
+            // Edit buttons
+            table.querySelectorAll('.edit-btn').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const row = this.closest('tr');
+                    const spans = row.querySelectorAll('.editable-name, .editable-address, .editable-type, .editable-group, .editable-link');
+                    const inputs = row.querySelectorAll('.edit-input');
+                    spans.forEach(span => span.classList.add('hidden'));
+                    inputs.forEach(input => input.classList.remove('hidden'));
+                    inputs[0].focus();
+                    row.querySelectorAll('.edit-btn, .delete-btn').forEach(el => el.classList.add('hidden'));
+                    row.querySelectorAll('.save-btn, .cancel-btn').forEach(el => el.classList.remove('hidden'));
+                });
+            });
+
+            // Save buttons
+            table.querySelectorAll('.save-btn').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const row = this.closest('tr');
+                    const itemId = row.dataset.id;
+                    const inputs = row.querySelectorAll('.edit-input');
+                    
+                    document.getElementById('edit-point-id').value = itemId;
+                    document.getElementById('edit-point-name').value = inputs[0].value.trim();
+                    document.getElementById('edit-point-address').value = inputs[1].value.trim();
+                    document.getElementById('edit-point-type').value = inputs[2].value;
+                    document.getElementById('edit-point-group').value = inputs[3].value;
+                    document.getElementById('edit-point-google-maps-link').value = inputs[4].value.trim();
+                    document.getElementById('edit-point-form').submit();
+                });
+            });
+
+            // Cancel buttons
+            table.querySelectorAll('.cancel-btn').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const row = this.closest('tr');
+                    const spans = row.querySelectorAll('.editable-name, .editable-address, .editable-type, .editable-group, .editable-link');
+                    const inputs = row.querySelectorAll('.edit-input');
+                    inputs.forEach((input, index) => {
+                        if (input.tagName === 'SELECT') {
+                            // Reset select to original value
+                            const originalValue = spans[index].textContent.trim();
+                            for (let i = 0; i < input.options.length; i++) {
+                                if (input.options[i].text === originalValue) {
+                                    input.selectedIndex = i;
+                                    break;
+                                }
+                            }
+                        } else {
+                            input.value = spans[index].textContent;
+                        }
+                    });
+                    spans.forEach(span => span.classList.remove('hidden'));
+                    inputs.forEach(input => input.classList.add('hidden'));
+                    row.querySelectorAll('.edit-btn, .delete-btn').forEach(el => el.classList.remove('hidden'));
+                    row.querySelectorAll('.save-btn, .cancel-btn').forEach(el => el.classList.add('hidden'));
+                });
+            });
+
+            // Delete buttons
+            table.querySelectorAll('.delete-btn').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const row = this.closest('tr');
+                    const itemId = row.dataset.id;
+                    const name = row.querySelector('.editable-name').textContent;
+                    Swal.fire({
+                        title: 'Are you sure?',
+                        text: `Do you want to delete pickup point "${name}"?`,
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#d33',
+                        cancelButtonColor: '#3085d6',
+                        confirmButtonText: 'Yes, delete it!'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            document.getElementById('delete-point-id').value = itemId;
+                            document.getElementById('delete-point-form').submit();
+                        }
+                    });
+                });
+            });
+        }
+    });
+</script>
+{% endblock %}

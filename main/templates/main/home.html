@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-2xl font-bold">Welcome to Knossos</h1>
+        <p class="text-gray-600">Explore our wide range of excursions and book your next adventure with us.</p> 
+    </div>
+
+    <div class="container mx-auto px-4 py-8">
+        <h2 class="text-xl font-bold">Featured Excursions</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {% for excursion in excursions %}
+                <div class="bg-white shadow-md rounded-lg overflow-hidden">
+                    <a href="{% url 'excursion_detail' excursion.pk %}">
+                        <img src="{{ excursion.intro_image.url }}" alt="{{ excursion.title }}" class="w-full h-48 object-cover">
+                    </a>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+
+{% endblock %}
+
+

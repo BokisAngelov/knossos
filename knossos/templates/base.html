@@ -1,0 +1,103 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Knossos{% endblock %}</title>
+  <link href="{% static 'css/tailwind.css' %}" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <link rel="stylesheet" href="https://cdn.datatables.net/2.3.1/css/dataTables.tailwindcss.css" />
+  <script src="https://cdn.datatables.net/2.3.1/js/dataTables.js"></script>
+</head>
+<body class="min-h-screen bg-gray-100 flex flex-col">
+  <header class="bg-white shadow">
+    <div class="container mx-auto px-4 py-6 flex justify-between items-center">
+      <a href="{% url 'excursion_list' %}" class="text-2xl font-bold text-gray-800">Knossos</a>
+      <nav>
+        <ul class="flex space-x-4">
+            <li><a href="{% url 'excursion_list' %}" class="text-gray-600 hover:text-gray-800">Excursions</a></li>
+            {% if user.is_authenticated %}
+             {% if user.is_staff %}
+             <li><a href="{% url 'admin_dashboard' pk=user.profile.id %}" class="text-gray-600 hover:text-gray-800">Dashboard</a></li>
+             {% else %}
+              <li><a href="{% url 'profile' pk=user.profile.id %}" class="text-gray-600 hover:text-gray-800">Profile</a></li>
+             {% endif %}
+              <li><a href="{% url 'logout' %}" class="text-gray-600 hover:text-gray-800">Logout</a></li>
+            {% else %}
+            <li><a href="{% url 'login' %}" class="text-gray-600 hover:text-gray-800">Login</a></li>
+            <li><a href="{% url 'signup' %}" class="text-gray-600 hover:text-gray-800">Sign Up</a></li>
+            {% endif %}
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main class="flex-grow container mx-auto px-4 py-6">
+    <div class="fixed top-4 right-4 z-50">
+      {% for message in messages %}
+        <div id="notification-{{ forloop.counter }}" class="mb-4 transform transition-all duration-300 ease-in-out {% if message.tags == 'success' %}bg-green-100 border-l-4 border-green-500 text-green-700{% elif message.tags == 'error' %}bg-red-100 border-l-4 border-red-500 text-red-700{% elif message.tags == 'warning' %}bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700{% else %}bg-blue-100 border-l-4 border-blue-500 text-blue-700{% endif %} p-4 rounded shadow-lg">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center">
+              {% if message.tags == 'success' %}
+                <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                </svg>
+              {% elif message.tags == 'error' %}
+                <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                </svg>
+              {% elif message.tags == 'warning' %}
+                <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                </svg>
+              {% else %}
+                <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                </svg>
+              {% endif %}
+              <p class="font-medium">{{ message }}</p>
+            </div>
+            <button onclick="closeNotification('notification-{{ forloop.counter }}')" class="ml-4 text-gray-500 hover:text-gray-700 focus:outline-none">
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="bg-white border-t">
+    <div class="container mx-auto px-4 py-4 text-center text-gray-600 text-sm">
+      &copy; {{ now|date:"Y" }} Knossos. All rights reserved.
+    </div>
+  </footer>
+
+  <script>
+    function closeNotification(id) {
+      const notification = document.getElementById(id);
+      notification.style.opacity = '0';
+      notification.style.transform = 'translateX(100%)';
+      setTimeout(() => {
+        notification.remove();
+      }, 300);
+    }
+
+    // Auto-hide notifications after 4 seconds
+    document.addEventListener('DOMContentLoaded', function() {
+      const notifications = document.querySelectorAll('[id^="notification-"]');
+      notifications.forEach(notification => {
+        setTimeout(() => {
+          closeNotification(notification.id);
+        }, 3000);
+      });
+    });
+  </script>
+</body>
+</html>

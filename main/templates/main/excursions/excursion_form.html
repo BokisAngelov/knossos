@@ -1,0 +1,226 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<style>
+  .auth-input-field input, 
+  .auth-input-field select, 
+  .auth-input-field textarea {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    outline: none;
+  }
+  .auth-input-field input:focus, 
+  .auth-input-field select:focus, 
+  .auth-input-field textarea:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+  }
+  
+  /* Style for checkbox lists */
+  .checkbox-list {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-top: 0.5rem;
+  }
+  
+  .checkbox-list label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  
+  .checkbox-list label:hover {
+    background-color: #f3f4f6;
+  }
+  
+  .checkbox-list input[type="checkbox"] {
+    width: auto;
+    margin: 0;
+  }
+</style>
+
+<div class="flex justify-center items-center min-h-[80vh]">
+  <div class="bg-white rounded-lg shadow-md w-full max-w-4xl p-6">
+    <div class="text-center mb-6">
+      <h1 class="text-2xl font-bold text-gray-800">
+        {% if excursion %}Edit{% else %}Add{% endif %} Excursion
+      </h1>
+      <p class="text-sm text-gray-500 mt-2">
+        {% if excursion %}
+          Update excursion details
+        {% else %}
+          Create a new excursion
+        {% endif %}
+      </p>
+    </div>
+
+    <form method="post" enctype="multipart/form-data" class="space-y-4" id="excursion-form" action="{% if excursion %}{% url 'excursion_update' excursion.id %}{% else %}{% url 'excursion_create' %}{% endif %}">
+      {% csrf_token %}
+      
+      <!-- Title & Status -->
+      <div class="flex gap-4">
+        <div class="flex-[4_4_0%] space-y-1">
+          <label for="{{ form.title.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.title.label }}</label>
+          <div class="w-full auth-input-field">{{ form.title }}</div>
+          {% if form.title.errors %}<div class="text-red-500 text-xs mt-1">{{ form.title.errors }}</div>{% endif %}
+        </div>
+        <div class="flex-[1_1_0%] space-y-1">
+          <label for="{{ form.status.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.status.label }}</label>
+          <div class="w-full auth-input-field">{{ form.status }}</div>
+          {% if form.status.errors %}<div class="text-red-500 text-xs mt-1">{{ form.status.errors }}</div>{% endif %}
+        </div>
+      </div>
+
+      <!-- Description -->
+      <div class="space-y-1">
+        <label for="{{ form.description.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.description.label }}</label>
+        <div class="w-full auth-input-field">{{ form.description }}</div>
+        {% if form.description.errors %}<div class="text-red-500 text-xs mt-1">{{ form.description.errors }}</div>{% endif %}
+      </div>
+
+      <!-- Intro Image -->
+      <div class="space-y-1">
+        <label for="{{ form.intro_image.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.intro_image.label }}</label>
+        <div class="w-full auth-input-field">{{ form.intro_image }}</div>
+        {% if form.intro_image.errors %}<div class="text-red-500 text-xs mt-1">{{ form.intro_image.errors }}</div>{% endif %}
+      </div>
+
+      <!-- Provider & Guide -->
+      <div class="flex gap-4">
+        <div class="flex-1 space-y-1">
+          <label for="{{ form.provider.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.provider.label }}</label>
+          <div class="w-full auth-input-field">{{ form.provider }}</div>
+          {% if form.provider.errors %}<div class="text-red-500 text-xs mt-1">{{ form.provider.errors }}</div>{% endif %}
+        </div>
+        <div class="flex-1 space-y-1">
+          <label for="{{ form.guide.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.guide.label }}</label>
+          <div class="w-full auth-input-field">{{ form.guide }}</div>
+          {% if form.guide.errors %}<div class="text-red-500 text-xs mt-1">{{ form.guide.errors }}</div>{% endif %}
+        </div>
+      </div>
+
+      <!-- Full Day & On Request -->
+      <div class="flex gap-4">
+        <div class="flex-1 space-y-1">
+          <label for="{{ form.full_day.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.full_day.label }}</label>
+          <div class="w-full auth-input-field">{{ form.full_day }}</div>
+          {% if form.full_day.errors %}<div class="text-red-500 text-xs mt-1">{{ form.full_day.errors }}</div>{% endif %}
+        </div>
+        <div class="flex-1 space-y-1">
+          <label for="{{ form.on_request.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.on_request.label }}</label>
+          <div class="w-full auth-input-field">{{ form.on_request }}</div>
+          {% if form.on_request.errors %}<div class="text-red-500 text-xs mt-1">{{ form.on_request.errors }}</div>{% endif %}
+        </div>
+      </div>
+
+      <!-- Category & Tags -->
+      <div class="flex">
+        <div class="flex-1 space-y-1">
+          <label for="{{ form.category.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.category.label }}</label>
+          <div class="w-full auth-input-field"><div class="checkbox-list">{{ form.category }}</div></div>
+          {% if form.category.errors %}<div class="text-red-500 text-xs mt-1">{{ form.category.errors }}</div>{% endif %}
+        </div>
+        <div class="flex-1 space-y-1">
+          <label for="{{ form.tags.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.tags.label }}</label>
+          <div class="w-full auth-input-field"><div class="checkbox-list">{{ form.tags }}</div></div>
+          {% if form.tags.errors %}<div class="text-red-500 text-xs mt-1">{{ form.tags.errors }}</div>{% endif %}
+        </div>
+      </div>
+
+      
+
+      <!-- Pickup Points -->
+      <div class="grid grid-cols-1 gap-0">
+        <div class="space-y-1">
+          <label for="{{ form.pickup_point.id_for_label }}" class="block text-sm font-medium text-gray-700">Pickup Points</label>
+          <div class="w-full auth-input-field">{{ form.pickup_point }}</div>
+          {% if form.pickup_point.errors %}<div class="text-red-500 text-xs mt-1">{{ form.pickup_point.errors }}</div>{% endif %}
+        </div>
+      </div>
+      
+      <div class="mt-6 flex gap-4">
+        <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+          {% if excursion %}Update{% else %}Create{% endif %} Excursion
+        </button>
+        <a href="{% if excursion %}{% url 'excursion_detail' excursion.id %}{% else %}{% url 'admin_excursions' %}{% endif %}" 
+           class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 px-4 rounded-md text-center focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2">
+          Cancel
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('excursion-form');
+    
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // Get form data
+        const formData = new FormData(form);
+        
+        // Get CSRF token
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        
+        // Submit form using fetch
+        fetch(form.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': csrfToken
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                Swal.fire({
+                    title: 'Success!',
+                    text: data.message || 'Excursion saved successfully.',
+                    icon: 'success',
+                    confirmButtonColor: '#3085d6'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        window.location.href = data.redirect_url;
+                    }
+                });
+            } else {
+                // Show error message with detailed errors
+                let errorMessage = data.message;
+                if (data.errors && data.errors.length > 0) {
+                    errorMessage += '\n\n' + data.errors.join('\n');
+                }
+                
+                Swal.fire({
+                    title: 'Error!',
+                    text: errorMessage,
+                    icon: 'error',
+                    confirmButtonColor: '#3085d6'
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            Swal.fire({
+                title: 'Error!',
+                text: 'An error occurred while saving the excursion. Please check the form for errors.',
+                icon: 'error',
+                confirmButtonColor: '#3085d6'
+            });
+        });
+    });
+});
+</script>
+{% endblock %}
+
