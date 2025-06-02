@@ -21,7 +21,7 @@ class ExcursionForm(forms.ModelForm):
         fields = [
             'title', 'description', 'intro_image',
             'category', 'tags',
-            'full_day', 'on_request', 'status', 'provider', 'pickup_point', 'guide'
+            'full_day', 'on_request', 'status', 'provider', 'guide'
         ]
         widgets = {
             'description': forms.Textarea(attrs={
@@ -33,7 +33,6 @@ class ExcursionForm(forms.ModelForm):
             'tags': forms.CheckboxSelectMultiple,
             'full_day': forms.Select(choices=[(True, 'Yes'), (False, 'No')]),
             'on_request': forms.Select(choices=[(True, 'Yes'), (False, 'No')]),
-            'pickup_point': forms.CheckboxSelectMultiple,
         }
 
     def __init__(self, *args, **kwargs):

@@ -13,6 +13,10 @@
         <p class="text-sm text-blue-600 font-medium">Total Bookings</p>
         <p class="text-2xl font-bold text-blue-900">{{ booking_count }}</p>
       </div>
+      <div class="bg-purple-50 p-4 rounded-lg border border-purple-100">
+        <p class="text-sm text-purple-600 font-medium">Total Excursions</p>
+        <p class="text-2xl font-bold text-purple-900">{{ total_excursions_count }}</p>
+      </div>
       <div class="bg-green-50 p-4 rounded-lg border border-green-100">
         <p class="text-sm text-green-600 font-medium">Active Excursions</p>
         <p class="text-2xl font-bold text-green-900">{{ active_excursions_count }}</p>
@@ -25,10 +29,7 @@
         <p class="text-sm text-orange-600 font-medium">Total Reps</p>
         <p class="text-2xl font-bold text-orange-900">{{ reps_count }}</p>
       </div>
-      <div class="bg-purple-50 p-4 rounded-lg border border-purple-100">
-        <p class="text-sm text-purple-600 font-medium">Revenue</p>
-        <p class="text-2xl font-bold text-purple-900">${{ total_revenue }}</p>
-      </div>
+      
     </div>
     
     <!-- Management Sections -->
@@ -88,8 +89,9 @@
           <!-- Regions -->
           <div class="bg-gray-50 p-5 rounded-lg border border-gray-200">
             <div class="flex items-center mb-4">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c1.104 0 2-.896 2-2s-.896-2-2-2-2 .896-2 2 .896 2 2 2z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 22s8-4.5 8-10a8 8 0 10-16 0c0 5.5 8 10 8 10z" />
               </svg>
               <h3 class="text-lg font-medium text-gray-900">Regions</h3>
             </div>
@@ -101,9 +103,9 @@
           <!-- Hotels -->
           <div class="bg-gray-50 p-5 rounded-lg border border-gray-200">
             <div class="flex items-center mb-4">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                </svg>
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+              </svg>
               <h3 class="text-lg font-medium text-gray-900">Hotels</h3>
             </div>
             <ul class="space-y-2">
@@ -223,8 +225,9 @@
           <!-- Providers -->
           <div class="bg-gray-50 p-5 rounded-lg border border-gray-200">
             <div class="flex items-center mb-4">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-yellow-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15l-3.5-3.5a2.121 2.121 0 010-3l3.5-3.5a2.121 2.121 0 013 0l3.5 3.5a2.121 2.121 0 010 3L15 15a2.121 2.121 0 01-3 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.5 8.5l7 7" />
               </svg>
               <h3 class="text-lg font-medium text-gray-900">Providers</h3>
             </div>

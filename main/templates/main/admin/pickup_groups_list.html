@@ -56,6 +56,7 @@
                         <tr>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Region</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"><a class="text-blue-600 hover:text-blue-800" href="{% url 'pickup_points_list' %}">Pickup Points</a></th>
                             <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                         </tr>
                     </thead>
@@ -73,6 +74,11 @@
                                         <option value="{{ region.id }}" {% if group.region and group.region.id == region.id %}selected{% endif %}>{{ region.name }}</option>
                                     {% endfor %}
                                 </select>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                {% for point in group.pickup_points.all %}
+                                    <p>{{ point.name }}</p>
+                                {% endfor %}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                 <button type="button" class="edit-btn text-blue-600 hover:text-blue-800 mr-2">

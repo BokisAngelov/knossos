@@ -139,7 +139,6 @@ class Excursion(models.Model):
     full_day = models.BooleanField(default=False)
     on_request = models.BooleanField(default=False)
     provider = models.ForeignKey(UserProfile, on_delete=models.SET_NULL,blank=True, null=True, related_name='excursions_provider', limit_choices_to={'role': 'provider'})
-    pickup_point = models.ManyToManyField(PickupPoint, blank=True)
     guide = models.ForeignKey(UserProfile, on_delete=models.SET_NULL, blank=True, null=True, related_name='excursions_guide', limit_choices_to={'role': 'guide'})
 
     def __str__(self):
@@ -211,7 +210,6 @@ class PickupGroupAvailability(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     def __str__(self):
         return f"{self.excursion_availability.excursion.title} - {self.pickup_group.name}"
-
 
 class PaymentMethod(models.Model):
     name = models.CharField(max_length=255)

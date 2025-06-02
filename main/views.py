@@ -310,6 +310,7 @@ def admin_dashboard(request, pk):
     
     # Get admin stats
     active_excursions_count = Excursion.objects.filter(status='active').count()
+    total_excursions_count = Excursion.objects.all().count()
     reps_count = User.objects.filter(profile__role='representative').exclude(is_staff=True).count()
     clients_count = User.objects.filter(profile__role='client').exclude(is_staff=True).count()
     total_revenue = Booking.objects.filter(payment_status='completed').aggregate(
@@ -327,6 +328,7 @@ def admin_dashboard(request, pk):
         'recent_bookings': recent_bookings,
         'booking_count': Booking.objects.count(),
         'user': User.objects.get(profile__id=pk),
+        'total_excursions_count': total_excursions_count,
     }
     
     return render(request, 'main/admin/dashboard.html', context)
@@ -463,6 +465,16 @@ def manage_categories_tags(request):
 @user_passes_test(is_staff)
 def providers_list(request):
     providers = UserProfile.objects.filter(role='provider')
+
+    # Handle search
+    search_query = request.GET.get('search', '').strip()
+    if search_query:
+        providers = providers.filter(
+            Q(name__icontains=search_query) |
+            Q(email__icontains=search_query) |
+            Q(phone__icontains=search_query)
+        )
+        
     return render(request, 'main/admin/providers.html', {
         'providers': providers,
     })
@@ -918,7 +930,7 @@ def availability_delete(request, pk):
         excursion = availability.excursion
 
         # Delete all AvailabilityDays entries for this availability
-        AvailabilityDays.objects.filter(excursion=excursion).delete()
+        # AvailabilityDays.objects.filter(excursion=excursion).delete()
         availability.delete()
         
         # Check if there are any remaining availabilities for this excursion
@@ -1364,14 +1376,4 @@ def manage_pickup_groups(request):
         
     return render(request, 'main/admin/pickup_groups_list.html', {
         'pickup_groups': PickupGroup.objects.all(),
-    })
-
-
-
-def test(request):
-
-    availabilityDays = AvailabilityDays.objects.all()
-
-    return render(request, 'main/admin/test.html', {
-        'availabilityDays': availabilityDays,
     })

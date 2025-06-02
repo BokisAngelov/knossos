@@ -135,17 +135,6 @@
           {% if form.tags.errors %}<div class="text-red-500 text-xs mt-1">{{ form.tags.errors }}</div>{% endif %}
         </div>
       </div>
-
-      
-
-      <!-- Pickup Points -->
-      <div class="grid grid-cols-1 gap-0">
-        <div class="space-y-1">
-          <label for="{{ form.pickup_point.id_for_label }}" class="block text-sm font-medium text-gray-700">Pickup Points</label>
-          <div class="w-full auth-input-field">{{ form.pickup_point }}</div>
-          {% if form.pickup_point.errors %}<div class="text-red-500 text-xs mt-1">{{ form.pickup_point.errors }}</div>{% endif %}
-        </div>
-      </div>
       
       <div class="mt-6 flex gap-4">
         <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
