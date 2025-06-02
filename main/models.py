@@ -197,11 +197,12 @@ class ExcursionAvailability(models.Model):
 
 class AvailabilityDays(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
-    excursion = models.ForeignKey(Excursion, on_delete=models.CASCADE, related_name='availability_days')
+    # excursion = models.ForeignKey(Excursion, on_delete=models.CASCADE, related_name='availability_days')
+    excursion_availability = models.ForeignKey(ExcursionAvailability, on_delete=models.CASCADE, related_name='availability_days', null=True)
     date_day = models.DateField()
 
     def __str__(self):
-        return f"{self.excursion.title} - {self.date_day}"
+        return f"{self.excursion_availability.excursion.title} - {self.date_day}"
 
 class PaymentMethod(models.Model):
     name = models.CharField(max_length=255)

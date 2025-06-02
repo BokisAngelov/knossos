@@ -69,6 +69,8 @@ urlpatterns = [
     path('manage-categories-tags/', views.manage_categories_tags, name='manage_categories_tags'),
 
     
+    #  test urls
+    path('test/', views.test, name='test'),
 
 ]
 

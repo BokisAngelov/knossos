@@ -337,6 +337,15 @@ def admin_dashboard(request, pk):
 @user_passes_test(is_staff)
 def group_list(request):
     groups = Group.objects.all()
+
+        # Handle search
+    search_query = request.GET.get('search', '').strip()
+    if search_query:
+        groups = groups.filter(
+            Q(name__icontains=search_query)
+        )
+
+
     return render(request, 'main/groups/group_list.html', {
         'groups': groups,
     })
@@ -518,6 +527,13 @@ def manage_providers(request):
 @user_passes_test(is_staff)
 def reps_list(request):
     reps = UserProfile.objects.filter(role='representative')
+        # Handle search
+    search_query = request.GET.get('search', '').strip()
+    if search_query:
+        reps = reps.filter(
+            Q(name__icontains=search_query)
+        )
+
     return render(request, 'main/admin/reps.html', {
         'reps': reps,
     })
@@ -575,6 +591,13 @@ def manage_reps(request):
 @user_passes_test(is_staff)
 def clients_list(request):
     clients = UserProfile.objects.filter(role='client')
+        # Handle search
+    search_query = request.GET.get('search', '').strip()
+    if search_query:
+        clients = clients.filter(
+            Q(name__icontains=search_query)
+        )
+
     return render(request, 'main/admin/clients.html', {
         'clients': clients,
     })
@@ -633,6 +656,14 @@ def manage_clients(request):
 @user_passes_test(is_staff)
 def guides_list(request):
     guides = UserProfile.objects.filter(role='guide')
+
+        # Handle search
+    search_query = request.GET.get('search', '').strip()
+    if search_query:
+        guides = guides.filter(
+            Q(name__icontains=search_query)
+        )
+
     return render(request, 'main/admin/guides.html', {
         'guides': guides,
     })
@@ -693,6 +724,14 @@ def manage_guides(request):
 def availability_list(request):
     availabilities = ExcursionAvailability.objects.all().order_by('status', 'excursion__title')
     excursions = Excursion.objects.all().order_by('title')
+
+        # Handle search
+    search_query = request.GET.get('search', '').strip()
+    if search_query:
+        availabilities = availabilities.filter(
+            Q(excursion__title__icontains=search_query)
+        )
+
     return render(request, 'main/availabilities/availabilities_list.html', {
         'availabilities': availabilities,
         'excursions': excursions,
@@ -711,12 +750,10 @@ def availability_form(request, pk=None):
     if request.method == 'POST':
         form = ExcursionAvailabilityForm(request.POST, instance=availability)
         
-        # Check for overlapping availabilities for both create and update
         excursion = request.POST.get('excursion')
         start_date = request.POST.get('start_date')
         end_date = request.POST.get('end_date')
         
-        # Base query for overlapping availabilities
         overlapping_query = ExcursionAvailability.objects.filter(
             excursion=excursion,
             start_date__lte=end_date,
@@ -724,7 +761,6 @@ def availability_form(request, pk=None):
             status='active'
         )
         
-        # For update, exclude the current availability from the check
         if pk:
             overlapping_query = overlapping_query.exclude(pk=pk)
         
@@ -868,6 +904,9 @@ def availability_delete(request, pk):
     availability = get_object_or_404(ExcursionAvailability, pk=pk)
     if request.method == 'POST':
         excursion = availability.excursion
+
+        # Delete all AvailabilityDays entries for this availability
+        AvailabilityDays.objects.filter(excursion=excursion).delete()
         availability.delete()
         
         # Check if there are any remaining availabilities for this excursion
@@ -992,7 +1031,13 @@ def manage_pickup_points(request):
 @user_passes_test(is_staff)
 def staff_list(request):
     staff = UserProfile.objects.filter(role='admin') 
-    print(staff)
+        # Handle search
+    search_query = request.GET.get('search', '').strip()
+    if search_query:
+        staff = staff.filter(
+            Q(name__icontains=search_query)
+        )
+
     return render(request, 'main/admin/staff.html', {
         'staffs': staff,
     })
@@ -1066,6 +1111,14 @@ def manage_staff(request):
 def admin_excursions(request):
     excursions = Excursion.objects.all().order_by('status', 'title')
 
+        # Handle search
+    search_query = request.GET.get('search', '').strip()
+    if search_query:
+        excursions = excursions.filter(
+            Q(title__icontains=search_query)
+        )
+
+
     return render(request, 'main/admin/admin_excursions.html', {
         'excursions': excursions,
     })
@@ -1075,6 +1128,16 @@ def hotel_list(request):
     hotels = Hotel.objects.all()
     regions = Region.objects.all()
     regions_json = json.dumps([{'id': region.id, 'name': region.name} for region in regions])
+
+    # Handle search
+    search_query = request.GET.get('search', '').strip()
+    if search_query:
+        hotels = hotels.filter(
+            Q(name__icontains=search_query) |
+            Q(address__icontains=search_query) |
+            Q(region__name__icontains=search_query)
+        )
+
     return render(request, 'main/admin/hotel_list.html', {
         'hotels': hotels,
         'regions': regions,
@@ -1224,6 +1287,16 @@ def pickup_groups_list(request):
     regions = Region.objects.all()
     # Convert regions to JSON-serializable format
     regions_json = json.dumps([{'id': region.id, 'name': region.name} for region in regions])
+
+    # Handle search
+    search_query = request.GET.get('search', '').strip()
+    if search_query:
+        pickup_groups = pickup_groups.filter(
+            Q(name__icontains=search_query) |
+            Q(region__name__icontains=search_query)
+        )
+
+
     return render(request, 'main/admin/pickup_groups_list.html', {
         'pickup_groups': pickup_groups,
         'regions': regions,
@@ -1283,46 +1356,11 @@ def manage_pickup_groups(request):
     })
 
 
-# AJAX search
-# Map list types to model, search fields, and partial template
-ADMIN_LISTS = {
-    'pickup_points': {
-        'model': 'main.PickupPoint',
-        'fields': ['name', 'address'],
-        'template': 'main/admin/_pickup_points_table_body.html',
-        'extra_context': lambda: {'pickup_groups': ...},  # Add as needed
-    },
-    'hotels': {
-        'model': 'main.Hotel',
-        'fields': ['name', 'address', 'email'],
-        'template': 'main/admin/_hotel_table_body.html',
-        'extra_context': lambda: {'regions': ...},  # Add as needed
-    },
-    'clients': {
-        'model': 'main.Client',
-        'fields': ['name', 'email'],
-        'template': 'main/admin/_client_table_body.html',
-        'extra_context': lambda: {},
-    },
-    # Add more as needed
-}
 
-def ajax_admin_list_search(request):
-    list_type = request.GET.get('list_type')
-    search = request.GET.get('search', '')
-    config = ADMIN_LISTS.get(list_type)
-    if not config:
-        raise Http404("Invalid list type")
+def test(request):
 
-    model = apps.get_model(*config['model'].split('.'))
-    queryset = model.objects.all()
-    if search:
-        q = Q()
-        for field in config['fields']:
-            q |= Q(**{f'{field}__icontains': search})
-        queryset = queryset.filter(q)
+    availabilityDays = AvailabilityDays.objects.all()
 
-    context = {'object_list': queryset}
-    context.update(config['extra_context']())
-    html = render(request, config['template'], context).content.decode('utf-8')
-    return JsonResponse({'html': html})
+    return render(request, 'main/admin/test.html', {
+        'availabilityDays': availabilityDays,
+    })
