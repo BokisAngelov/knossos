@@ -75,22 +75,15 @@
                     <h4 class="text-sm font-medium text-gray-500 mb-1">Region</h4>
                     <p class="text-lg font-semibold text-gray-900">{{ availability.region }}</p>
                 </div>
-            </div>
-        </div>
-
-        <!-- Capacity -->
-        <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
-            <h3 class="text-lg leading-6 font-medium text-gray-900">Capacity</h3>
-        </div>
-        <div class="border-t border-gray-200">
-            <div class="grid grid-cols-4 gap-4 p-6">
+                <div class="bg-white rounded-lg shadow-sm p-4">
+                    <h4 class="text-sm font-medium text-gray-500 mb-1">Pickup Groups</h4>
+                    {% for pickup_group in availability.pickup_group_availabilities.all %}
+                    <p class="text-lg font-semibold text-gray-900">{{ pickup_group.pickup_group.name }}</p>
+                    {% endfor %}
+                </div>
                 <div class="bg-white rounded-lg shadow-sm p-4">
                     <h4 class="text-sm font-medium text-gray-500 mb-1">Maximum Guests</h4>
                     <p class="text-lg font-semibold text-gray-900">{{ availability.max_guests }}</p>
-                </div>
-                <div class="bg-white rounded-lg shadow-sm p-4">
-                    <h4 class="text-sm font-medium text-gray-500 mb-1">Booked Guests</h4>
-                    <p class="text-lg font-semibold text-gray-900">{{ availability.booked_guests }}</p>
                 </div>
             </div>
         </div>
@@ -123,7 +116,6 @@
                 {% endif %}
             </div>
         </div>
-
         <!-- Weekdays -->
         <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
             <h3 class="text-lg leading-6 font-medium text-gray-900">Available Days</h3>
@@ -134,9 +126,6 @@
                 <div class="bg-white rounded-lg shadow-sm p-4">
                     <h4 class="text-sm font-medium text-gray-500 mb-1">{{ weekday.get_code_display }}</h4>
                     <div class="flex items-center justify-between">
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                            Available
-                        </span>
                         <span class="text-lg font-semibold text-gray-900">
                             {{ weekday.capacity }} guests
                         </span>

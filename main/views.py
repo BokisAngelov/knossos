@@ -13,7 +13,7 @@ from django.utils.text import slugify
 from .models import (
     Excursion, ExcursionImage, ExcursionAvailability,
     Booking, Feedback, UserProfile, Region, 
-    Group, Category, Tag, PickupPoint, AvailabilityDays, DayOfWeek, Hotel, PickupGroup
+    Group, Category, Tag, PickupPoint, AvailabilityDays, DayOfWeek, Hotel, PickupGroup, PickupGroupAvailability
 )
 from .forms import (
     ExcursionForm, ExcursionImageFormSet,
@@ -46,11 +46,10 @@ def excursion_list(request):
 def excursion_detail(request, pk):
     excursion = get_object_or_404(Excursion, pk=pk)
 
-    availability_days = AvailabilityDays.objects.filter(excursion=excursion)
-    print(availability_days)
-    all_days = AvailabilityDays.objects.all()
-    print("all days")
-    print(all_days)
+    availability_days = AvailabilityDays.objects.filter(excursion_availability__excursion=excursion)
+    
+    # all_days = AvailabilityDays.objects.all()
+
     # Handle feedback submission
     if request.method == 'POST' and 'feedback_submit' in request.POST:
         feedback_form = FeedbackForm(request.POST)
@@ -778,7 +777,8 @@ def availability_form(request, pk=None):
                 # First validate weekday capacities from form data
                 max_guests = int(request.POST.get('max_guests', 0))
                 selected_weekday_ids = request.POST.getlist('weekdays')
-                
+                pickup_group_ids = request.POST.getlist('pickup_groups')
+
                 # Validate capacities before saving
                 for weekday_id in selected_weekday_ids:
                     capacity_name = f'weekdays_capacity_{weekday_id}'
@@ -806,8 +806,9 @@ def availability_form(request, pk=None):
                 # Save the availability to get an ID
                 availability.save()
                 
-                # Manually set the weekdays relationship
+                # Manually set the weekdays and pickup groups relationships
                 availability.weekdays.set(selected_weekday_ids)
+                availability.pickup_groups.set(pickup_group_ids)
                 
                 # Update weekday capacities
                 for weekday_id in selected_weekday_ids:
@@ -828,7 +829,10 @@ def availability_form(request, pk=None):
                     excursion.save()
 
                 # Delete existing AvailabilityDays entries (for both create and update)
-                AvailabilityDays.objects.filter(excursion=excursion).delete()
+                AvailabilityDays.objects.filter(excursion_availability=availability).delete()
+
+                # Delete existing PickupGroupAvailability entries (for both create and update)
+                PickupGroupAvailability.objects.filter(excursion_availability=availability).delete()
                 
                 # Get the selected weekdays after saving
                 selected_weekdays = availability.weekdays.all()
@@ -846,10 +850,18 @@ def availability_form(request, pk=None):
                 while current_date <= availability.end_date:
                     if current_date.weekday() in weekday_numbers:
                         AvailabilityDays.objects.create(
-                            excursion=excursion,
+                            excursion_availability=availability,
                             date_day=current_date
                         )
                     current_date += datetime.timedelta(days=1)
+
+                # Create entries for each pickup group
+                region_id = availability.region_id
+                for pickup_group in PickupGroup.objects.filter(region_id=region_id, id__in=pickup_group_ids):
+                    PickupGroupAvailability.objects.create(
+                        excursion_availability=availability,
+                        pickup_group=pickup_group
+                    )
 
                 if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                     return JsonResponse({
@@ -920,7 +932,6 @@ def availability_delete(request, pk):
     else:
         return redirect('availability_list')
     
-
 @user_passes_test(is_staff)
 def pickup_points_list(request):
     pickup_points = PickupPoint.objects.all().select_related('pickup_group')

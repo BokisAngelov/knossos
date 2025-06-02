@@ -21,9 +21,9 @@
   
   /* Style for checkbox lists */
   .checkbox-list {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
     margin-top: 0.5rem;
   }
   
@@ -36,6 +36,7 @@
     border-radius: 0.375rem;
     cursor: pointer;
     transition: all 0.2s;
+    min-width: 120px;
   }
   
   .checkbox-list label:hover {
@@ -45,6 +46,25 @@
   .checkbox-list input[type="checkbox"] {
     width: auto;
     margin: 0;
+  }
+
+  .checkbox-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
+    width: 100%;
+  }
+
+  .pickupgroup-grid {
+    display: flex;
+    gap: 1.5rem;
+    width: 100%;
+  }
+  .pickupgroup-col {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    flex: 1 1 0;
   }
 </style>
 
@@ -137,18 +157,18 @@
         </div>
       </div>
 
-      <!-- Max Guests -->
-      <div class="space-y-1">
-        <label for="{{ form.max_guests.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.max_guests.label }}</label>
-        <div class="w-full auth-input-field">{{ form.max_guests }}</div>
-        {% if form.max_guests.errors %}<div class="text-red-500 text-xs mt-1">{{ form.max_guests.errors }}</div>{% endif %}
-      </div>
-
       <!-- Region -->
       <div class="space-y-1">
         <label for="{{ form.region.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.region.label }}</label>
         <div class="w-full auth-input-field">{{ form.region }}</div>
         {% if form.region.errors %}<div class="text-red-500 text-xs mt-1">{{ form.region.errors }}</div>{% endif %}
+      </div>
+
+      <!-- Max Guests -->
+      <div class="space-y-1">
+        <label for="{{ form.max_guests.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.max_guests.label }}</label>
+        <div class="w-full auth-input-field">{{ form.max_guests }}</div>
+        {% if form.max_guests.errors %}<div class="text-red-500 text-xs mt-1">{{ form.max_guests.errors }}</div>{% endif %}
       </div>
 
       <!-- Prices: 3 columns + Discount -->
@@ -175,15 +195,26 @@
         </div>
       </div>
 
-      <!-- Weekdays -->
-      <div class="space-y-1">
-        <label for="{{ form.weekdays.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.weekdays.label }}</label>
-        <div class="w-full overflow-x-auto">
-          <div class="flex flex-row flex-wrap gap-2">
-            {{ form.weekdays }}
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Weekdays -->
+        <div class="space-y-1">
+          <label for="{{ form.weekdays.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.weekdays.label }}</label>
+          <div class="w-full overflow-x-auto">
+            <div class="flex flex-row flex-wrap gap-2">
+              {{ form.weekdays }}
+            </div>
           </div>
+          {% if form.weekdays.errors %}<div class="text-red-500 text-xs mt-1">{{ form.weekdays.errors }}</div>{% endif %}
         </div>
-        {% if form.weekdays.errors %}<div class="text-red-500 text-xs mt-1">{{ form.weekdays.errors }}</div>{% endif %}
+        <!-- Pickup Groups -->
+        <div class="space-y-1">
+          <label for="{{ form.pickup_groups.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.pickup_groups.label }}</label>
+          <div class="w-full overflow-x-auto">
+            {{ form.pickup_groups }}
+          </div>
+          {% if form.pickup_groups.errors %}<div class="text-red-500 text-xs mt-1">{{ form.pickup_groups.errors }}</div>{% endif %}
+        </div>
       </div>
 
       <div class="mt-6 flex gap-4">
@@ -201,28 +232,25 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Handle region checkboxes and price fields visibility
-    const regionCheckboxes = document.querySelectorAll('input[name="region"]');
+    const regionSelect = document.getElementById('id_region');
+    const pickupGroupDivs = document.querySelectorAll('[data-region-id]');
     const weekdaysCheckboxes = document.querySelectorAll('input[name="weekdays"]');
     const allPriceFields = document.querySelectorAll('.price-field');
 
-    function updateVisibleFields() {
-        // First, hide all price fields
-        // allPriceFields.forEach(el => {
-        //     el.closest('.space-y-1').style.display = 'none';
-        // });
+    function filterPickupGroups() {
+        const selectedRegion = regionSelect.value;
+        pickupGroupDivs.forEach(div => {
+            if (!selectedRegion || div.getAttribute('data-region-id') === selectedRegion) {
+                div.style.display = '';
+            } else {
+                div.style.display = 'none';
+            }
+        });
+    }
 
-        // Then, show price fields for each checked region
-        // regionCheckboxes.forEach(checkbox => {
-        //     if (checkbox.checked) {
-        //         const regionSlug = checkbox.labels[0].innerText.trim().toLowerCase().replace(/\s+/g, '-');
-        //         console.log(regionSlug);
-        //         const fieldsToShow = document.querySelectorAll(`.region-${regionSlug}`);
-        //         fieldsToShow.forEach(el => {
-        //             el.closest('.space-y-1').style.display = 'block';
-        //         });
-        //     }
-        // });
+    if (regionSelect) {
+        regionSelect.addEventListener('change', filterPickupGroups);
+        filterPickupGroups(); // Initial call in case of edit
     }
 
     // Fix for M2M fields not being selected when editing
@@ -257,16 +285,9 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
 
-        // Update price fields visibility after setting checkboxes
-        updateVisibleFields();
     }
 
-    // Add event listeners to region checkboxes
-    regionCheckboxes.forEach(cb => cb.addEventListener('change', updateVisibleFields));
-    
-    // Initialize checkbox states and visibility
     checkSelectedValues();
-    // updateVisibleFields();
   
     // Form submission handling
     const form = document.getElementById('availability-form');

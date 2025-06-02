@@ -9,7 +9,7 @@ from django.utils.dateparse import parse_time
 from .models import (
     Category, Tag, Excursion, ExcursionImage, Feedback,
     ExcursionAvailability, UserProfile, Group,
-    PaymentMethod, Booking, Transaction, DayOfWeek, PickupPoint
+    PaymentMethod, Booking, Transaction, DayOfWeek, PickupPoint, PickupGroup
 )
 
 User = get_user_model()
@@ -135,13 +135,58 @@ class WeekdayCapacityWidget(forms.CheckboxSelectMultiple):
         
         return mark_safe(f'{"".join(output)}{script}')
 
+class PickupGroupWidget(forms.CheckboxSelectMultiple):
+    def render(self, name, value, attrs=None, renderer=None):
+        if value is None:
+            value = []
+        if not isinstance(value, (list, tuple)):
+            value = [value]
+        final_attrs = self.build_attrs(attrs)
+        output = []
+        pickup_groups = list(PickupGroup.objects.all().select_related('region'))
+        groups_per_col = 7
+        num_cols = (len(pickup_groups) + groups_per_col - 1) // groups_per_col
+        output.append('<div class="pickupgroup-grid">')
+        for col in range(num_cols):
+            output.append('<div class="pickupgroup-col">')
+            for i in range(groups_per_col):
+                idx = col * groups_per_col + i
+                if idx >= len(pickup_groups):
+                    break
+                group = pickup_groups[idx]
+                checkbox_name = name
+                checkbox_id = f'id_{name}_{group.id}'
+                is_checked = str(group.id) in [str(v) for v in value]
+                group_html = f'''
+                    <div class="flex flex-col items-center mb-2" data-region-id="{group.region.id if group.region else ''}">
+                        <div class="flex items-center gap-2 w-full">
+                            <input type="checkbox" 
+                                name="{checkbox_name}" 
+                                id="{checkbox_id}" 
+                                value="{group.id}" 
+                                {'checked' if is_checked else ''} 
+                                class="w-4 h-4">
+                            <label for="{checkbox_id}" class="px-3 py-1 bg-gray-100 rounded text-center font-medium flex-1">
+                                {group.name} 
+                                <span class="text-xs text-gray-500 mt-1">{group.region.name if group.region else ''}</span>
+                            </label>
+                            
+                        </div>
+                        
+                    </div>
+                '''
+                output.append(group_html)
+            output.append('</div>')
+        output.append('</div>')
+        return mark_safe(''.join(output))
+
 class ExcursionAvailabilityForm(forms.ModelForm):
     class Meta:
         model = ExcursionAvailability
         fields = [
             'excursion', 'start_date', 'end_date', 'start_time', 'end_time', 
             'max_guests', 'region', 'adult_price', 'child_price', 'infant_price', 
-            'weekdays', 'discount', 'status'
+            'weekdays', 'discount', 'status', 'pickup_groups'
         ]
         widgets = {
             'excursion': forms.Select(attrs={'class': 'form-control'}),
@@ -158,6 +203,7 @@ class ExcursionAvailabilityForm(forms.ModelForm):
                 'pattern': '[0-9]{2}:[0-9]{2}'
             }),
             'region': forms.Select(attrs={'class': 'form-control'}),
+            'pickup_groups': PickupGroupWidget,
             'weekdays': WeekdayCapacityWidget,
             'start_date': forms.DateInput(attrs={'type': 'date'}),
             'end_date': forms.DateInput(attrs={'type': 'date'}),

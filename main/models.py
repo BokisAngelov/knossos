@@ -178,6 +178,7 @@ class ExcursionAvailability(models.Model):
     booked_guests = models.PositiveIntegerField(default=0)
     is_active = models.BooleanField(default=True)
     weekdays = models.ManyToManyField(DayOfWeek, blank=True)
+    pickup_groups = models.ManyToManyField(PickupGroup, blank=True)
     start_time = models.TimeField(null=True, blank=True)
     end_time = models.TimeField(null=True, blank=True)
     discount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
@@ -203,6 +204,14 @@ class AvailabilityDays(models.Model):
 
     def __str__(self):
         return f"{self.excursion_availability.excursion.title} - {self.date_day}"
+
+class PickupGroupAvailability(models.Model):
+    excursion_availability = models.ForeignKey(ExcursionAvailability, on_delete=models.CASCADE, related_name='pickup_group_availabilities')
+    pickup_group = models.ForeignKey(PickupGroup, on_delete=models.SET_NULL, null=True, related_name='pickup_group_availabilities')
+    created_at = models.DateTimeField(auto_now_add=True)
+    def __str__(self):
+        return f"{self.excursion_availability.excursion.title} - {self.pickup_group.name}"
+
 
 class PaymentMethod(models.Model):
     name = models.CharField(max_length=255)
