@@ -110,7 +110,7 @@
                         <div class="flex gap-6">
                             {% for availability in excursion_availabilities %}
                                 {% for pick_group in availability.pickup_groups.all %}
-                                    <div class="flex flex-col gap-2 group-{{ availability.id }} pickup-group">
+                                    <div class="flex flex-col gap-2 group-{{ availability.region.id }} pickup-group">
                                         <h2 class="text-lg font-semibold text-gray-900 mt-2">{{ pick_group.name }}</h2>
                                         <ul class="pickup-points-list">
                                             {% for pickup_point in pick_group.pickup_points.all|dictsortreversed:"priority" %}
@@ -231,31 +231,46 @@
                     {% endfor %}
                     <div class="flex flex-col gap-2">
                         <label class="block text-md font-medium text-gray-700">Select Region</label>
-                        <select name="region" id="region" class="mt-1 block w-full pl-3 pr-2 py-2 text-base border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
+                        <select name="region" id="region" class="mt-1 block w-full pl-3 pr-2 py-2 text-base border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md {% if form.region.errors %}border-red-500{% endif %}">
                             {% for availability in excursion_availabilities.all %}
                                 <option value="{{ availability.region.id }}">{{ availability.region.name }}</option>
                             {% endfor %}
                         </select>
+                        {% if form.region.errors %}
+                        <p class="mt-1 text-sm text-red-600">{{ form.region.errors.0 }}</p>
+                        {% endif %}
                     </div>
                     <div>
                         <label class="block text-md font-medium text-gray-700">Select a Date</label>
-                        <input type="text" id="date-picker" class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2" placeholder="Select a date">
+                        <input type="text" id="date-picker" class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 {% if form.date.errors %}border-red-500{% endif %}" placeholder="Select a date">
                         <input type="hidden" name="availability_id" id="availability-id">
+                        {% if form.date.errors %}
+                        <p class="mt-1 text-sm text-red-600">{{ form.date.errors.0 }}</p>
+                        {% endif %}
                     </div>
                     {{ availability_dates_by_region|json_script:"available-dates-json" }}
 
                     <div class="grid grid-cols-3 gap-4 py-4">
                         <div>
                             <label class="block text-md font-medium text-gray-700">Adults</label>
-                            <input type="number" name="adults" min="0" value="0" class="mt-1 block w-full pl-3 pr-2 py-2 text-base border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
+                            <input type="number" name="adults" min="0" value="0" class="mt-1 block w-full pl-3 pr-2 py-2 text-base border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md {% if form.adults.errors %}border-red-500{% endif %}">
+                            {% if form.adults.errors %}
+                            <p class="mt-1 text-sm text-red-600">{{ form.adults.errors.0 }}</p>
+                            {% endif %}
                         </div>
                         <div>
                             <label class="block text-md font-medium text-gray-700">Children</label>
-                            <input type="number" name="children" min="0" value="0" class="mt-1 block w-full pl-3 pr-2 py-2 text-base border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
+                            <input type="number" name="children" min="0" value="0" class="mt-1 block w-full pl-3 pr-2 py-2 text-base border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md {% if form.children.errors %}border-red-500{% endif %}">
+                            {% if form.children.errors %}
+                            <p class="mt-1 text-sm text-red-600">{{ form.children.errors.0 }}</p>
+                            {% endif %}
                         </div>
                         <div>
                             <label class="block text-md font-medium text-gray-700">Infants</label>
-                            <input type="number" name="infants" min="0" value="0" class="mt-1 block w-full pl-3 pr-2 py-2 text-base border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
+                            <input type="number" name="infants" min="0" value="0" class="mt-1 block w-full pl-3 pr-2 py-2 text-base border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md {% if form.infants.errors %}border-red-500{% endif %}">
+                            {% if form.infants.errors %}
+                            <p class="mt-1 text-sm text-red-600">{{ form.infants.errors.0 }}</p>
+                            {% endif %}
                         </div>
                         <div class="">
                             <a href="#" id="clear-numbers" class="px-3 py-1 shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">Clear</a>
@@ -283,6 +298,9 @@
                             </div>
                         </div>
                     </div>
+                    <div id="form-errors" class="hidden mb-4 p-4 bg-red-50 border border-red-200 rounded-md">
+                        <ul class="list-disc list-inside text-sm text-red-600"></ul>
+                    </div>
 
                     {% if user.is_staff %}
                     <div class="flex flex-col gap-2">   
@@ -295,7 +313,7 @@
                     {% endif %}
 
                     <button type="submit" class="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                        Book Now
+                        Proceed with Booking
                     </button>
                 </form>
                 {% endif %}
@@ -310,13 +328,14 @@
 
 {% block extra_js %}
 <script>
-    // First, let's create a global object to store our available dates
     const availableDatesByRegion = JSON.parse(
         document.getElementById('available-dates-json').textContent
     );
 
     document.addEventListener('DOMContentLoaded', function() {
         const notAvailability = document.querySelector('.not-availability');
+        const bookingForm = document.getElementById('booking-form');
+        const formErrors = document.getElementById('form-errors');
         
         if (!notAvailability) {
             let picker = null;
@@ -324,26 +343,29 @@
             function initializeDatePicker(regionId) {
                 const availableDates = availableDatesByRegion[regionId] || [];
 
-                // Extract only the date strings
-                const enabledDates = availableDates.map(item => item.date);
-
-                // Destroy previous instance if needed
-                if (window.fpInstance) {
-                    window.fpInstance.destroy();
+                // Clear existing picker if it exists
+                if (picker) {
+                    picker.destroy();
                 }
 
-                window.fpInstance = flatpickr("#date-picker", {
-                    enable: enabledDates,
+                // Initialize new picker
+                picker = flatpickr("#date-picker", {
+                    enable: availableDates.map(item => item.date),
+                    dateFormat: "Y-m-d",
                     position: "below",
                     onChange: function(selectedDates, dateStr) {
                         const selectedDate = availableDates.find(item => item.date === dateStr);
                         if (selectedDate) {
                             document.getElementById("availability-id").value = selectedDate.id;
+                        } else {
+                            document.getElementById("availability-id").value = '';
                         }
                     },
                 });
 
+                // Clear any previously selected date
                 document.getElementById("availability-id").value = '';
+                document.getElementById("date-picker").value = '';
             }
 
             // Initialize date picker for the initially selected region
@@ -451,6 +473,132 @@
                 }).then((result) => {
                     if (result.isConfirmed) {
                         document.getElementById('delete-ex-form').submit();
+                    }
+                });
+            });
+
+            // Add form validation
+            bookingForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                // Clear previous errors
+                if (formErrors) {
+                    formErrors.classList.add('hidden');
+                    const errorList = formErrors.querySelector('ul');
+                    if (errorList) {
+                        errorList.innerHTML = '';
+                    }
+                }
+                document.querySelectorAll('.border-red-500').forEach(el => el.classList.remove('border-red-500'));
+                document.querySelectorAll('.text-red-600').forEach(el => el.remove());
+                
+                // Get form values
+                const selectedDate = document.getElementById('date-picker').value;
+                const availabilityId = document.getElementById('availability-id').value;
+                const adults = parseInt(document.querySelector('input[name="adults"]').value) || 0;
+                const children = parseInt(document.querySelector('input[name="children"]').value) || 0;
+                const infants = parseInt(document.querySelector('input[name="infants"]').value) || 0;
+                const regionId = document.querySelector('select[name="region"]').value;
+
+                // Validate form
+                let errors = [];
+
+                if (!selectedDate || !availabilityId) {
+                    errors.push({ field: 'date', message: 'Please select a date.' });
+                    const datePicker = document.getElementById('date-picker');
+                    if (datePicker) {
+                        datePicker.classList.add('border-red-500');
+                        const errorDiv = document.createElement('p');
+                        errorDiv.className = 'mt-1 text-sm text-red-600';
+                        errorDiv.textContent = 'Please select a date.';
+                        datePicker.parentNode.appendChild(errorDiv);
+                    }
+                }
+
+                if (adults + children + infants === 0) {
+                    errors.push({ field: 'participants', message: 'Please select at least one participant (adult, child, or infant).' });
+                    ['adults', 'children', 'infants'].forEach(field => {
+                        const input = document.querySelector(`input[name="${field}"]`);
+                        if (input) {
+                            input.classList.add('border-red-500');
+                        }
+                    });
+                    const adultsInput = document.querySelector('input[name="adults"]');
+                    if (adultsInput) {
+                        const errorDiv = document.createElement('p');
+                        errorDiv.className = 'mt-1 text-sm text-red-600';
+                        errorDiv.textContent = 'Please select at least one participant.';
+                        adultsInput.parentNode.appendChild(errorDiv);
+                    }
+                }
+
+                if (errors.length > 0) {
+                    return;
+                }
+
+                // If validation passes, submit the form
+                const formData = new FormData(bookingForm);
+                formData.append('selected_date', selectedDate);
+                formData.append('availability_id', availabilityId);
+
+                // Submit form via AJAX
+                fetch(window.location.href, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => {
+                    console.log('Response status:', response.status);
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Response data:', data);
+                    if (data.success) {
+                        console.log('Redirecting to:', data.redirect_url);
+                        window.location.href = data.redirect_url;
+                    } else {
+                        // Display server-side validation errors
+                        if (data.errors) {
+                            console.log('Validation errors:', data.errors);
+                            Object.keys(data.errors).forEach(field => {
+                                const input = document.querySelector(`[name="${field}"]`);
+                                if (input) {
+                                    input.classList.add('border-red-500');
+                                    const errorDiv = document.createElement('p');
+                                    errorDiv.className = 'mt-1 text-sm text-red-600';
+                                    errorDiv.textContent = data.errors[field][0];
+                                    input.parentNode.appendChild(errorDiv);
+                                }
+                            });
+                        } else if (data.message) {
+                            console.log('Error message:', data.message);
+                            if (formErrors) {
+                                formErrors.classList.remove('hidden');
+                                const errorList = formErrors.querySelector('ul');
+                                if (errorList) {
+                                    const errorItem = document.createElement('li');
+                                    errorItem.textContent = data.message;
+                                    errorList.appendChild(errorItem);
+                                }
+                            }
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    if (formErrors) {
+                        formErrors.classList.remove('hidden');
+                        const errorList = formErrors.querySelector('ul');
+                        if (errorList) {
+                            const errorItem = document.createElement('li');
+                            errorItem.textContent = 'An error occurred while processing your booking.';
+                            errorList.appendChild(errorItem);
+                        }
                     }
                 });
             });

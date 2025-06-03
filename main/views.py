@@ -92,16 +92,91 @@ def excursion_detail(request, pk):
         
     # Handle booking submission
     elif request.method == 'POST' and 'booking_submit' in request.POST:
-        booking_form = BookingForm(request.POST)
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            try:
+                booking_form = BookingForm(request.POST)
+                
+                if not booking_form.is_valid():
+                    return JsonResponse({
+                        'success': False,
+                        'errors': booking_form.errors
+                    })
 
-        if booking_form.is_valid():
-            booking = booking_form.save(commit=False)
-            booking.excursion_availability = excursion_availability
-            booking.user = request.user
-            booking.save()
-            messages.success(request, 'Booking created successfully.')
-            return redirect('excursion_detail', pk)
-        
+                booking = booking_form.save(commit=False)
+                booking.excursion_availability = excursion_availability
+                booking.user = request.user
+
+                selected_date = request.POST.get('selected_date')
+                availability_id = request.POST.get('availability_id')
+                
+                if not selected_date or not availability_id:
+                    return JsonResponse({
+                        'success': False,
+                        'message': 'Please select a date.'
+                    })
+                
+                # Validate at least one participant
+                adults = int(request.POST.get('adults', 0))
+                children = int(request.POST.get('children', 0))
+                infants = int(request.POST.get('infants', 0))
+                
+                if adults + children + infants == 0:
+                    return JsonResponse({
+                        'success': False,
+                        'message': 'Please select at least one participant.'
+                    })
+
+                booking.date = selected_date
+                booking.availability_id = availability_id
+                booking.save()
+
+                return JsonResponse({
+                    'success': True,
+                    'redirect_url': reverse('booking_detail', kwargs={'pk': booking.pk})
+                })
+
+            except Exception as e:
+                return JsonResponse({
+                    'success': False,
+                    'message': str(e)
+                })
+        else:
+            # Handle non-AJAX form submission
+            booking_form = BookingForm(request.POST)
+            if booking_form.is_valid():
+                try:
+                    booking = booking_form.save(commit=False)
+                    booking.excursion_availability = excursion_availability
+                    booking.user = request.user
+
+                    selected_date = request.POST.get('selected_date')
+                    availability_id = request.POST.get('availability_id')
+                    
+                    if not selected_date or not availability_id:
+                        messages.error(request, 'Please select a date.')
+                        return redirect('excursion_detail', excursion.pk)
+                    
+                    adults = int(request.POST.get('adults', 0))
+                    children = int(request.POST.get('children', 0))
+                    infants = int(request.POST.get('infants', 0))
+                    
+                    if adults + children + infants == 0:
+                        messages.error(request, 'Please select at least one participant.')
+                        return redirect('excursion_detail', excursion.pk)
+
+                    booking.date = selected_date
+                    booking.availability_id = availability_id
+                    booking.save()
+
+                    messages.success(request, 'Booking created successfully.')
+                    return redirect('booking_detail', booking.pk)
+
+                except Exception as e:
+                    messages.error(request, f'An error occurred: {str(e)}')
+                    return redirect('excursion_detail', excursion.pk)
+            else:
+                messages.error(request, 'Please correct the errors below.')
+                return redirect('excursion_detail', excursion.pk)
 
     # pickup_points = PickupPoint.objects.none()
     # if excursion_availability:
@@ -218,6 +293,7 @@ def excursion_delete(request, pk):
         return redirect('excursion_list')
     
 # ----- Booking Views -----
+
 def booking_create(request, availability_pk):
     availability = get_object_or_404(ExcursionAvailability, pk=availability_pk)
     if request.method == 'POST':

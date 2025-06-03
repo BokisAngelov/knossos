@@ -241,6 +241,7 @@ class Reservation(models.Model):
 
     def __str__(self):
         return self.voucher_id
+
 class Booking(models.Model):
     PAYMENT_STATUS_CHOICES = [
         ('pending', 'Pending'),
@@ -250,16 +251,17 @@ class Booking(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='bookings')
     voucher_id = models.ForeignKey(Reservation, on_delete=models.SET_NULL, null=True, blank=True, related_name='bookings')
     excursion_availability = models.ForeignKey(ExcursionAvailability, on_delete=models.SET_NULL, null=True, blank=True, related_name='bookings')
+    date = models.DateField(null=True, blank=True)
     group = models.ForeignKey(Group, on_delete=models.SET_NULL, null=True, blank=True, related_name='bookings')
-    guest_name = models.CharField(max_length=255)
+    guest_name = models.CharField(max_length=255, null=True, blank=True)
     guest_email = models.EmailField(null=True, blank=True)
-    total_price = models.DecimalField(max_digits=10, decimal_places=2)
-    partial_paid = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    total_adults = models.PositiveIntegerField()
-    total_kids = models.PositiveIntegerField()
-    total_infants = models.PositiveIntegerField()
+    total_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    partial_paid = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    total_adults = models.PositiveIntegerField(null=True, blank=True)
+    total_kids = models.PositiveIntegerField(null=True, blank=True)
+    total_infants = models.PositiveIntegerField(null=True, blank=True)
     payment_status = models.CharField(max_length=10, choices=PAYMENT_STATUS_CHOICES, default='pending')
-    price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
