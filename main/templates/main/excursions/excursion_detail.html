@@ -83,10 +83,10 @@
                 <div class="relative">
                     <img src="{{ excursion.intro_image.url }}" alt="{{ excursion.title }}" class="w-full h-96 object-cover">
                     <div class="absolute top-4 right-4">
-                        <span class="px-3 py-1 text-sm font-semibold rounded-full {% if excursion.guide %}bg-green-100 text-green-800{% else %}bg-red-100 text-red-800{% endif %}">
-                            {% if excursion.guide  %}
-                                With Guide
-                            {% endif %}
+                        {% if excursion.guide %}
+                        <span class="px-3 py-1 text-sm font-semibold rounded-full bg-green-100 text-green-800">
+                            Guided Excursion
+                        {% endif %}
                         </span>
                     </div>
                 </div>
@@ -119,14 +119,13 @@
                     </div>
 
                     <div class="prose max-w-none mb-6 border-t border-gray-200 pt-4">
-                        <h2 class="text-xl font-semibold text-gray-900">Pickup Points <span class="text-sm text-gray-500 font-normal">(Region: <span class="pickup-region">{{ excursion_availability.region.name }}</span>)</span></h2>
+                        <h2 class="text-xl font-semibold text-gray-900">Pickup Points <span class="text-sm text-gray-500 font-normal">(Selected Region: <span class="pickup-region font-semibold">{{ excursion_availability.region.name }}</span>)</span></h2>
                         <p class="text-sm  text-gray-500 mb-1">Please note that pickup points are based on the region you have selected. </p>
                         <div class="flex gap-6">
                             {% for availability in excursion_availabilities %}
                                 {% for pick_group in availability.pickup_groups.all %}
                                     <div class="flex flex-col gap-2 group-{{ availability.id }} pickup-group">
                                         <h2 class="text-lg font-semibold text-gray-900 mt-2">{{ pick_group.name }}</h2>
-                                        
                                         <ul class="pickup-points-list">
                                             {% for pickup_point in pick_group.pickup_points.all %}
                                             <li>

@@ -117,7 +117,7 @@ class PickupPoint(models.Model):
     type = models.CharField(max_length=15, choices=TYPE_CHOICES, default='other')
     pickup_group = models.ForeignKey(PickupGroup, on_delete=models.SET_NULL, null=True, related_name='pickup_points')
     google_maps_link = models.CharField(max_length=255, blank=True, null=True)
-    
+    priority = models.PositiveIntegerField(default=0)    
 
     def __str__(self):
         return self.name

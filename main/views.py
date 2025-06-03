@@ -89,7 +89,7 @@ def excursion_detail(request, pk):
 
     pickup_points = PickupPoint.objects.none()
     if excursion_availability:
-        pickup_points = PickupPoint.objects.filter(pickup_group__in=excursion_availability.pickup_groups.all())
+        pickup_points = PickupPoint.objects.filter(pickup_group__in=excursion_availability.pickup_groups.all()).order_by('-priority', 'pickup_group__name')
 
     return render(request, 'main/excursions/excursion_detail.html', {
         'excursion': excursion,
@@ -984,7 +984,7 @@ def availability_delete(request, pk):
     
 @user_passes_test(is_staff)
 def pickup_points_list(request):
-    pickup_points = PickupPoint.objects.all().select_related('pickup_group')
+    pickup_points = PickupPoint.objects.all().select_related('pickup_group').order_by('pickup_group__name', '-priority')
     pickup_groups = PickupGroup.objects.all()
     
     # Convert pickup groups to JSON-serializable format
@@ -1020,8 +1020,9 @@ def manage_pickup_points(request):
             type = request.POST.get('type', '').strip()
             pickup_group_id = request.POST.get('pickup_group')
             google_maps_link = request.POST.get('google_maps_link', '').strip()
-            
-            if not all([name, address, type, pickup_group_id]):
+            priority = request.POST.get('priority', '').strip()
+
+            if not all([name, address, type, pickup_group_id, priority]):
                 messages.error(request, 'Please fill in all required fields')
                 return redirect('pickup_points_list')
             
@@ -1036,7 +1037,8 @@ def manage_pickup_points(request):
                 address=address,
                 type=type,
                 pickup_group=pickup_group,
-                google_maps_link=google_maps_link if google_maps_link else None
+                google_maps_link=google_maps_link if google_maps_link else None,
+                priority=priority
             )
             messages.success(request, 'Pickup point added successfully')
             
@@ -1047,8 +1049,9 @@ def manage_pickup_points(request):
             type = request.POST.get('type', '').strip()
             pickup_group_id = request.POST.get('pickup_group')
             google_maps_link = request.POST.get('google_maps_link', '').strip()
-            
-            if not all([item_id, name, address, type, pickup_group_id]):
+            priority = request.POST.get('priority', '').strip()
+
+            if not all([item_id, name, address, type, pickup_group_id, priority]):
                 messages.error(request, 'Please fill in all required fields')
                 return redirect('pickup_points_list')
             
@@ -1064,6 +1067,7 @@ def manage_pickup_points(request):
             point.type = type
             point.pickup_group = pickup_group
             point.google_maps_link = google_maps_link if google_maps_link else None
+            point.priority = priority
             point.save()
             messages.success(request, 'Pickup point updated successfully')
             
