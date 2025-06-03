@@ -220,6 +220,27 @@ class PaymentMethod(models.Model):
     def __str__(self):
         return self.name
 
+class Hotel(models.Model):
+    name = models.CharField(max_length=255)
+    address = models.CharField(max_length=255)
+    pickup_group = models.ForeignKey(PickupGroup, on_delete=models.SET_NULL, null=True, related_name='hotels')
+    phone_number = models.CharField(max_length=255, blank=True)
+    email = models.EmailField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name
+
+class Reservation(models.Model):
+    voucher_id = models.CharField(max_length=255, unique=True)
+    hotel = models.ForeignKey(Hotel, on_delete=models.SET_NULL, null=True, related_name='reservations')
+    client_name = models.CharField(max_length=255, blank=True)
+    check_in = models.DateField()
+    check_out = models.DateField()
+    flight_number = models.CharField(max_length=255, blank=True)
+
+    def __str__(self):
+        return self.voucher_id
 class Booking(models.Model):
     PAYMENT_STATUS_CHOICES = [
         ('pending', 'Pending'),
@@ -227,6 +248,7 @@ class Booking(models.Model):
         ('cancelled', 'Cancelled'),
     ]
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='bookings')
+    voucher_id = models.ForeignKey(Reservation, on_delete=models.SET_NULL, null=True, blank=True, related_name='bookings')
     excursion_availability = models.ForeignKey(ExcursionAvailability, on_delete=models.SET_NULL, null=True, blank=True, related_name='bookings')
     group = models.ForeignKey(Group, on_delete=models.SET_NULL, null=True, blank=True, related_name='bookings')
     guest_name = models.CharField(max_length=255)
@@ -252,24 +274,4 @@ class Transaction(models.Model):
     def __str__(self):
         return f"Transaction #{self.id} for Booking #{self.booking.id}"
 
-class Hotel(models.Model):
-    name = models.CharField(max_length=255)
-    address = models.CharField(max_length=255)
-    pickup_group = models.ForeignKey(PickupGroup, on_delete=models.SET_NULL, null=True, related_name='hotels')
-    phone_number = models.CharField(max_length=255, blank=True)
-    email = models.EmailField(blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
 
-    def __str__(self):
-        return self.name
-
-class Reservation(models.Model):
-    voucher_id = models.CharField(max_length=255, unique=True)
-    hotel = models.ForeignKey(Hotel, on_delete=models.SET_NULL, null=True, related_name='reservations')
-    client_name = models.CharField(max_length=255, blank=True)
-    check_in = models.DateField()
-    check_out = models.DateField()
-    flight_number = models.CharField(max_length=255, blank=True)
-
-    def __str__(self):
-        return self.voucher_id

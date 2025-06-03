@@ -241,6 +241,7 @@
                         <input type="hidden" name="{{ availability.id }}-child-price" value="{{ availability.child_price }}">
                         <input type="hidden" name="{{ availability.id }}-infant-price" value="{{ availability.infant_price }}">
                         <input type="hidden" name="{{ availability.id }}-region" value="{{ availability.region.name }}">
+                        <input type="hidden" name="{{ availability.id }}-available-capacity" value="{{ availability.weekdays.capacity }}">
                     {% endfor %}
                     <div class="flex flex-col gap-2">
                         <label class="block text-md font-medium text-gray-700">Select Region</label>
@@ -295,6 +296,17 @@
                             </div>
                         </div>
                     </div>
+
+                    {% if user.is_staff %}
+                    <div class="flex flex-col gap-2">   
+                        <label class="block text-md font-medium text-gray-700">Partial Payment</label>
+                        <input type="number" name="partial_payment" id="partial-payment" class="mt-1 block w-full pl-3 pr-2 py-2 text-base border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
+                        <div class="hidden remaining-price-div">
+                            <span class="text-sm font-medium text-gray-600">Remaining</span>
+                            <span class="text-base font-semibold text-gray-900">€<span id="remaining-price">0.00
+                        </div>
+                    </div>
+                    {% endif %}
 
                     <button type="submit" class="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                         Book Now
@@ -405,27 +417,47 @@
                     input.value = 0;
                 });
                 calculateTotal();
+                document.querySelector('#remaining-price').textContent = document.querySelector('#total-price').textContent;
+            });
+        
+            document.querySelector('#partial-payment').addEventListener('change', function(e) {
+                e.preventDefault();
+                const partialPayment = document.querySelector('#partial-payment').value;
+                const total = document.querySelector('#total-price').textContent;
+
+                if (partialPayment <= 0) {
+
+                    document.querySelector('.remaining-price-div').classList.add('hidden');
+                    return;
+                } else {
+                    
+                    const remaining = total - partialPayment;
+                    document.querySelector('.remaining-price-div').classList.remove('hidden');
+                    document.querySelector('#remaining-price').textContent = remaining.toFixed(2);
+                }
+            });
+
+            // Delete excursion confirmation
+            document.getElementById('delete-excursion-btn').addEventListener('click', function(e) {
+                e.preventDefault();
+                const excursionTitle = document.querySelector('.excursion-title').textContent;
+                Swal.fire({
+                    title: 'Are you sure?',
+                    text: `Do you want to delete excursion "${excursionTitle}"?`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#3085d6',
+                    confirmButtonText: 'Yes, delete it!'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        document.getElementById('delete-ex-form').submit();
+                    }
+                });
             });
         });
 
-        // Delete excursion confirmation
-        document.getElementById('delete-excursion-btn').addEventListener('click', function(e) {
-            e.preventDefault();
-            const excursionTitle = document.querySelector('.excursion-title').textContent;
-            Swal.fire({
-                title: 'Are you sure?',
-                text: `Do you want to delete excursion "${excursionTitle}"?`,
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#d33',
-                cancelButtonColor: '#3085d6',
-                confirmButtonText: 'Yes, delete it!'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    document.getElementById('delete-ex-form').submit();
-                }
-            });
-        });
+        
     // });
 </script>
 {% endblock %}

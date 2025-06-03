@@ -31,14 +31,14 @@ def is_staff(user):
     return user.is_staff
 
 def homepage(request):
-    excursions = Excursion.objects.all().filter(status='active')
+    excursions = Excursion.objects.all().filter(status='active').distinct()
     return render(request, 'main/home.html', {
         'excursions': excursions,
     })
 
 # ----- Excursion Views -----
 def excursion_list(request):
-    excursions = Excursion.objects.filter(availabilities__isnull=False).filter(status='active')
+    excursions = Excursion.objects.filter(availabilities__isnull=False).filter(status='active').distinct()
     return render(request, 'main/excursions/excursion_list.html', {
         'excursions': excursions,
     })
