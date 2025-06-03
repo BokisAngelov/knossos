@@ -28,6 +28,7 @@
         opacity: 0.5;
         cursor: not-allowed;
     }
+    
 </style>
 {% endblock %}
 
@@ -93,14 +94,18 @@
                     <h1 class="text-3xl font-bold text-gray-900 mb-4 excursion-title">{{ excursion.title }}</h1>
                     
                     <!-- Categories and Tags -->
+                    <div class="flex flex-wrap mb-4">
+                        <svg class="w-6 h-6 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span class="text-gray-600">{{ excursion_availability.start_time|time:"H:i" }} - {{ excursion_availability.end_time|time:"H:i" }}</span>
+                    </div>
                     <div class="flex flex-wrap gap-2 mb-4">
                         {% for category in excursion.category.all %}
                             <span class="px-3 py-1 text-sm font-medium bg-blue-100 text-blue-800 rounded-full">
                                 {{ category.name }}
                             </span>
                         {% endfor %}
-                    </div>
-                    <div class="flex flex-wrap gap-2 mb-6">
                         {% for tag in excursion.tags.all %}
                             <span class="px-3 py-1 text-sm font-medium bg-gray-100 text-gray-800 rounded-full">
                                 {{ tag.name }}
@@ -113,21 +118,35 @@
                         {{ excursion.description|safe }}
                     </div>
 
-                    <!-- Additional info -->
-                    <div class="grid grid-cols-2 gap-4 mt-6">
-                        <div class="flex items-center">
-                            <svg class="w-5 h-5 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            <span class="text-gray-600">{% if excursion.full_day %}Full Day{% else %}Half Day{% endif %}</span>
+                    <div class="prose max-w-none mb-6 border-t border-gray-200 pt-4">
+                        <h2 class="text-xl font-semibold text-gray-900">Pickup Points</h2>
+                        <p class="text-sm  text-gray-500 mb-1">Please note that pickup points are based on the region you have selected.</p>
+                        <div class="flex gap-6">
+                            {% for availability in excursion_availabilities %}
+                                {% for pick_group in availability.pickup_groups.all %}
+                                    <div class="flex flex-col gap-2">
+                                        <h2 class="text-lg font-semibold text-gray-900 mt-2">{{ pick_group.name }}</h2>
+                                        
+                                        <ul class="pickup-points-list">
+                                            {% for pickup_point in pick_group.pickup_points.all %}
+                                            <li>
+                                                <div class="flex items-center py-2">
+                                                    <svg width="16" height="16" fill="#3B82F6" viewBox="0 0 16 16">
+                                                        <path d="M8 0C5.243 0 3 2.243 3 5c0 3.25 4.5 10.5 4.5 10.5s4.5-7.25 4.5-10.5c0-2.757-2.243-5-5-5zm0 7.5A2.5 2.5 0 1 1 8 2.5a2.5 2.5 0 0 1 0 5z"/>
+                                                    </svg>
+                                                    <a href="{{ pickup_point.google_maps_link }}">{{ pickup_point.name }}</a>
+                                                    {% if not forloop.last %}
+                                                    <span class="connector"></span>
+                                                    {% endif %}
+                                                </div>
+                                            </li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                {% endfor %}
+                            {% endfor %}
                         </div>
-                        <div class="flex items-center">
-                            <svg class="w-5 h-5 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                            </svg>
-                            <span class="text-gray-600">{{ excursion.pickup_point.name }}</span>
-                        </div>
+                        
                     </div>
                 </div>
             </div>

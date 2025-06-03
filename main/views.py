@@ -47,9 +47,11 @@ def excursion_detail(request, pk):
 
     excursion = get_object_or_404(Excursion, pk=pk)    
     feedback_form, booking_form = None, None
-    excursion_availability = ExcursionAvailability.objects.filter(excursion=excursion)
+    excursion_availabilities = ExcursionAvailability.objects.filter(excursion=excursion)
+    excursion_availability = excursion_availabilities.first()
 
-    if not excursion_availability.exists():
+
+    if not excursion_availability:
         feedback_form = FeedbackForm()
         booking_form = BookingForm()
 
@@ -78,7 +80,6 @@ def excursion_detail(request, pk):
 
         if booking_form.is_valid():
             booking = booking_form.save(commit=False)
-            excursion_availability = ExcursionAvailability.objects.get(excursion=excursion)
             booking.excursion_availability = excursion_availability
             booking.user = request.user
             booking.save()
@@ -86,11 +87,17 @@ def excursion_detail(request, pk):
             return redirect('excursion_detail', pk)
         
 
+    pickup_points = PickupPoint.objects.none()
+    if excursion_availability:
+        pickup_points = PickupPoint.objects.filter(pickup_group__in=excursion_availability.pickup_groups.all())
+
     return render(request, 'main/excursions/excursion_detail.html', {
         'excursion': excursion,
         'feedback_form': feedback_form,
-        'excursion_availability': ExcursionAvailability.objects.get(excursion=excursion),
+        'excursion_availabilities': excursion_availabilities,
+        'excursion_availability': excursion_availability,
         'booking_form': booking_form,
+        'pickup_points': pickup_points,
     })
 
 @user_passes_test(is_staff)
@@ -946,8 +953,12 @@ def availability_form(request, pk=None):
 @user_passes_test(is_staff)
 def availability_detail(request, pk):
     availability = get_object_or_404(ExcursionAvailability, pk=pk)
+    pickup_points = PickupPoint.objects.filter(pickup_group__in=availability.pickup_groups.all())
+    pickup_groups = PickupGroup.objects.filter(id__in=availability.pickup_groups.all())
     return render(request, 'main/availabilities/availability_detail.html', {
         'availability': availability,
+        'pickup_points': pickup_points,
+        'pickup_groups': pickup_groups,
     })
 
 @user_passes_test(is_staff)
