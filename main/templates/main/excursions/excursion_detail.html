@@ -127,7 +127,7 @@
                                     <div class="flex flex-col gap-2 group-{{ availability.id }} pickup-group">
                                         <h2 class="text-lg font-semibold text-gray-900 mt-2">{{ pick_group.name }}</h2>
                                         <ul class="pickup-points-list">
-                                            {% for pickup_point in pick_group.pickup_points.all %}
+                                            {% for pickup_point in pick_group.pickup_points.all|dictsortreversed:"priority" %}
                                             <li>
                                                 <div class="flex items-center py-2">
                                                     <svg width="16" height="16" fill="#3B82F6" viewBox="0 0 16 16">

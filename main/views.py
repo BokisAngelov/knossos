@@ -87,9 +87,9 @@ def excursion_detail(request, pk):
             return redirect('excursion_detail', pk)
         
 
-    pickup_points = PickupPoint.objects.none()
-    if excursion_availability:
-        pickup_points = PickupPoint.objects.filter(pickup_group__in=excursion_availability.pickup_groups.all()).order_by('-priority', 'pickup_group__name')
+    # pickup_points = PickupPoint.objects.none()
+    # if excursion_availability:
+    #     pickup_points = PickupPoint.objects.filter(pickup_group__in=excursion_availability.pickup_groups.all()).order_by('priority')
 
     return render(request, 'main/excursions/excursion_detail.html', {
         'excursion': excursion,
@@ -97,7 +97,7 @@ def excursion_detail(request, pk):
         'excursion_availabilities': excursion_availabilities,
         'excursion_availability': excursion_availability,
         'booking_form': booking_form,
-        'pickup_points': pickup_points,
+        # 'pickup_points': pickup_points,
     })
 
 @user_passes_test(is_staff)

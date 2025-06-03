@@ -122,6 +122,9 @@ class PickupPoint(models.Model):
     def __str__(self):
         return self.name
     
+    class Meta:
+        ordering = ['priority']
+    
 class Excursion(models.Model):
     STATUS_CHOICES = [
         ('active', 'Active'),
