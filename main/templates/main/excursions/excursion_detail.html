@@ -119,12 +119,12 @@
                     </div>
 
                     <div class="prose max-w-none mb-6 border-t border-gray-200 pt-4">
-                        <h2 class="text-xl font-semibold text-gray-900">Pickup Points</h2>
-                        <p class="text-sm  text-gray-500 mb-1">Please note that pickup points are based on the region you have selected.</p>
+                        <h2 class="text-xl font-semibold text-gray-900">Pickup Points <span class="text-sm text-gray-500 font-normal">(Region: <span class="pickup-region">{{ excursion_availability.region.name }}</span>)</span></h2>
+                        <p class="text-sm  text-gray-500 mb-1">Please note that pickup points are based on the region you have selected. </p>
                         <div class="flex gap-6">
                             {% for availability in excursion_availabilities %}
                                 {% for pick_group in availability.pickup_groups.all %}
-                                    <div class="flex flex-col gap-2">
+                                    <div class="flex flex-col gap-2 group-{{ availability.id }} pickup-group">
                                         <h2 class="text-lg font-semibold text-gray-900 mt-2">{{ pick_group.name }}</h2>
                                         
                                         <ul class="pickup-points-list">
@@ -135,9 +135,6 @@
                                                         <path d="M8 0C5.243 0 3 2.243 3 5c0 3.25 4.5 10.5 4.5 10.5s4.5-7.25 4.5-10.5c0-2.757-2.243-5-5-5zm0 7.5A2.5 2.5 0 1 1 8 2.5a2.5 2.5 0 0 1 0 5z"/>
                                                     </svg>
                                                     <a href="{{ pickup_point.google_maps_link }}">{{ pickup_point.name }}</a>
-                                                    {% if not forloop.last %}
-                                                    <span class="connector"></span>
-                                                    {% endif %}
                                                 </div>
                                             </li>
                                             {% endfor %}
@@ -240,6 +237,20 @@
                 <form method="post" class="space-y-4" id="booking-form">
                     {% csrf_token %}
                     <input type="hidden" name="booking_submit" value="1">
+                    {% for availability in excursion_availabilities.all %}
+                        <input type="hidden" name="{{ availability.id }}-adult-price" value="{{ availability.adult_price }}">
+                        <input type="hidden" name="{{ availability.id }}-child-price" value="{{ availability.child_price }}">
+                        <input type="hidden" name="{{ availability.id }}-infant-price" value="{{ availability.infant_price }}">
+                        <input type="hidden" name="{{ availability.id }}-region" value="{{ availability.region.name }}">
+                    {% endfor %}
+                    <div class="flex flex-col gap-2">
+                        <label class="block text-md font-medium text-gray-700">Select Region</label>
+                        <select name="region" id="region" class="mt-1 block w-full pl-3 pr-2 py-2 text-base border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
+                            {% for availability in excursion_availabilities.all %}
+                                <option value="{{ availability.id }}">{{ availability.region.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
                     <div>
                         <label class="block text-md font-medium text-gray-700">Select Date</label>
                         <div id="date-picker-inline" class="mt-1"></div>
@@ -259,20 +270,23 @@
                             <label class="block text-md font-medium text-gray-700">Infants</label>
                             <input type="number" name="infants" min="0" value="0" class="mt-1 block w-full pl-3 pr-2 py-2 text-base border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
                         </div>
+                        <div class="">
+                            <a href="#" id="clear-numbers" class="px-3 py-1 shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">Clear</a>
+                        </div>
                     </div>
                     <div class="border-t border-gray-200 pt-4 mt-4">
                         <div class="space-y-2">
                             <div class="flex justify-between items-center p-2 bg-gray-50 rounded-lg">
                                 <span class="text-sm font-medium text-gray-600">Price per adult</span>
-                                <span class="text-base font-semibold text-gray-900">€{{ excursion_availability.adult_price }}</span>
+                                <span class="text-base font-semibold text-gray-900">€<span id="adult-price">0.00</span></span>
                             </div>
                             <div class="flex justify-between items-center p-2 bg-gray-50 rounded-lg">
                                 <span class="text-sm font-medium text-gray-600">Price per child</span>
-                                <span class="text-base font-semibold text-gray-900">€{{ excursion_availability.child_price }}</span>
+                                <span class="text-base font-semibold text-gray-900">€<span id="child-price">0.00</span></span>
                             </div>
                             <div class="flex justify-between items-center p-2 bg-gray-50 rounded-lg">
                                 <span class="text-sm font-medium text-gray-600">Price per infant</span>
-                                <span class="text-base font-semibold text-gray-900">€{{ excursion_availability.infant_price }}</span>
+                                <span class="text-base font-semibold text-gray-900">€<span id="infant-price">0.00</span></span>
                             </div>
                         </div>
                         <div class="mt-4 pt-4 border-t border-gray-200">
@@ -331,14 +345,47 @@
 
             // Calculate total price based on number of guests
             function calculateTotal() {
+                const region = document.querySelector('select[name="region"]').value;
                 const adults = parseInt(document.querySelector('input[name="adults"]').value) || 0;
                 const children = parseInt(document.querySelector('input[name="children"]').value) || 0;
                 const infants = parseInt(document.querySelector('input[name="infants"]').value) || 0;
                 
-                const adultPrice = "{{ excursion_availability.adult_price }}";
-                const childPrice = "{{ excursion_availability.child_price }}";
-                const infantPrice = "{{ excursion_availability.infant_price }}";
+                const adultPrice = document.querySelector(`input[name="${region}-adult-price"]`).value;
+                const childPrice = document.querySelector(`input[name="${region}-child-price"]`).value;
+                const infantPrice = document.querySelector(`input[name="${region}-infant-price"]`).value;
                 
+                const total = (adults * adultPrice) + (children * childPrice) + (infants * infantPrice);
+                document.getElementById('total-price').textContent = total.toFixed(2);
+            }
+
+            
+
+            // Calculate initial total
+            calculateTotal();
+
+            function updatePriceAndPickupPoints() {
+                const region = document.querySelector('select[name="region"]').value;
+                const adults = parseInt(document.querySelector('input[name="adults"]').value) || 0;
+                const children = parseInt(document.querySelector('input[name="children"]').value) || 0;
+                const infants = parseInt(document.querySelector('input[name="infants"]').value) || 0;
+
+                const regionName = document.querySelector(`input[name="${region}-region"]`).value;
+                document.querySelector('.pickup-region').textContent = regionName;
+                document.querySelectorAll('.pickup-group').forEach(group => {
+                    group.classList.add('hidden');
+                });
+                const pickupGroup = document.querySelectorAll('.group-' + region).forEach(group => {
+                    group.classList.remove('hidden');
+                });
+
+                const adultPrice = document.querySelector(`input[name="${region}-adult-price"]`).value;
+                const childPrice = document.querySelector(`input[name="${region}-child-price"]`).value;
+                const infantPrice = document.querySelector(`input[name="${region}-infant-price"]`).value;
+
+                document.getElementById('adult-price').textContent = adultPrice;
+                document.getElementById('child-price').textContent = childPrice;
+                document.getElementById('infant-price').textContent = infantPrice;
+
                 const total = (adults * adultPrice) + (children * childPrice) + (infants * infantPrice);
                 document.getElementById('total-price').textContent = total.toFixed(2);
             }
@@ -349,8 +396,17 @@
                 input.addEventListener('input', calculateTotal);
             });
 
-            // Calculate initial total
-            calculateTotal();
+            document.querySelector('select[name="region"]').addEventListener('change', updatePriceAndPickupPoints);
+
+            updatePriceAndPickupPoints();
+
+            document.querySelector('#clear-numbers').addEventListener('click', function(e) {
+                e.preventDefault();
+                document.querySelectorAll('input[type="number"]').forEach(input => {
+                    input.value = 0;
+                });
+                calculateTotal();
+            });
         });
 
         // Delete excursion confirmation
