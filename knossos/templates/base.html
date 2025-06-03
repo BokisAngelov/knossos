@@ -11,6 +11,10 @@
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <link rel="stylesheet" href="https://cdn.datatables.net/2.3.1/css/dataTables.tailwindcss.css" />
   <script src="https://cdn.datatables.net/2.3.1/js/dataTables.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/moment.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/pikaday/pikaday.js"></script>
+  <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/pikaday/css/pikaday.css">
+
 </head>
 <body class="min-h-screen bg-gray-100 flex flex-col">
   <header class="bg-white shadow">
@@ -20,11 +24,11 @@
         <ul class="flex space-x-4">
             <li><a href="{% url 'excursion_list' %}" class="text-gray-600 hover:text-gray-800">Excursions</a></li>
             {% if user.is_authenticated %}
-             {% if user.is_staff %}
-             <li><a href="{% url 'admin_dashboard' pk=user.profile.id %}" class="text-gray-600 hover:text-gray-800">Dashboard</a></li>
-             {% else %}
-              <li><a href="{% url 'profile' pk=user.profile.id %}" class="text-gray-600 hover:text-gray-800">Profile</a></li>
-             {% endif %}
+            {% if user.is_staff %}
+            <li><a href="{% url 'admin_dashboard' pk=user.profile.id %}" class="text-gray-600 hover:text-gray-800">Dashboard</a></li>
+            {% else %}
+             <li><a href="{% url 'profile' pk=user.profile.id %}" class="text-gray-600 hover:text-gray-800">Profile</a></li>
+            {% endif %}
               <li><a href="{% url 'logout' %}" class="text-gray-600 hover:text-gray-800">Logout</a></li>
             {% else %}
             <li><a href="{% url 'login' %}" class="text-gray-600 hover:text-gray-800">Login</a></li>

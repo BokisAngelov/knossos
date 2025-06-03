@@ -44,11 +44,21 @@ def excursion_list(request):
     })
 
 def excursion_detail(request, pk):
-    excursion = get_object_or_404(Excursion, pk=pk)
 
-    availability_days = AvailabilityDays.objects.filter(excursion_availability__excursion=excursion)
-    
-    # all_days = AvailabilityDays.objects.all()
+    excursion = get_object_or_404(Excursion, pk=pk)    
+    feedback_form, booking_form = None, None
+    excursion_availability = ExcursionAvailability.objects.filter(excursion=excursion)
+
+    if not excursion_availability.exists():
+        feedback_form = FeedbackForm()
+        booking_form = BookingForm()
+
+        return render(request, 'main/excursions/excursion_detail.html', {
+            'excursion': excursion,
+            'feedback_form': feedback_form,
+            'booking_form': booking_form,
+            'excursion_availability': excursion_availability,
+        })
 
     # Handle feedback submission
     if request.method == 'POST' and 'feedback_submit' in request.POST:
@@ -61,13 +71,26 @@ def excursion_detail(request, pk):
             feedback.save()
             messages.success(request, 'Thank you for your feedback.')
             return redirect('excursion_detail', pk)
-    else:
-        feedback_form = FeedbackForm()
+        
+    # Handle booking submission
+    elif request.method == 'POST' and 'booking_submit' in request.POST:
+        booking_form = BookingForm(request.POST)
+
+        if booking_form.is_valid():
+            booking = booking_form.save(commit=False)
+            excursion_availability = ExcursionAvailability.objects.get(excursion=excursion)
+            booking.excursion_availability = excursion_availability
+            booking.user = request.user
+            booking.save()
+            messages.success(request, 'Booking created successfully.')
+            return redirect('excursion_detail', pk)
+        
 
     return render(request, 'main/excursions/excursion_detail.html', {
         'excursion': excursion,
         'feedback_form': feedback_form,
-        'availability_days': availability_days,
+        'excursion_availability': ExcursionAvailability.objects.get(excursion=excursion),
+        'booking_form': booking_form,
     })
 
 @user_passes_test(is_staff)
@@ -764,14 +787,18 @@ def availability_form(request, pk=None):
         excursion = request.POST.get('excursion')
         start_date = request.POST.get('start_date')
         end_date = request.POST.get('end_date')
+        region = request.POST.get('region')
+
+        
         
         overlapping_query = ExcursionAvailability.objects.filter(
             excursion=excursion,
             start_date__lte=end_date,
             end_date__gte=start_date,
+            region=region,
             status='active'
-        )
-        
+        ).values('region')
+
         if pk:
             overlapping_query = overlapping_query.exclude(pk=pk)
         
@@ -1149,22 +1176,21 @@ def admin_excursions(request):
 @user_passes_test(is_staff)
 def hotel_list(request):
     hotels = Hotel.objects.all()
-    regions = Region.objects.all()
-    regions_json = json.dumps([{'id': region.id, 'name': region.name} for region in regions])
+    pickup_groups = PickupGroup.objects.all()
+    pickup_groups_json = json.dumps([{'id': pickup_group.id, 'name': pickup_group.name} for pickup_group in pickup_groups])
 
     # Handle search
     search_query = request.GET.get('search', '').strip()
     if search_query:
         hotels = hotels.filter(
             Q(name__icontains=search_query) |
-            Q(address__icontains=search_query) |
-            Q(region__name__icontains=search_query)
+            Q(address__icontains=search_query) 
         )
 
     return render(request, 'main/admin/hotel_list.html', {
         'hotels': hotels,
-        'regions': regions,
-        'regions_json': regions_json,
+        'pickup_groups': pickup_groups,
+        'pickup_groups_json': pickup_groups_json,
     })
 
 @user_passes_test(is_staff)
@@ -1179,7 +1205,7 @@ def manage_hotels(request):
                 address = request.POST.get('address', '').strip()
                 phone = request.POST.get('phone', '').strip()
                 email = request.POST.get('email', '').strip()
-                region_id = request.POST.get('region', '').strip()
+                pickup_group_id = request.POST.get('pickup_group', '').strip()
 
                 # Validate phone number
                 phone_regex = re.compile(r'^[+]?[0-9\s\-()]{8,20}$')
@@ -1194,15 +1220,15 @@ def manage_hotels(request):
                     messages.error(request, 'Please enter a valid email address')
                     return redirect('hotel_list')
 
-                if name and address and region_id:
+                if name and address and pickup_group_id:
                     try:
-                        region = get_object_or_404(Region, id=region_id)
+                        pickup_group = get_object_or_404(PickupGroup, id=pickup_group_id)
                         Hotel.objects.create(
                             name=name,
                             address=address,
                             phone_number=phone,
                             email=email,
-                            region=region,
+                            pickup_group=pickup_group,
                         )
                         messages.success(request, 'Hotel created successfully.')
                         return redirect('hotel_list')
@@ -1216,7 +1242,7 @@ def manage_hotels(request):
                 address = request.POST.get('address', '').strip()
                 phone = request.POST.get('phone', '').strip()
                 email = request.POST.get('email', '').strip()
-                region_id = request.POST.get('region', '').strip()
+                pickup_group_id = request.POST.get('pickup_group', '').strip()
 
                 # Validate phone number
                 phone_regex = re.compile(r'^[+]?[0-9\s\-()]{8,20}$')
@@ -1236,9 +1262,9 @@ def manage_hotels(request):
                     hotel.address = address
                     hotel.phone_number = phone
                     hotel.email = email
-                    if region_id:
-                        region = get_object_or_404(Region, id=region_id)
-                        hotel.region = region
+                    if pickup_group_id:
+                        pickup_group = get_object_or_404(PickupGroup, id=pickup_group_id)
+                        hotel.pickup_group = pickup_group
                     hotel.save()
                     messages.success(request, 'Hotel updated successfully.')
                     return redirect('hotel_list')
@@ -1253,7 +1279,6 @@ def manage_hotels(request):
             messages.error(request, f'Error {"updating" if item_id else "creating"} hotel: {str(e)}')
             return redirect('hotel_list')
         
-    print(Hotel.objects.all())
     return render(request, 'main/admin/hotel_list.html', {
         'hotels': Hotel.objects.all(),
     })
@@ -1302,8 +1327,7 @@ def manage_regions(request):
     return render(request, 'main/admin/region_list.html', {
         'regions': Region.objects.all(),
     })
-            
-            
+                     
 @user_passes_test(is_staff)
 def pickup_groups_list(request):
     pickup_groups = PickupGroup.objects.all()

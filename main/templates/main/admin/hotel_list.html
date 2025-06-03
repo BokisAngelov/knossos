@@ -4,7 +4,7 @@
 {% block content %}
 
 <div class="container mx-auto px-4 py-8">
-    <div id="regions-data" data-regions='{{ regions_json|safe }}' style="display: none;"></div>
+    <div id="pickup_groups-data" data-pickup_groups='{{ pickup_groups_json|safe }}' style="display: none;"></div>
     <!-- Header Section -->
     <div class="flex justify-between items-center mb-6">
         <div>
@@ -57,7 +57,7 @@
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Address</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Region</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pickup Group</th>
                             <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                         </tr>
                     </thead>
@@ -87,10 +87,10 @@
                                        value="{{ hotel.email }}">
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <span class="editable-region">{% if hotel.region %}{{ hotel.region.name }}{% endif %}</span>
+                                <span class="editable-pickup-group">{% if hotel.pickup_group %}{{ hotel.pickup_group.name }}{% endif %}</span>
                                 <select class="edit-input hidden w-full border rounded px-2 py-1 bg-white">
-                                    {% for region in regions %}
-                                        <option value="{{ region.id }}" {% if hotel.region and hotel.region.id == region.id %}selected{% endif %}>{{ region.name }}</option>
+                                    {% for pickup_group in pickup_groups %}
+                                        <option value="{{ pickup_group.id }}" {% if hotel.pickup_group and hotel.pickup_group.id == pickup_group.id %}selected{% endif %}>{{ pickup_group.name }}</option>
                                     {% endfor %}
                                 </select>
                             </td>
@@ -205,7 +205,7 @@
     <input type="hidden" name="address" id="add-hotel-address">
     <input type="hidden" name="phone" id="add-hotel-phone">
     <input type="hidden" name="email" id="add-hotel-email">
-    <input type="hidden" name="region" id="add-hotel-region">
+    <input type="hidden" name="pickup_group" id="add-hotel-pickup_group">
 </form>
 
 <form id="edit-hotel-form" action="{% url 'manage_hotels' %}" method="post" class="hidden">
@@ -216,7 +216,7 @@
     <input type="hidden" name="address" id="edit-hotel-address">
     <input type="hidden" name="phone" id="edit-hotel-phone">
     <input type="hidden" name="email" id="edit-hotel-email">
-    <input type="hidden" name="region" id="edit-hotel-region">
+    <input type="hidden" name="pickup_group" id="edit-hotel-pickup_group">
 </form>
 
 <form id="delete-hotel-form" action="{% url 'manage_hotels' %}" method="post" class="hidden">
@@ -227,24 +227,24 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Get regions data from the hidden div and handle potential parsing errors
-        let regionsData = [];
+        // Get pickup_groups data from the hidden div and handle potential parsing errors
+        let pickup_groupsData = [];
         try {
-            const regionsElement = document.getElementById('regions-data');
-            if (regionsElement && regionsElement.dataset.regions) {
-                regionsData = JSON.parse(regionsElement.dataset.regions);
+            const pickup_groupsElement = document.getElementById('pickup_groups-data');
+            if (pickup_groupsElement && pickup_groupsElement.dataset.pickup_groups) {
+                pickup_groupsData = JSON.parse(pickup_groupsElement.dataset.pickup_groups);
             }
         } catch (e) {
-            console.error('Error parsing regions data:', e);
+            console.error('Error parsing pickup_groups data:', e);
         }
         
         // Add Hotel
         const addHotelBtn = document.getElementById('add-hotel-btn');
         function showAddHotelModal() {
-            let regionOptions = '';
-            if (Array.isArray(regionsData)) {
-                regionsData.forEach(region => {
-                    regionOptions += `<option value="${region.id}">${region.name}</option>`;
+            let pickup_groupOptions = '';
+            if (Array.isArray(pickup_groupsData)) {
+                pickup_groupsData.forEach(pickup_group => {
+                    pickup_groupOptions += `<option value="${pickup_group.id}">${pickup_group.name}</option>`;
                 });
             }
             
@@ -261,7 +261,7 @@
                            pattern="[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}"
                            title="Please enter a valid email address"
                            required>
-                    <select id="swal-region" class="swal2-input" style="width: 100%; margin: 10px auto; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 0.375rem; background-color: white;" required>${regionOptions}</select>
+                    <select id="swal-pickup_group" class="swal2-input" style="width: 100%; margin: 10px auto; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 0.375rem; background-color: white;" required>${pickup_groupOptions}</select>
                 `,
                 focusConfirm: false,
                 showCancelButton: true,
@@ -271,7 +271,7 @@
                     const address = document.getElementById('swal-address').value;
                     const phone = document.getElementById('swal-phone').value;
                     const email = document.getElementById('swal-email').value;
-                    const region = document.getElementById('swal-region').value;
+                    const pickup_group = document.getElementById('swal-pickup_group').value;
 
                     // Validate phone number
                     const phoneRegex = /^[+]?[0-9\s\-\(\)]{8,20}$/;
@@ -287,11 +287,11 @@
                         return false;
                     }
 
-                    if (!name || !address || !phone || !email || !region) {
+                    if (!name || !address || !phone || !email || !pickup_group) {
                         Swal.showValidationMessage('Please fill in all fields');
                         return false;
                     }
-                    return { name, address, phone, email, region };
+                    return { name, address, phone, email, pickup_group };
                 }
             }).then((result) => {
                 if (result.isConfirmed) {
@@ -300,7 +300,7 @@
                     document.getElementById('add-hotel-address').value = result.value.address;
                     document.getElementById('add-hotel-phone').value = result.value.phone;
                     document.getElementById('add-hotel-email').value = result.value.email;
-                    document.getElementById('add-hotel-region').value = result.value.region;
+                    document.getElementById('add-hotel-pickup_group').value = result.value.pickup_group;
                     form.submit();
                 }
             });
@@ -317,7 +317,7 @@
                 btn.addEventListener('click', function(e) {
                     e.preventDefault();
                     const row = this.closest('tr');
-                    const spans = row.querySelectorAll('.editable-name, .editable-address, .editable-phone, .editable-email, .editable-region');
+                    const spans = row.querySelectorAll('.editable-name, .editable-address, .editable-phone, .editable-email, .editable-pickup_group');
                     const inputs = row.querySelectorAll('.edit-input');
                     spans.forEach(span => span.classList.add('hidden'));
                     inputs.forEach(input => input.classList.remove('hidden'));
@@ -363,7 +363,7 @@
                     document.getElementById('edit-hotel-address').value = inputs[1].value.trim();
                     document.getElementById('edit-hotel-phone').value = phone;
                     document.getElementById('edit-hotel-email').value = email;
-                    document.getElementById('edit-hotel-region').value = inputs[4].value;
+                    document.getElementById('edit-hotel-pickup_group').value = inputs[4].value;
                     document.getElementById('edit-hotel-form').submit();
                 });
             });
@@ -372,14 +372,14 @@
                 btn.addEventListener('click', function(e) {
                     e.preventDefault();
                     const row = this.closest('tr');
-                    const spans = row.querySelectorAll('.editable-name, .editable-address, .editable-phone, .editable-email, .editable-region');
+                    const spans = row.querySelectorAll('.editable-name, .editable-address, .editable-phone, .editable-email, .editable-pickup_group');
                     const inputs = row.querySelectorAll('.edit-input');
                     inputs.forEach((input, index) => {
                         if (input.tagName === 'SELECT') {
                             // Reset select to original value
-                            const regionName = spans[4].textContent.trim();
+                            const pickup_groupName = spans[4].textContent.trim();
                             for (let i = 0; i < input.options.length; i++) {
-                                if (input.options[i].text === regionName) {
+                                if (input.options[i].text === pickup_groupName) {
                                     input.selectedIndex = i;
                                     break;
                                 }

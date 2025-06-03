@@ -223,11 +223,11 @@ class Booking(models.Model):
         ('completed', 'Completed'),
         ('cancelled', 'Cancelled'),
     ]
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, blank=True, related_name='bookings')
-    excursion_availability = models.ForeignKey(ExcursionAvailability, on_delete=models.CASCADE, related_name='bookings')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='bookings')
+    excursion_availability = models.ForeignKey(ExcursionAvailability, on_delete=models.SET_NULL, null=True, blank=True, related_name='bookings')
     group = models.ForeignKey(Group, on_delete=models.SET_NULL, null=True, blank=True, related_name='bookings')
     guest_name = models.CharField(max_length=255)
-    guest_email = models.EmailField()
+    guest_email = models.EmailField(null=True, blank=True)
     total_price = models.DecimalField(max_digits=10, decimal_places=2)
     partial_paid = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     total_adults = models.PositiveIntegerField()
@@ -252,7 +252,7 @@ class Transaction(models.Model):
 class Hotel(models.Model):
     name = models.CharField(max_length=255)
     address = models.CharField(max_length=255)
-    region = models.ForeignKey(Region, on_delete=models.SET_NULL, null=True, related_name='hotels')
+    pickup_group = models.ForeignKey(PickupGroup, on_delete=models.SET_NULL, null=True, related_name='hotels')
     phone_number = models.CharField(max_length=255, blank=True)
     email = models.EmailField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)

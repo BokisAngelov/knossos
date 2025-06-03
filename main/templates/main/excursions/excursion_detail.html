@@ -1,6 +1,36 @@
 {% extends "base.html" %}
 {% load static %}
 
+{% block extra_css %}
+<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/pikaday/css/pikaday.css">
+<style>
+    /* Minimal tweaks for Pikaday calendar */
+    .pika-single {
+        z-index: 1000 !important;
+        margin-top: 4px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        border-radius: 0.5rem;
+        border: 1px solid #e5e7eb;
+    }
+    .pika-button {
+        border-radius: 0.25rem;
+        transition: background 0.2s;
+    }
+    .pika-button:hover, .is-selected .pika-button {
+        background: #3B82F6 !important;
+        color: #fff !important;
+    }
+    .is-today .pika-button {
+        color: #3B82F6 !important;
+    }
+    .is-disabled .pika-button {
+        color: #D1D5DB !important;
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container mx-auto px-4 py-8">
     <!-- Back button and actions -->
@@ -190,54 +220,46 @@
                 <!-- Availability selection -->
                 <form method="post" class="space-y-4" id="booking-form">
                     {% csrf_token %}
+                    <input type="hidden" name="booking_submit" value="1">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">Select Date</label>
-                        <select name="availability" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
-                            <option value="">Choose a date...</option>
-                            {% for availability in excursion.availabilities.all %}
-                                {% if availability.is_active and availability.booked_guests < availability.max_guests %}
-                                <option value="{{ availability.id }}">
-                                    {{ availability.start_date|date:"F j, Y" }} - 
-                                    {{ availability.end_date|date:"F j, Y" }}
-                                    ({{ availability.max_guests|add:"-"|add:availability.booked_guests }} spots left)
-                                </option>
-                                {% endif %}
-                            {% endfor %}
-                        </select>
+                        <label class="block text-md font-medium text-gray-700">Select Date</label>
+                        <div id="date-picker-inline" class="mt-1"></div>
+                        <input type="hidden" name="availability_id" id="availability-id">
                     </div>
 
-                    <div class="grid grid-cols-3 gap-4">
+                    <div class="grid grid-cols-3 gap-4 py-4">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700">Adults</label>
-                            <input type="number" name="adults" min="0" value="1" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                            <label class="block text-md font-medium text-gray-700">Adults</label>
+                            <input type="number" name="adults" min="0" value="0" class="mt-1 block w-full pl-3 pr-2 py-2 text-base border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700">Children</label>
-                            <input type="number" name="children" min="0" value="0" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                            <label class="block text-md font-medium text-gray-700">Children</label>
+                            <input type="number" name="children" min="0" value="0" class="mt-1 block w-full pl-3 pr-2 py-2 text-base border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700">Infants</label>
-                            <input type="number" name="infants" min="0" value="0" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                            <label class="block text-md font-medium text-gray-700">Infants</label>
+                            <input type="number" name="infants" min="0" value="0" class="mt-1 block w-full pl-3 pr-2 py-2 text-base border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
                         </div>
                     </div>
-
                     <div class="border-t border-gray-200 pt-4 mt-4">
-                        <div class="flex justify-between text-sm mb-2">
-                            <span class="text-gray-600">Price per adult</span>
-                            <span class="text-gray-900">€{{ excursion.availabilities.first.price_per_adult }}</span>
+                        <div class="space-y-2">
+                            <div class="flex justify-between items-center p-2 bg-gray-50 rounded-lg">
+                                <span class="text-sm font-medium text-gray-600">Price per adult</span>
+                                <span class="text-base font-semibold text-gray-900">€{{ excursion_availability.adult_price }}</span>
+                            </div>
+                            <div class="flex justify-between items-center p-2 bg-gray-50 rounded-lg">
+                                <span class="text-sm font-medium text-gray-600">Price per child</span>
+                                <span class="text-base font-semibold text-gray-900">€{{ excursion_availability.child_price }}</span>
+                            </div>
+                            <div class="flex justify-between items-center p-2 bg-gray-50 rounded-lg">
+                                <span class="text-sm font-medium text-gray-600">Price per infant</span>
+                                <span class="text-base font-semibold text-gray-900">€{{ excursion_availability.infant_price }}</span>
+                            </div>
                         </div>
-                        <div class="flex justify-between text-sm mb-2">
-                            <span class="text-gray-600">Price per child</span>
-                            <span class="text-gray-900">€{{ excursion.availabilities.first.price_per_child }}</span>
-                        </div>
-                        <div class="flex justify-between text-sm mb-2">
-                            <span class="text-gray-600">Price per infant</span>
-                            <span class="text-gray-900">€{{ excursion.availabilities.first.price_per_infant }}</span>
-                        </div>
-                        <div class="border-t border-gray-200 pt-2 mt-2">
-                            <div class="flex justify-between font-medium">
-                                <span>Total</span>
-                                <span class="text-blue-600">€<span id="total-price">0.00</span></span>
+                        <div class="mt-4 pt-4 border-t border-gray-200">
+                            <div class="flex justify-between items-center p-4 bg-blue-50 rounded-lg">
+                                <span class="text-base font-semibold text-gray-900">Total</span>
+                                <span class="text-lg font-bold text-blue-600">€<span id="total-price">0.00</span></span>
                             </div>
                         </div>
                     </div>
@@ -258,55 +280,79 @@
 
 {% block extra_js %}
 <script>
-
-    const notAvailability = document.querySelector('.not-availability');
-    console.log(notAvailability.length);
-    // Calculate total price based on number of guests
-    function calculateTotal() {
-        const adults = parseInt(document.querySelector('input[name="adults"]').value) || 0;
-        const children = parseInt(document.querySelector('input[name="children"]').value) || 0;
-        const infants = parseInt(document.querySelector('input[name="infants"]').value) || 0;
+    document.addEventListener('DOMContentLoaded', function() {
+        const notAvailability = document.querySelector('.not-availability');
         
-        const adultPrice = "{{ excursion.availabilities.first.price_per_adult }}";
-        const childPrice = "{{ excursion.availabilities.first.price_per_child }}";
-        const infantPrice = "{{ excursion.availabilities.first.price_per_infant }}";
-        
-        const total = (adults * adultPrice) + (children * childPrice) + (infants * infantPrice);
-        document.getElementById('total-price').textContent = total.toFixed(2);
-    }
+        // if (!notAvailability) {
+        //     // Build availableDates as a JS array
+        //     var availableDates = [
+        //         {% now "Y-m-d" as todays_date %}
+        //         {% for availability in excursion_availability.availability_days.all %}
+        //             {% if availability.date_day|date:"Y-m-d" > todays_date %}
+        //                 {
+        //                     date: "{{ availability.date_day|date:'Y-m-d' }}",
+        //                     id: "{{ availability.id }}"
+        //                 }{% if not forloop.last %},{% endif %}
+        //             {% endif %}
+        //         {% endfor %}
+        //     ];
 
-    if (notAvailability.length > 0) {
-        // Add event listeners to number inputs
-        document.querySelectorAll('input[type="number"]').forEach(input => {
-            input.addEventListener('change', calculateTotal);
-            input.addEventListener('input', calculateTotal);
-        });
+            // Only initialize if there are available dates
+            // if (availableDates.length > 0) {
+            //     var field = document.getElementById('datepicker');
+            //     var picker = new Pikaday({
+            //         onSelect: function(date) {
+            //             field.value = picker.toString();
+            //         }
+            //     });
+            //     field.parentNode.insertBefore(picker.el, field.nextSibling);
+            // } else {
+            //     document.getElementById('date-picker-inline').innerHTML = '<p class="text-gray-500">No available dates.</p>';
+            // }
 
-        // Calculate initial total
-        calculateTotal();
-    }
-
-    // Delete excursion confirmation
-    document.getElementById('delete-excursion-btn').addEventListener('click', function(e) {
-        
-        e.preventDefault();
-
-        const excursionTitle = document.querySelector('.excursion-title').textContent;
-
-        Swal.fire({
-            title: 'Are you sure?',
-            text: `Do you want to delete excursion "${excursionTitle}"?`,
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#d33',
-            cancelButtonColor: '#3085d6',
-            confirmButtonText: 'Yes, delete it!'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                document.getElementById('delete-ex-form').submit();
+            // Calculate total price based on number of guests
+            function calculateTotal() {
+                const adults = parseInt(document.querySelector('input[name="adults"]').value) || 0;
+                const children = parseInt(document.querySelector('input[name="children"]').value) || 0;
+                const infants = parseInt(document.querySelector('input[name="infants"]').value) || 0;
+                
+                const adultPrice = "{{ excursion_availability.adult_price }}";
+                const childPrice = "{{ excursion_availability.child_price }}";
+                const infantPrice = "{{ excursion_availability.infant_price }}";
+                
+                const total = (adults * adultPrice) + (children * childPrice) + (infants * infantPrice);
+                document.getElementById('total-price').textContent = total.toFixed(2);
             }
+
+            // Add event listeners to number inputs
+            document.querySelectorAll('input[type="number"]').forEach(input => {
+                input.addEventListener('change', calculateTotal);
+                input.addEventListener('input', calculateTotal);
+            });
+
+            // Calculate initial total
+            calculateTotal();
         });
-    });
+
+        // Delete excursion confirmation
+        document.getElementById('delete-excursion-btn').addEventListener('click', function(e) {
+            e.preventDefault();
+            const excursionTitle = document.querySelector('.excursion-title').textContent;
+            Swal.fire({
+                title: 'Are you sure?',
+                text: `Do you want to delete excursion "${excursionTitle}"?`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Yes, delete it!'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    document.getElementById('delete-ex-form').submit();
+                }
+            });
+        });
+    // });
 </script>
 {% endblock %}
 {% endblock %}

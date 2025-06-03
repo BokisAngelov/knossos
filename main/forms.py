@@ -261,7 +261,7 @@ class BookingForm(forms.ModelForm):
         self.fields.pop('group', None)
         self.fields.pop('payment_status', None)
         # partial_paid visible for representatives and admins only
-        if not (user and (user.is_staff or getattr(user.profile, 'role', None) == 'representative')):
+        if not user or not (user.is_staff or getattr(user.profile, 'role', None) == 'representative'):
             self.fields.pop('partial_paid', None)
 
 class TransactionForm(forms.ModelForm):
