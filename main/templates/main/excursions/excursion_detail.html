@@ -4,29 +4,15 @@
 {% block extra_css %}
 <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/pikaday/css/pikaday.css">
 <style>
-    /* Minimal tweaks for Pikaday calendar */
+    #date-picker-inline {
+        min-height: 250px;        /* enough room to render calendar */
+        position: relative;       /* required for absolute child (calendar) */
+        border: 1px solid #ccc;   /* optional: for debugging visibility */
+        padding: 10px;
+    }
     .pika-single {
-        z-index: 1000 !important;
-        margin-top: 4px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        border-radius: 0.5rem;
-        border: 1px solid #e5e7eb;
-    }
-    .pika-button {
-        border-radius: 0.25rem;
-        transition: background 0.2s;
-    }
-    .pika-button:hover, .is-selected .pika-button {
-        background: #3B82F6 !important;
-        color: #fff !important;
-    }
-    .is-today .pika-button {
-        color: #3B82F6 !important;
-    }
-    .is-disabled .pika-button {
-        color: #D1D5DB !important;
-        opacity: 0.5;
-        cursor: not-allowed;
+        position: absolute;
+        z-index: 9999;
     }
     
 </style>
@@ -237,25 +223,26 @@
                     {% csrf_token %}
                     <input type="hidden" name="booking_submit" value="1">
                     {% for availability in excursion_availabilities.all %}
-                        <input type="hidden" name="{{ availability.id }}-adult-price" value="{{ availability.adult_price }}">
-                        <input type="hidden" name="{{ availability.id }}-child-price" value="{{ availability.child_price }}">
-                        <input type="hidden" name="{{ availability.id }}-infant-price" value="{{ availability.infant_price }}">
-                        <input type="hidden" name="{{ availability.id }}-region" value="{{ availability.region.name }}">
-                        <input type="hidden" name="{{ availability.id }}-available-capacity" value="{{ availability.weekdays.capacity }}">
+                        <input type="hidden" name="{{ availability.region.id }}-adult-price" value="{{ availability.adult_price }}">
+                        <input type="hidden" name="{{ availability.region.id }}-child-price" value="{{ availability.child_price }}">
+                        <input type="hidden" name="{{ availability.region.id }}-infant-price" value="{{ availability.infant_price }}">
+                        <input type="hidden" name="{{ availability.region.id }}-region" value="{{ availability.region.name }}">
+                        <input type="hidden" name="{{ availability.region.id }}-available-capacity" value="{{ availability.weekdays.capacity }}">
                     {% endfor %}
                     <div class="flex flex-col gap-2">
                         <label class="block text-md font-medium text-gray-700">Select Region</label>
                         <select name="region" id="region" class="mt-1 block w-full pl-3 pr-2 py-2 text-base border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
                             {% for availability in excursion_availabilities.all %}
-                                <option value="{{ availability.id }}">{{ availability.region.name }}</option>
+                                <option value="{{ availability.region.id }}">{{ availability.region.name }}</option>
                             {% endfor %}
                         </select>
                     </div>
                     <div>
-                        <label class="block text-md font-medium text-gray-700">Select Date</label>
-                        <div id="date-picker-inline" class="mt-1"></div>
+                        <label class="block text-md font-medium text-gray-700">Select a Date</label>
+                        <input type="text" id="date-picker" class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2" placeholder="Select a date">
                         <input type="hidden" name="availability_id" id="availability-id">
                     </div>
+                    {{ availability_dates_by_region|json_script:"available-dates-json" }}
 
                     <div class="grid grid-cols-3 gap-4 py-4">
                         <div>
@@ -303,8 +290,7 @@
                         <input type="number" name="partial_payment" id="partial-payment" class="mt-1 block w-full pl-3 pr-2 py-2 text-base border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
                         <div class="hidden remaining-price-div">
                             <span class="text-sm font-medium text-gray-600">Remaining</span>
-                            <span class="text-base font-semibold text-gray-900">€<span id="remaining-price">0.00
-                        </div>
+                            <span class="text-base font-semibold text-gray-900">€<span id="remaining-price">0.00</span></div>
                     </div>
                     {% endif %}
 
@@ -324,35 +310,51 @@
 
 {% block extra_js %}
 <script>
+    // First, let's create a global object to store our available dates
+    const availableDatesByRegion = JSON.parse(
+        document.getElementById('available-dates-json').textContent
+    );
+
     document.addEventListener('DOMContentLoaded', function() {
         const notAvailability = document.querySelector('.not-availability');
         
-        // if (!notAvailability) {
-        //     // Build availableDates as a JS array
-        //     var availableDates = [
-        //         {% now "Y-m-d" as todays_date %}
-        //         {% for availability in excursion_availability.availability_days.all %}
-        //             {% if availability.date_day|date:"Y-m-d" > todays_date %}
-        //                 {
-        //                     date: "{{ availability.date_day|date:'Y-m-d' }}",
-        //                     id: "{{ availability.id }}"
-        //                 }{% if not forloop.last %},{% endif %}
-        //             {% endif %}
-        //         {% endfor %}
-        //     ];
+        if (!notAvailability) {
+            let picker = null;
 
-            // Only initialize if there are available dates
-            // if (availableDates.length > 0) {
-            //     var field = document.getElementById('datepicker');
-            //     var picker = new Pikaday({
-            //         onSelect: function(date) {
-            //             field.value = picker.toString();
-            //         }
-            //     });
-            //     field.parentNode.insertBefore(picker.el, field.nextSibling);
-            // } else {
-            //     document.getElementById('date-picker-inline').innerHTML = '<p class="text-gray-500">No available dates.</p>';
-            // }
+            function initializeDatePicker(regionId) {
+                const availableDates = availableDatesByRegion[regionId] || [];
+
+                // Extract only the date strings
+                const enabledDates = availableDates.map(item => item.date);
+
+                // Destroy previous instance if needed
+                if (window.fpInstance) {
+                    window.fpInstance.destroy();
+                }
+
+                window.fpInstance = flatpickr("#date-picker", {
+                    enable: enabledDates,
+                    position: "below",
+                    onChange: function(selectedDates, dateStr) {
+                        const selectedDate = availableDates.find(item => item.date === dateStr);
+                        if (selectedDate) {
+                            document.getElementById("availability-id").value = selectedDate.id;
+                        }
+                    },
+                });
+
+                document.getElementById("availability-id").value = '';
+            }
+
+            // Initialize date picker for the initially selected region
+            const initialRegion = document.querySelector('select[name="region"]').value;
+            initializeDatePicker(initialRegion);
+
+            // Update date picker when region changes
+            document.querySelector('select[name="region"]').addEventListener('change', function(e) {
+                initializeDatePicker(e.target.value);
+                updatePriceAndPickupPoints();
+            });
 
             // Calculate total price based on number of guests
             function calculateTotal() {
@@ -368,8 +370,6 @@
                 const total = (adults * adultPrice) + (children * childPrice) + (infants * infantPrice);
                 document.getElementById('total-price').textContent = total.toFixed(2);
             }
-
-            
 
             // Calculate initial total
             calculateTotal();
@@ -418,6 +418,7 @@
                 });
                 calculateTotal();
                 document.querySelector('#remaining-price').textContent = document.querySelector('#total-price').textContent;
+                updatePriceAndPickupPoints();
             });
         
             document.querySelector('#partial-payment').addEventListener('change', function(e) {
@@ -426,11 +427,9 @@
                 const total = document.querySelector('#total-price').textContent;
 
                 if (partialPayment <= 0) {
-
                     document.querySelector('.remaining-price-div').classList.add('hidden');
                     return;
                 } else {
-                    
                     const remaining = total - partialPayment;
                     document.querySelector('.remaining-price-div').classList.remove('hidden');
                     document.querySelector('#remaining-price').textContent = remaining.toFixed(2);
@@ -455,10 +454,8 @@
                     }
                 });
             });
-        });
-
-        
-    // });
+        }
+    });
 </script>
 {% endblock %}
 {% endblock %}

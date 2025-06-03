@@ -6,6 +6,7 @@ from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 from django.contrib import messages
 from django.db import transaction
 from django.utils import timezone
+from django.core.serializers.json import DjangoJSONEncoder
 import datetime
 from django.contrib.auth.models import User
 from django.http import JsonResponse, Http404
@@ -49,7 +50,7 @@ def excursion_detail(request, pk):
     feedback_form, booking_form = None, None
     excursion_availabilities = ExcursionAvailability.objects.filter(excursion=excursion)
     excursion_availability = excursion_availabilities.first()
-
+    availability_dates_by_region = {}
 
     if not excursion_availability:
         feedback_form = FeedbackForm()
@@ -60,7 +61,22 @@ def excursion_detail(request, pk):
             'feedback_form': feedback_form,
             'booking_form': booking_form,
             'excursion_availability': excursion_availability,
+            'availability_dates_by_region': availability_dates_by_region,
         })
+
+
+    for availability in excursion_availabilities:
+        region_id = availability.region.id  # or however you reference region
+        days = availability.availability_days.all()
+        
+        # Convert queryset to list of dicts
+        date_entries = [
+            {"date": day.date_day.isoformat(), "id": day.id}
+            for day in days
+        ]
+
+        availability_dates_by_region[str(region_id)] = date_entries
+
 
     # Handle feedback submission
     if request.method == 'POST' and 'feedback_submit' in request.POST:
@@ -97,6 +113,7 @@ def excursion_detail(request, pk):
         'excursion_availabilities': excursion_availabilities,
         'excursion_availability': excursion_availability,
         'booking_form': booking_form,
+        'availability_dates_by_region': availability_dates_by_region,
         # 'pickup_points': pickup_points,
     })
 
