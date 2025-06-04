@@ -1,9 +1,147 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block content %}
-    <h1>Booking Detail</h1>
-    <p>Booking ID: {{ booking.id }}</p>
-    <p>Booking Date: {{ booking.booking_date }}</p>
-    <p>Booking Status: {{ booking.status }}</p>
-    <p>Booking Total Price: {{ booking.total_price }}</p>
+<div class="container mx-auto px-4 py-8">
+    <!-- Header Section -->
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <a href="{% url 'excursion_detail' booking.excursion_availability.excursion.id %}" class="inline-flex items-center text-gray-600 hover:text-gray-900">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                Back to Excursion
+            </a>
+            <h1 class="text-2xl font-bold text-gray-900">Booking Details</h1>
+            <p class="text-sm text-gray-500">View and manage booking information</p>
+            <span class="inline-flex items-center px-2.5 py-0.5 mt-2 rounded-full text-sm font-medium 
+                {% if booking.payment_status == 'pending' %}bg-yellow-100 text-yellow-800
+                {% elif booking.payment_status == 'completed' %}bg-green-100 text-green-800
+                {% elif booking.payment_status == 'cancelled' %}bg-red-100 text-red-800
+                {% else %}bg-gray-100 text-gray-800{% endif %}">
+                {{ booking.payment_status.capitalize }}
+            </span>
+        </div>
+
+    </div>
+
+    <!-- Main Content -->
+    <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+        <!-- Booking Information -->
+        <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+            <h3 class="text-lg leading-6 font-medium text-gray-900">Booking Information</h3>
+        </div>
+        <div class="border-t border-gray-200">
+            <div class="grid grid-cols-4 gap-4 p-6">
+                <div class="bg-white rounded-lg shadow-sm p-4">
+                    <h4 class="text-sm font-medium text-gray-500 mb-1">Booking Date</h4>
+                    <p class="text-lg font-semibold text-gray-900">{{ booking.created_at|date:"F d, Y" }}</p>
+                </div>
+                <div class="bg-white rounded-lg shadow-sm p-4">
+                    <h4 class="text-sm font-medium text-gray-500 mb-1">Total Price</h4>
+                    <p class="text-lg font-semibold text-gray-900">€{{ booking.total_price }}</p>
+                </div>
+                <div class="bg-white rounded-lg shadow-sm p-4">
+                    <h4 class="text-sm font-medium text-gray-500 mb-1">Number of Guests</h4>
+                    <p class="text-lg font-semibold text-gray-900">{{ booking.total_adults }} Adults, {{ booking.total_kids }} Kids, {{ booking.total_infants }} Infants</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Excursion Information -->
+        <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+            <h3 class="text-lg leading-6 font-medium text-gray-900">Excursion Information</h3>
+        </div>
+        <div class="border-t border-gray-200">
+            <div class="grid grid-cols-4 gap-4 p-6">
+                <div class="bg-white rounded-lg shadow-sm p-4">
+                    <h4 class="text-sm font-medium text-gray-500 mb-1">Excursion</h4>
+                    <a href="{% url 'excursion_detail' booking.excursion_availability.excursion.id %}" class="text-lg font-semibold text-blue-600 hover:text-blue-800">
+                        {{ booking.excursion_availability.excursion.title }}
+                    </a>
+                </div>
+                <div class="bg-white rounded-lg shadow-sm p-4">
+                    <h4 class="text-sm font-medium text-gray-500 mb-1">Date</h4>
+                    <p class="text-lg font-semibold text-gray-900">{{ booking.date|date:"F d, Y" }}</p>
+                </div>
+                <div class="bg-white rounded-lg shadow-sm p-4">
+                    <h4 class="text-sm font-medium text-gray-500 mb-1">Region</h4>
+                    <p class="text-lg font-semibold text-gray-900">{{ booking.excursion_availability.region }}</p>
+                </div>
+                <div class="bg-white rounded-lg shadow-sm p-4">
+                    <h4 class="text-sm font-medium text-gray-500 mb-1">Pickup Points</h4>
+                    <p class="text-lg font-semibold text-gray-900">{{ booking.excursion_availability.pickup_points }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Guest Information -->
+        <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+            <h3 class="text-lg leading-6 font-medium text-gray-900">Guest Information</h3>
+        </div>
+        <div class="border-t border-gray-200">
+            <div class="grid grid-cols-4 gap-4 p-6">
+                <div class="bg-white rounded-lg shadow-sm p-4">
+                    <h4 class="text-sm font-medium text-gray-500 mb-1">Contact Name</h4>
+                    <p class="text-lg font-semibold text-gray-900">{{ booking.guest_name }}</p>
+                </div>
+                <div class="bg-white rounded-lg shadow-sm p-4">
+                    <h4 class="text-sm font-medium text-gray-500 mb-1">Contact Email</h4>
+                    <p class="text-lg font-semibold text-gray-900">{{ booking.guest_email }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Guest Breakdown -->
+        <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+            <h3 class="text-lg leading-6 font-medium text-gray-900">Guest Breakdown</h3>
+        </div>
+        <div class="border-t border-gray-200">
+            <div class="grid grid-cols-4 gap-4 p-6">
+                {% if booking.adult_count %}
+                <div class="bg-white rounded-lg shadow-sm p-4">
+                    <h4 class="text-sm font-medium text-gray-500 mb-1">Adults</h4>
+                    <p class="text-lg font-semibold text-gray-900">{{ booking.adult_count }} × €{{ booking.availability.adult_price }}</p>
+                </div>
+                {% endif %}
+                {% if booking.child_count %}
+                <div class="bg-white rounded-lg shadow-sm p-4">
+                    <h4 class="text-sm font-medium text-gray-500 mb-1">Children</h4>
+                    <p class="text-lg font-semibold text-gray-900">{{ booking.child_count }} × €{{ booking.availability.child_price }}</p>
+                </div>
+                {% endif %}
+                {% if booking.infant_count %}
+                <div class="bg-white rounded-lg shadow-sm p-4">
+                    <h4 class="text-sm font-medium text-gray-500 mb-1">Infants</h4>
+                    <p class="text-lg font-semibold text-gray-900">{{ booking.infant_count }} × €{{ booking.availability.infant_price }}</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const deleteBtn = document.getElementById('delete-btn');
+        deleteBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            Swal.fire({
+                title: 'Are you sure?',
+                text: 'Do you want to delete this booking?',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Yes, delete it!'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    document.getElementById('delete-booking-form').submit();
+                }
+            });
+        });
+    });
+</script>
 {% endblock %}

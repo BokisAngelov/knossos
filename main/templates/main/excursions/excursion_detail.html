@@ -295,6 +295,7 @@
                             <div class="flex justify-between items-center p-4 bg-blue-50 rounded-lg">
                                 <span class="text-base font-semibold text-gray-900">Total</span>
                                 <span class="text-lg font-bold text-blue-600">€<span id="total-price">0.00</span></span>
+                                <input type="number" id="total-price-input" name="total_price" min="0" value="0" class="hidden">
                             </div>
                         </div>
                     </div>
@@ -391,6 +392,7 @@
                 
                 const total = (adults * adultPrice) + (children * childPrice) + (infants * infantPrice);
                 document.getElementById('total-price').textContent = total.toFixed(2);
+                document.getElementById('total-price-input').value = total;
             }
 
             // Calculate initial total
@@ -421,6 +423,7 @@
 
                 const total = (adults * adultPrice) + (children * childPrice) + (infants * infantPrice);
                 document.getElementById('total-price').textContent = total.toFixed(2);
+                document.getElementById('total-price-input').value = total;
             }
 
             // Add event listeners to number inputs
@@ -440,6 +443,7 @@
                 });
                 calculateTotal();
                 document.querySelector('#remaining-price').textContent = document.querySelector('#total-price').textContent;
+                document.querySelector('#total-price-input').value = document.querySelector('#total-price').textContent;
                 updatePriceAndPickupPoints();
             });
         

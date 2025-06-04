@@ -58,6 +58,7 @@ class Group(models.Model):
     name = models.CharField(max_length=255)
     guide = models.ForeignKey(UserProfile, on_delete=models.CASCADE, related_name='groups', limit_choices_to={'role': 'guide'})
 
+    # booking 
     def __str__(self):
         return self.name  
     
@@ -184,6 +185,7 @@ class ExcursionAvailability(models.Model):
     start_time = models.TimeField(null=True, blank=True)
     end_time = models.TimeField(null=True, blank=True)
     discount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    # pickup_time_estimation 
 
     adult_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     child_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
@@ -263,6 +265,7 @@ class Booking(models.Model):
     payment_status = models.CharField(max_length=10, choices=PAYMENT_STATUS_CHOICES, default='pending')
     price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    
 
     def __str__(self):
         return f"Booking #{self.id} by {self.user.username if self.user else 'Guest'}"

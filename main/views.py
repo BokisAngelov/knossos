@@ -52,6 +52,11 @@ def excursion_detail(request, pk):
     excursion_availability = excursion_availabilities.first()
     availability_dates_by_region = {}
 
+    user = request.user
+
+    # if user.is_authenticated:
+    #     return;
+
     if not excursion_availability:
         feedback_form = FeedbackForm()
         booking_form = BookingForm()
@@ -101,10 +106,25 @@ def excursion_detail(request, pk):
                         'success': False,
                         'errors': booking_form.errors
                     })
+                adults = int(request.POST.get('adults', 0))
+                children = int(request.POST.get('children', 0))
+                infants = int(request.POST.get('infants', 0))
+                total_price = int(request.POST.get('total_price', 0))
+                partial_price = int(request.POST.get('partial_price', 0))
 
                 booking = booking_form.save(commit=False)
                 booking.excursion_availability = excursion_availability
                 booking.user = request.user
+                booking.total_adults = adults
+                booking.total_kids = children
+                booking.total_infants = infants
+
+                if partial_price > 0:
+                    final_price = total_price - partial_price
+                else:
+                    final_price = total_price
+
+                booking.total_price = final_price
 
                 selected_date = request.POST.get('selected_date')
                 availability_id = request.POST.get('availability_id')
