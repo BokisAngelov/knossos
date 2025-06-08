@@ -258,7 +258,7 @@ class Booking(models.Model):
     voucher_id = models.ForeignKey(Reservation, on_delete=models.SET_NULL, null=True, blank=True, related_name='bookings')
     excursion_availability = models.ForeignKey(ExcursionAvailability, on_delete=models.SET_NULL, null=True, blank=True, related_name='bookings')
     date = models.DateField(null=True, blank=True)
-    group = models.ForeignKey(Group, on_delete=models.SET_NULL, null=True, blank=True, related_name='bookings')
+    pickup_point = models.ForeignKey(PickupPoint, on_delete=models.SET_NULL, null=True, blank=True, related_name='bookings')
     guest_name = models.CharField(max_length=255, null=True, blank=True)
     guest_email = models.EmailField(null=True, blank=True)
     total_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)

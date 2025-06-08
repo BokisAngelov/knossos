@@ -14,8 +14,8 @@ from django.utils.text import slugify
 from .models import (
     Excursion, ExcursionImage, ExcursionAvailability,
     Booking, Feedback, UserProfile, Region, 
-    Group, Category, Tag, PickupPoint, AvailabilityDays, DayOfWeek, Hotel, PickupGroup, PickupGroupAvailability
-)
+        Group, Category, Tag, PickupPoint, AvailabilityDays, DayOfWeek, Hotel, PickupGroup, PickupGroupAvailability, Reservation
+    )
 from .forms import (
     ExcursionForm, ExcursionImageFormSet,
     ExcursionAvailabilityForm, BookingForm, FeedbackForm, UserProfileForm,
@@ -51,6 +51,7 @@ def excursion_detail(request, pk):
     excursion_availabilities = ExcursionAvailability.objects.filter(excursion=excursion)
     excursion_availability = excursion_availabilities.first()
     availability_dates_by_region = {}
+    pickup_points = []
 
     user = request.user
 
@@ -67,11 +68,12 @@ def excursion_detail(request, pk):
             'booking_form': booking_form,
             'excursion_availability': excursion_availability,
             'availability_dates_by_region': availability_dates_by_region,
+            'pickup_points': pickup_points,
         })
 
 
     for availability in excursion_availabilities:
-        region_id = availability.region.id  # or however you reference region
+        region_id = availability.region.id  
         days = availability.availability_days.all()
         
         # Convert queryset to list of dicts
@@ -79,9 +81,10 @@ def excursion_detail(request, pk):
             {"date": day.date_day.isoformat(), "id": day.id}
             for day in days
         ]
-
         availability_dates_by_region[str(region_id)] = date_entries
 
+        pickup_points_obj = PickupPoint.objects.filter(pickup_group__in=availability.pickup_groups.all()).select_related('pickup_group__region').order_by('priority')
+        pickup_points.append(pickup_points_obj.values('id', 'name', 'pickup_group', 'pickup_group__region'))
 
     # Handle feedback submission
     if request.method == 'POST' and 'feedback_submit' in request.POST:
@@ -209,7 +212,7 @@ def excursion_detail(request, pk):
         'excursion_availability': excursion_availability,
         'booking_form': booking_form,
         'availability_dates_by_region': availability_dates_by_region,
-        # 'pickup_points': pickup_points,
+        'pickup_points': pickup_points,
     })
 
 @user_passes_test(is_staff)
@@ -311,6 +314,43 @@ def excursion_delete(request, pk):
     else:
         messages.error(request, 'Excursion not deleted.')
         return redirect('excursion_list')
+    
+
+def retrive_voucher(request):
+    
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            voucher_code = data.get('voucher_code')
+            voucher = Reservation.objects.get(voucher_id=voucher_code)
+
+            if voucher:
+
+                return_data = {
+                    'client_name': voucher.client_name,
+                    'hotel_name': voucher.hotel.name,
+
+                }
+                return JsonResponse({
+                    'success': True,
+                    'message': 'Voucher is valid.',
+                    'return_data': return_data
+                })
+            else:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Voucher is invalid.'    
+                })
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'message': str(e)
+            })
+    else:
+        return JsonResponse({
+            'success': False,
+            'message': 'Invalid request method.'
+        })
     
 # ----- Booking Views -----
 

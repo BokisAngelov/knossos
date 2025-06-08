@@ -244,6 +244,48 @@ class ExcursionAvailabilityForm(forms.ModelForm):
         return cleaned
 
 # ----- Booking & Pricing Forms -----
+class PickupPointWidget(forms.CheckboxSelectMultiple):
+    def render(self, name, value, attrs=None, renderer=None):
+        if value is None:
+            value = []
+        if not isinstance(value, (list, tuple)):
+            value = [value]
+        final_attrs = self.build_attrs(attrs)
+        output = []
+        pickup_points = list(PickupPoint.objects.all().select_related('pickup_group'))
+        points_per_col = 7
+        num_cols = (len(pickup_points) + points_per_col - 1) // points_per_col
+        output.append('<div class="pickuppoint-grid">')
+        for col in range(num_cols):
+            output.append('<div class="pickuppoint-col">')
+            for i in range(points_per_col):
+                idx = col * points_per_col + i
+                if idx >= len(pickup_points):
+                    break
+                point = pickup_points[idx]
+                checkbox_name = name
+                checkbox_id = f'id_{name}_{point.id}'
+                is_checked = str(point.id) in [str(v) for v in value]
+                point_html = f'''
+                    <div class="flex flex-col items-center mb-2" data-region-id="{point.pickup_group.region.id if point.pickup_group else ''}">
+                        <div class="flex items-center gap-2 w-full">
+                            <input type="checkbox" 
+                                name="{checkbox_name}" 
+                                id="{checkbox_id}" 
+                                value="{point.id}" 
+                                {'checked' if is_checked else ''} 
+                                class="w-4 h-4">
+                            <label for="{checkbox_id}" class="px-3 py-1 bg-gray-100 rounded text-center font-medium flex-1">
+                                {point.name}
+                            </label>
+                        </div>
+                    </div>
+                '''
+                output.append(point_html)
+            output.append('</div>')
+        output.append('</div>')
+        return mark_safe(''.join(output))
+
 class BookingForm(forms.ModelForm):
     class Meta:
         model = Booking
@@ -251,8 +293,11 @@ class BookingForm(forms.ModelForm):
             'guest_name', 'guest_email',
             'total_price', 'partial_paid',
             'total_adults', 'total_kids', 'total_infants',
-            'price'
+            'price', 'user', 'voucher_id', 'date', 'pickup_point',
         ]
+        widgets = {
+            'pickup_point': PickupPointWidget,
+        }
 
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user', None)

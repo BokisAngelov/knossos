@@ -5,9 +5,9 @@
 <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/pikaday/css/pikaday.css">
 <style>
     #date-picker-inline {
-        min-height: 250px;        /* enough room to render calendar */
-        position: relative;       /* required for absolute child (calendar) */
-        border: 1px solid #ccc;   /* optional: for debugging visibility */
+        min-height: 250px;        
+        position: relative;      
+        border: 1px solid #ccc;  
         padding: 10px;
     }
     .pika-single {
@@ -105,29 +105,54 @@
                     </div>
 
                     <div class="prose max-w-none mb-6 border-t border-gray-200 pt-4">
-                        <h2 class="text-xl font-semibold text-gray-900">Pickup Points <span class="text-sm text-gray-500 font-normal">(Selected Region: <span class="pickup-region font-semibold">{{ excursion_availability.region.name }}</span>)</span></h2>
-                        <p class="text-sm  text-gray-500 mb-1">Please note that pickup points are based on the region you have selected. </p>
-                        <div class="flex gap-6">
-                            {% for availability in excursion_availabilities %}
-                                {% for pick_group in availability.pickup_groups.all %}
-                                    <div class="flex flex-col gap-2 group-{{ availability.region.id }} pickup-group">
-                                        <h2 class="text-lg font-semibold text-gray-900 mt-2">{{ pick_group.name }}</h2>
-                                        <ul class="pickup-points-list">
-                                            {% for pickup_point in pick_group.pickup_points.all|dictsortreversed:"priority" %}
-                                            <li>
-                                                <div class="flex items-center py-2">
-                                                    <svg width="16" height="16" fill="#3B82F6" viewBox="0 0 16 16">
-                                                        <path d="M8 0C5.243 0 3 2.243 3 5c0 3.25 4.5 10.5 4.5 10.5s4.5-7.25 4.5-10.5c0-2.757-2.243-5-5-5zm0 7.5A2.5 2.5 0 1 1 8 2.5a2.5 2.5 0 0 1 0 5z"/>
-                                                    </svg>
-                                                    <a href="{{ pickup_point.google_maps_link }}">{{ pickup_point.name }}</a>
-                                                </div>
-                                            </li>
-                                            {% endfor %}
-                                        </ul>
+                        <p class="text-sm text-gray-500 mb-4">*Note: Pickup points and prices are based on the region you have selected. <span class="text-sm text-gray-500 font-normal">(Selected Region: <span class="pickup-region font-semibold">{{ excursion_availability.region.name }}</span>)</span></p>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div class="flex flex-col gap-2">
+                                <h2 class="text-xl font-semibold text-gray-900">Pickup Points</h2>
+                                <div class="flex gap-6">
+                                    {% for availability in excursion_availabilities %}
+                                        {% for pick_group in availability.pickup_groups.all %}
+                                            <div class="flex flex-col gap-2 group-{{ availability.region.id }} pickup-group">
+                                                <h2 class="text-lg font-semibold text-gray-900 mt-2">{{ pick_group.name }}</h2>
+                                                <ul class="pickup-points-list">
+                                                    {% for pickup_point in pick_group.pickup_points.all|dictsortreversed:"priority" %}
+                                                    <li>
+                                                        <div class="flex items-center py-2">
+                                                            <svg width="16" height="16" fill="#3B82F6" viewBox="0 0 16 16">
+                                                                <path d="M8 0C5.243 0 3 2.243 3 5c0 3.25 4.5 10.5 4.5 10.5s4.5-7.25 4.5-10.5c0-2.757-2.243-5-5-5zm0 7.5A2.5 2.5 0 1 1 8 2.5a2.5 2.5 0 0 1 0 5z"/>
+                                                            </svg>
+                                                            <a href="{{ pickup_point.google_maps_link }}">{{ pickup_point.name }}</a>
+                                                        </div>
+                                                    </li>
+                                                    {% endfor %}
+                                                </ul>
+                                            </div>
+                                        {% endfor %}
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            
+                            <div class="flex flex-col gap-2">
+                                <h2 class="text-xl font-semibold text-gray-900">Price Details</h2>
+                                    <div class="space-y-2 mt-4 w-60">
+                                        <div class="flex justify-between items-center p-2 bg-gray-50 rounded-lg">
+                                            <span class="text-sm font-medium text-gray-600">Price per adult</span>
+                                            <span class="text-base font-semibold text-gray-900">€<span id="adult-price">0.00</span></span>
+                                        </div>
+                                        <div class="flex justify-between items-center p-2 bg-gray-50 rounded-lg">
+                                            <span class="text-sm font-medium text-gray-600">Price per child</span>
+                                            <span class="text-base font-semibold text-gray-900">€<span id="child-price">0.00</span></span>
+                                        </div>
+                                        <div class="flex justify-between items-center p-2 bg-gray-50 rounded-lg">
+                                            <span class="text-sm font-medium text-gray-600">Price per infant</span>
+                                            <span class="text-base font-semibold text-gray-900">€<span id="infant-price">0.00</span></span>
+                                        </div>
                                     </div>
-                                {% endfor %}
-                            {% endfor %}
+                                    
+                            </div>
+
                         </div>
+                        
                         
                     </div>
                 </div>
@@ -230,6 +255,12 @@
                         <input type="hidden" name="{{ availability.region.id }}-available-capacity" value="{{ availability.weekdays.capacity }}">
                     {% endfor %}
                     <div class="flex flex-col gap-2">
+                        <label class="block text-md font-medium text-gray-700">Do you have a voucher?</label>
+                        <input type="text" name="voucher" id="voucher" class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2" placeholder="Enter your voucher code">
+                        <button type="button" id="submit-voucher-btn" class="mt-2 px-4 py-2 rounded bg-blue-600 text-white">Check Voucher</button>
+                        <div id="voucher-message" class="mt-2 text-sm"></div>
+                    </div>
+                    <div class="flex flex-col gap-2">
                         <label class="block text-md font-medium text-gray-700">Select Region</label>
                         <select name="region" id="region" class="mt-1 block w-full pl-3 pr-2 py-2 text-base border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md {% if form.region.errors %}border-red-500{% endif %}">
                             {% for availability in excursion_availabilities.all %}
@@ -249,6 +280,21 @@
                         {% endif %}
                     </div>
                     {{ availability_dates_by_region|json_script:"available-dates-json" }}
+
+                    <div class="flex flex-col gap-2">
+                        <label class="block text-md font-medium text-gray-700">Select Pickup Point</label>
+                        <select name="pickup_point" id="pickup-point" class="mt-1 block w-full pl-3 pr-2 py-2 text-base border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md {% if form.pickup_point.errors %}border-red-500{% endif %}">
+                            <option value="">Select a pickup point</option>
+                            {% for pickup_point in pickup_points %}
+                                {% for point in pickup_point %}
+                                    <option data-region="{{ point.pickup_group__region }}" value="{{ point.id }}">{{ point.name }}</option>
+                                {% endfor %}
+                            {% endfor %}
+                        </select>
+                        {% if form.pickup_point.errors %}
+                            <p class="mt-1 text-sm text-red-600">{{ form.pickup_point.errors.0 }}</p>
+                        {% endif %}
+                    </div>
 
                     <div class="grid grid-cols-3 gap-4 py-4">
                         <div>
@@ -276,29 +322,15 @@
                             <a href="#" id="clear-numbers" class="px-3 py-1 shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">Clear</a>
                         </div>
                     </div>
-                    <div class="border-t border-gray-200 pt-4 mt-4">
-                        <div class="space-y-2">
-                            <div class="flex justify-between items-center p-2 bg-gray-50 rounded-lg">
-                                <span class="text-sm font-medium text-gray-600">Price per adult</span>
-                                <span class="text-base font-semibold text-gray-900">€<span id="adult-price">0.00</span></span>
-                            </div>
-                            <div class="flex justify-between items-center p-2 bg-gray-50 rounded-lg">
-                                <span class="text-sm font-medium text-gray-600">Price per child</span>
-                                <span class="text-base font-semibold text-gray-900">€<span id="child-price">0.00</span></span>
-                            </div>
-                            <div class="flex justify-between items-center p-2 bg-gray-50 rounded-lg">
-                                <span class="text-sm font-medium text-gray-600">Price per infant</span>
-                                <span class="text-base font-semibold text-gray-900">€<span id="infant-price">0.00</span></span>
-                            </div>
-                        </div>
-                        <div class="mt-4 pt-4 border-t border-gray-200">
-                            <div class="flex justify-between items-center p-4 bg-blue-50 rounded-lg">
-                                <span class="text-base font-semibold text-gray-900">Total</span>
-                                <span class="text-lg font-bold text-blue-600">€<span id="total-price">0.00</span></span>
-                                <input type="number" id="total-price-input" name="total_price" min="0" value="0" class="hidden">
-                            </div>
+
+                    <div class="mt-4 pt-4 border-t border-gray-200">
+                        <div class="flex justify-between items-center p-4 bg-blue-50 rounded-lg">
+                            <span class="text-base font-semibold text-gray-900">Total</span>
+                            <span class="text-lg font-bold text-blue-600">€<span id="total-price">0.00</span></span>
+                            <input type="number" id="total-price-input" name="total_price" min="0" value="0" class="hidden">
                         </div>
                     </div>
+                    
                     <div id="form-errors" class="hidden mb-4 p-4 bg-red-50 border border-red-200 rounded-md">
                         <ul class="list-disc list-inside text-sm text-red-600"></ul>
                     </div>
@@ -329,6 +361,24 @@
 
 {% block extra_js %}
 <script>
+
+    //  get csrf token for ajax requests
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    const csrftoken = getCookie('csrftoken');
+
     const availableDatesByRegion = JSON.parse(
         document.getElementById('available-dates-json').textContent
     );
@@ -412,6 +462,34 @@
                 const pickupGroup = document.querySelectorAll('.group-' + region).forEach(group => {
                     group.classList.remove('hidden');
                 });
+
+                document.querySelectorAll('.pickup-point').forEach(point => {
+                    point.classList.add('hidden');
+                });
+
+                const pickupPoints_options = document.querySelectorAll('select[name="pickup_point"] option');
+                
+                pickupPoints_options.forEach(point => {
+                    point.classList.add('hidden');
+                    console.log(point.dataset.region);
+                    console.log(region);
+                    console.log(point.dataset.region === region);
+                    if (point.dataset.region === region) {
+                        point.classList.remove('hidden');
+                    }
+                });
+
+                // Select the first available pickup point for the selected region
+                const pickupPointSelect = document.getElementById('pickup-point');
+                const availableOptions = Array.from(pickupPoints_options).filter(option => 
+                    option.dataset.region === region && option.value !== ''
+                );
+                
+                if (availableOptions.length > 0) {
+                    pickupPointSelect.value = availableOptions[0].value;
+                } else {
+                    pickupPointSelect.value = '';
+                }
 
                 const adultPrice = document.querySelector(`input[name="${region}-adult-price"]`).value;
                 const childPrice = document.querySelector(`input[name="${region}-child-price"]`).value;
@@ -605,6 +683,34 @@
                         }
                     }
                 });
+            });
+        
+
+            document.getElementById('submit-voucher-btn').addEventListener('click', function(e) {
+                e.preventDefault();
+                const voucher = document.getElementById('voucher').value;
+                console.log(voucher);
+                fetch(`{% url 'retrive_voucher' %}`, {
+                    method: 'POST',
+                    body: JSON.stringify({ voucher_code: voucher }),
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrftoken
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById('voucher-message').textContent = data.message;
+                        document.getElementById('voucher-message').textContent += "Welcome " + data.return_data.client_name + ",";
+                        console.log(data.return_data);
+                        console.log(data.return_data.client_name);
+                        console.log(data.return_data.hotel_name);
+                    } else {
+                        document.getElementById('voucher-message').textContent = data.message;
+                    }
+                });
+
             });
         }
     });
