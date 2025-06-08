@@ -608,6 +608,10 @@ def manage_categories_tags(request):
 @user_passes_test(is_staff)
 def providers_list(request):
     providers = UserProfile.objects.filter(role='provider')
+    regions = Region.objects.all()
+    
+    # Convert pickup groups to JSON-serializable format
+    regions_json = json.dumps([{'id': region.id, 'name': region.name} for region in regions])
 
     # Handle search
     search_query = request.GET.get('search', '').strip()
@@ -620,10 +624,15 @@ def providers_list(request):
         
     return render(request, 'main/admin/providers.html', {
         'providers': providers,
+        'regions_json': regions_json,
+        'regions_data': regions,
     })
 
 @user_passes_test(is_staff)
 def manage_providers(request):
+    regions = Region.objects.all()
+    regions_json = json.dumps([{'id': region.id, 'name': region.name} for region in regions])
+
     if request.method == 'POST':
         action_type = request.POST.get('action_type')
         item_id = request.POST.get('item_id')
@@ -632,40 +641,51 @@ def manage_providers(request):
             name = request.POST.get('name', '').strip()
             email = request.POST.get('email', '').strip()
             phone = request.POST.get('phone', '').strip()
-            vat = request.POST.get('vat', '').strip()
+            region_id = request.POST.get('region', '').strip()
             
             if name and email:
-                # Create User first
-                user = User.objects.create_user(
-                    username=email,
-                    email=email,
-                )
-                # Create UserProfile
-                UserProfile.objects.create(
-                    user=user,
-                    name=name,
-                    email=email,
-                    phone=phone,
-                    vat=vat,
-                    role='provider'
-                )
-                messages.success(request, 'Provider created successfully.')
-                return redirect('manage_providers')
+                try:
+                    region_instance = Region.objects.get(id=region_id)
+                    # Create User first
+                    user = User.objects.create_user(
+                        username=email,
+                        email=email,
+                    )
+
+                    # Create UserProfile
+                    UserProfile.objects.create(
+                        user=user,
+                        name=name,
+                        email=email,
+                        phone=phone,
+                        region=region_instance,
+                        role='provider'
+                    )
+                    messages.success(request, 'Provider created successfully.')
+                    return redirect('manage_providers')
+                except Exception as e:
+                    messages.error(request, f'Error creating provider: {str(e)}')
+                    return redirect('manage_providers')
 
         elif action_type == 'edit_provider':
             provider = get_object_or_404(UserProfile, pk=item_id)
             name = request.POST.get('name', '').strip()
             email = request.POST.get('email', '').strip()
             phone = request.POST.get('phone', '').strip()
-            vat = request.POST.get('vat', '').strip()
+            region_id = request.POST.get('region', '').strip()
 
             if name:
-                provider.name = name
-                provider.email = email
-                provider.phone = phone
-                provider.vat = vat
-                provider.save()
-                messages.success(request, 'Provider updated successfully.')
+                try:
+                    region_instance = Region.objects.get(id=region_id)
+                    provider.name = name
+                    provider.email = email
+                    provider.phone = phone
+                    provider.region = region_instance
+                    provider.save()
+                    messages.success(request, 'Provider updated successfully.')
+                    return redirect('manage_providers')
+                except Region.DoesNotExist:
+                    messages.error(request, 'Invalid region selected.')
 
         elif action_type == 'delete_provider':
             provider = get_object_or_404(UserProfile, pk=item_id)
@@ -676,6 +696,8 @@ def manage_providers(request):
 
     return render(request, 'main/admin/providers.html', {
         'providers': UserProfile.objects.filter(role='provider'),
+        'regions_json': regions_json,
+        'regions_data': regions,
     })
 
 @user_passes_test(is_staff)
@@ -693,6 +715,7 @@ def reps_list(request):
     })
 
 @user_passes_test(is_staff)
+
 def manage_reps(request):
     if request.method == 'POST':
         action_type = request.POST.get('action_type')

@@ -30,6 +30,12 @@ class Tag(models.Model):
     def __str__(self):
         return self.name
 
+class Region(models.Model):
+    name = models.CharField(max_length=255)
+    slug = models.SlugField(max_length=255, unique=True, null=True, blank=True)
+    def __str__(self):
+        return self.name
+    
 class UserProfile(models.Model):
     STATUS_CHOICES = [
         ('active', 'Active'),
@@ -45,11 +51,13 @@ class UserProfile(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='profile')
     created_at = models.DateTimeField(auto_now_add=True)
     name = models.CharField(max_length=255, null=True, blank=True)
-    email = models.EmailField()
-    phone = models.CharField(max_length=50)
+    email = models.EmailField(null=True, blank=True)
+    phone = models.CharField(max_length=50, null=True, blank=True)
     role = models.CharField(max_length=15, choices=ROLE_CHOICES)
     status = models.CharField(max_length=8, choices=STATUS_CHOICES, default='active')
-    vat = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    address = models.CharField(max_length=255, null=True, blank=True)
+    zipcode = models.CharField(max_length=255, null=True, blank=True)
+    region = models.ForeignKey(Region, on_delete=models.SET_NULL, blank=True, null=True, related_name='user_profiles')
 
     def __str__(self):
         return self.name
@@ -84,12 +92,6 @@ class DayOfWeek(models.Model):
 
     def __str__(self):
         return dict(self.WEEKDAY_CHOICES)[self.code]
-
-class Region(models.Model):
-    name = models.CharField(max_length=255)
-    slug = models.SlugField(max_length=255, unique=True, null=True, blank=True)
-    def __str__(self):
-        return self.name
         
 class PickupGroup(models.Model):
     name = models.CharField(max_length=255)
@@ -224,10 +226,12 @@ class PaymentMethod(models.Model):
 
 class Hotel(models.Model):
     name = models.CharField(max_length=255)
-    address = models.CharField(max_length=255)
-    pickup_group = models.ForeignKey(PickupGroup, on_delete=models.SET_NULL, null=True, related_name='hotels')
-    phone_number = models.CharField(max_length=255, blank=True)
-    email = models.EmailField(blank=True)
+    address = models.CharField(max_length=255, null=True, blank=True)
+    zipcode = models.CharField(max_length=255, null=True, blank=True)
+    pickup_group = models.ForeignKey(PickupGroup, on_delete=models.SET_NULL,blank=True, null=True, related_name='hotels')
+    region = models.ForeignKey(Region, on_delete=models.SET_NULL, blank=True, null=True, related_name='hotels')
+    phone_number = models.CharField(max_length=255, blank=True, null=True)
+    email = models.EmailField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
