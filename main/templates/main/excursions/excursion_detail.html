@@ -255,13 +255,14 @@
                         <input type="hidden" name="{{ availability.region.id }}-available-capacity" value="{{ availability.weekdays.capacity }}">
                     {% endfor %}
                     <div class="flex flex-col gap-2">
-                        <label class="block text-md font-medium text-gray-700">Do you have a voucher?</label>
+                        <label class="block text-md font-medium text-gray-700">Do you have a voucher? </label>
+                        <span id="voucher-message" class="text-sm text-gray-500"></span>
                         <input type="text" name="voucher" id="voucher" class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2" placeholder="Enter your voucher code">
-                        <button type="button" id="submit-voucher-btn" class="mt-2 px-4 py-2 rounded bg-blue-600 text-white">Check Voucher</button>
-                        <div id="voucher-message" class="mt-2 text-sm"></div>
+                        <button type="button" id="submit-voucher-btn" class="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:cursor-pointer hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">Check Voucher</button>
+                        <div id="voucher-welcome" class="pb-2 mt-2 text-sm text-gray-500 border-b border-gray-200"></div>
                     </div>
                     <div class="flex flex-col gap-2">
-                        <label class="block text-md font-medium text-gray-700">Select Region</label>
+                        <label class="block text-md font-medium text-gray-700">Region</label>
                         <select name="region" id="region" class="mt-1 block w-full pl-3 pr-2 py-2 text-base border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md {% if form.region.errors %}border-red-500{% endif %}">
                             {% for availability in excursion_availabilities.all %}
                                 <option value="{{ availability.region.id }}">{{ availability.region.name }}</option>
@@ -272,7 +273,7 @@
                         {% endif %}
                     </div>
                     <div>
-                        <label class="block text-md font-medium text-gray-700">Select a Date</label>
+                        <label class="block text-md font-medium text-gray-700">Date</label>
                         <input type="text" id="date-picker" class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 {% if form.date.errors %}border-red-500{% endif %}" placeholder="Select a date">
                         <input type="hidden" name="availability_id" id="availability-id">
                         {% if form.date.errors %}
@@ -282,7 +283,7 @@
                     {{ availability_dates_by_region|json_script:"available-dates-json" }}
 
                     <div class="flex flex-col gap-2">
-                        <label class="block text-md font-medium text-gray-700">Select Pickup Point</label>
+                        <label class="block text-md font-medium text-gray-700">Pickup Point</label>
                         <select name="pickup_point" id="pickup-point" class="mt-1 block w-full pl-3 pr-2 py-2 text-base border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md {% if form.pickup_point.errors %}border-red-500{% endif %}">
                             <option value="">Select a pickup point</option>
                             {% for pickup_point in pickup_points %}
@@ -318,8 +319,24 @@
                             <p class="mt-1 text-sm text-red-600">{{ form.infants.errors.0 }}</p>
                             {% endif %}
                         </div>
-                        <div class="">
-                            <a href="#" id="clear-numbers" class="px-3 py-1 shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">Clear</a>
+                        
+                    </div>
+
+                    <div class="flex flex-col gap-2">
+                        <label class="block text-md font-medium text-gray-700">Guest Name</label>
+                        <input type="text" name="guest_name" id="guest-name" class="mt-1 block w-full pl-3 pr-2 py-2 text-base border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md {% if form.guest_name.errors %}border-red-500{% endif %}">
+                        {% if form.guest_name.errors %}
+                        <p class="mt-1 text-sm text-red-600">{{ form.guest_name.errors.0 }}</p>
+                        {% endif %}
+
+                        <label class="block text-md font-medium text-gray-700">Guest Email</label>
+                        <input type="email" name="guest_email" id="guest-email" class="mt-1 block w-full pl-3 pr-2 py-2 text-base border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md {% if form.guest_email.errors %}border-red-500{% endif %}">
+                        {% if form.guest_email.errors %}
+                        <p class="mt-1 text-sm text-red-600">{{ form.guest_email.errors.0 }}</p>
+                        {% endif %}
+
+                        <div class="mt-2">
+                            <a href="#" id="clear-numbers" class="inline-flex justify-center items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">Clear</a>
                         </div>
                     </div>
 
@@ -345,8 +362,8 @@
                     </div>
                     {% endif %}
 
-                    <button type="submit" class="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                        Proceed with Booking
+                    <button type="submit" class="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:cursor-pointer hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        Book Now
                     </button>
                 </form>
                 {% endif %}
@@ -699,7 +716,7 @@
                 .then(data => {
                     if (data.success) {
                         document.getElementById('voucher-message').textContent = data.message;
-                        document.getElementById('voucher-message').textContent += "Welcome " + data.return_data.client_name + ",";
+                        document.getElementById('voucher-welcome').innerHTML = `Welcome ${data.return_data.client_name},<br>Pickup points and prices are based on your accommodation and region.`;
                         // Fix the region selection
                         const regionSelect = document.querySelector('select[name="region"]');
                         console.log(regionSelect);
@@ -710,6 +727,7 @@
                             regionOption.selected = true;
                             regionSelect.dispatchEvent(new Event('change'));
                         }
+                        document.getElementById('guest-name').value = data.return_data.client_name;
                     } else {
                         document.getElementById('voucher-message').textContent = data.message;
                     }
