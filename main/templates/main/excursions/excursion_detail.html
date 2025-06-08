@@ -471,9 +471,6 @@
                 
                 pickupPoints_options.forEach(point => {
                     point.classList.add('hidden');
-                    console.log(point.dataset.region);
-                    console.log(region);
-                    console.log(point.dataset.region === region);
                     if (point.dataset.region === region) {
                         point.classList.remove('hidden');
                     }
@@ -689,7 +686,7 @@
             document.getElementById('submit-voucher-btn').addEventListener('click', function(e) {
                 e.preventDefault();
                 const voucher = document.getElementById('voucher').value;
-                console.log(voucher);
+
                 fetch(`{% url 'retrive_voucher' %}`, {
                     method: 'POST',
                     body: JSON.stringify({ voucher_code: voucher }),
@@ -703,9 +700,16 @@
                     if (data.success) {
                         document.getElementById('voucher-message').textContent = data.message;
                         document.getElementById('voucher-message').textContent += "Welcome " + data.return_data.client_name + ",";
-                        console.log(data.return_data);
-                        console.log(data.return_data.client_name);
-                        console.log(data.return_data.hotel_name);
+                        // Fix the region selection
+                        const regionSelect = document.querySelector('select[name="region"]');
+                        console.log(regionSelect);
+                        console.log(data.return_data.region_id);
+                        const regionOption = regionSelect.querySelector(`option[value="${data.return_data.region_id}"]`);
+                        console.log(regionOption);
+                        if (regionOption) {
+                            regionOption.selected = true;
+                            regionSelect.dispatchEvent(new Event('change'));
+                        }
                     } else {
                         document.getElementById('voucher-message').textContent = data.message;
                     }

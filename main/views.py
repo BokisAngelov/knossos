@@ -25,7 +25,7 @@ from django.core.validators import validate_email, RegexValidator
 from django.core.exceptions import ValidationError
 import re
 import json
-from django.db.models import Q
+from django.db.models import Q, Sum, Count
 from django.apps import apps
 
 def is_staff(user):
@@ -315,7 +315,6 @@ def excursion_delete(request, pk):
         messages.error(request, 'Excursion not deleted.')
         return redirect('excursion_list')
     
-
 def retrive_voucher(request):
     
     if request.method == 'POST':
@@ -325,10 +324,11 @@ def retrive_voucher(request):
             voucher = Reservation.objects.get(voucher_id=voucher_code)
 
             if voucher:
+                region_id = voucher.hotel.pickup_group.region.id
 
                 return_data = {
                     'client_name': voucher.client_name,
-                    'hotel_name': voucher.hotel.name,
+                    'region_id': region_id,
 
                 }
                 return JsonResponse({
@@ -353,7 +353,6 @@ def retrive_voucher(request):
         })
     
 # ----- Booking Views -----
-
 def booking_create(request, availability_pk):
     availability = get_object_or_404(ExcursionAvailability, pk=availability_pk)
     if request.method == 'POST':
@@ -488,9 +487,8 @@ def profile_edit(request, pk):
 # @login_required
 @user_passes_test(is_staff)
 def admin_dashboard(request, pk):
-    """Admin dashboard view with overview and quick access to all admin functions"""
-    from django.db.models import Sum, Count
-    
+
+
     # Get admin stats
     active_excursions_count = Excursion.objects.filter(status='active').count()
     total_excursions_count = Excursion.objects.all().count()
