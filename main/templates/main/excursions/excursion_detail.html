@@ -255,7 +255,6 @@
                         <input type="hidden" name="{{ availability.region.id }}-available-capacity" value="{{ availability.weekdays.capacity }}">
                     {% endfor %}
                     <div class="flex flex-col gap-2">
-                        <label class="block text-md font-medium text-gray-700">Do you have a voucher? </label>
                         <span id="voucher-message" class="text-sm text-gray-500"></span>
                         <input type="text" 
                                name="voucher" 
@@ -274,7 +273,7 @@
                             <div class="flex justify-between items-center">
                                 <button type="button" 
                                         id="clear-voucher-btn" 
-                                        class="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-600 hover:cursor-pointer hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                                        class="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:cursor-pointer hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                                         Clear Voucher
                                 </button>
                             </div>
@@ -285,6 +284,14 @@
                                 <p>Welcome, {{ return_data.client_name }}! <br>Pickup points and prices are based on your accommodation and region.</p>
                             {% endif %}
                         </div>
+                    </div>
+                    <div>
+                        <label class="block text-md font-medium text-gray-700">Date</label>
+                        <input type="text" id="date-picker" class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 {% if form.date.errors %}border-red-500{% endif %}" placeholder="Select a date">
+                        <input type="hidden" name="availability_id" id="availability-id">
+                        {% if form.date.errors %}
+                        <p class="mt-1 text-sm text-red-600">{{ form.date.errors.0 }}</p>
+                        {% endif %}
                     </div>
                     <div class="flex flex-col gap-2 region-div" {% if voucher_code %}hidden{% endif %}>
                         <label class="block text-md font-medium text-gray-700">Region</label>
@@ -297,14 +304,7 @@
                         <p class="mt-1 text-sm text-red-600">{{ form.region.errors.0 }}</p>
                         {% endif %}
                     </div>
-                    <div>
-                        <label class="block text-md font-medium text-gray-700">Date</label>
-                        <input type="text" id="date-picker" class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 {% if form.date.errors %}border-red-500{% endif %}" placeholder="Select a date">
-                        <input type="hidden" name="availability_id" id="availability-id">
-                        {% if form.date.errors %}
-                        <p class="mt-1 text-sm text-red-600">{{ form.date.errors.0 }}</p>
-                        {% endif %}
-                    </div>
+                    
                     {{ availability_dates_by_region|json_script:"available-dates-json" }}
 
                     <div class="flex flex-col gap-2">
@@ -468,6 +468,36 @@
                                 picker.destroy();
                             }
                             initializeDatePicker(data.return_data.region_id);
+                            
+                            // Update pickup points for the selected region
+                            const pickupPointSelect = document.getElementById('pickup-point');
+                            const pickupPoints_options = pickupPointSelect.querySelectorAll('option');
+                            
+                            // Hide all options first
+                            pickupPoints_options.forEach(option => {
+                                option.classList.add('hidden');
+                            });
+                            
+                            // Show only options for the selected region
+                            pickupPoints_options.forEach(option => {
+                                if (option.dataset.region === data.return_data.region_id.toString()) {
+                                    option.classList.remove('hidden');
+                                }
+                            });
+                            
+                            // Select the first available pickup point
+                            const availableOptions = Array.from(pickupPoints_options).filter(option => 
+                                option.dataset.region === data.return_data.region_id.toString() && option.value !== ''
+                            );
+                            
+                            if (availableOptions.length > 0) {
+                                pickupPointSelect.value = availableOptions[0].value;
+                            } else {
+                                pickupPointSelect.value = '';
+                            }
+                            
+                            // Update prices and pickup points display
+                            updatePriceAndPickupPoints();
                         }
                         document.querySelector('.region-div').classList.add('hidden');
                         document.querySelector('#guest-name').value = data.return_data.client_name;

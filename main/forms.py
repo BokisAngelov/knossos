@@ -296,7 +296,7 @@ class BookingForm(forms.ModelForm):
             'price', 'user', 'voucher_id', 'date', 'pickup_point',
         ]
         widgets = {
-            'pickup_point': PickupPointWidget,
+            'pickup_point': forms.Select(attrs={'class': 'form-control'}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -308,6 +308,16 @@ class BookingForm(forms.ModelForm):
         # partial_paid visible for representatives and admins only
         if not user or not (user.is_staff or getattr(user.profile, 'role', None) == 'representative'):
             self.fields.pop('partial_paid', None)
+            
+        # Filter pickup points based on the selected region
+        if 'data' in kwargs and 'region' in kwargs['data']:
+            region_id = kwargs['data'].get('region')
+            if region_id:
+                self.fields['pickup_point'].queryset = PickupPoint.objects.filter(
+                    pickup_group__region_id=region_id
+                ).order_by('priority')
+            else:
+                self.fields['pickup_point'].queryset = PickupPoint.objects.none()
 
 class TransactionForm(forms.ModelForm):
     class Meta:

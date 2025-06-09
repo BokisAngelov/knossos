@@ -43,7 +43,7 @@
                 </div>
                 <div class="bg-white rounded-lg shadow-sm p-4">
                     <h4 class="text-sm font-medium text-gray-500 mb-1">Number of Guests</h4>
-                    <p class="text-lg font-semibold text-gray-900">{{ booking.total_adults }} Adults, {{ booking.total_kids }} Kids, {{ booking.total_infants }} Infants</p>
+                    <p class="text-lg font-semibold text-gray-900">{{ booking.total_adults }} Adults | {{ booking.total_kids }} Kids | {{ booking.total_infants }} Infants</p>
                 </div>
             </div>
         </div>
@@ -69,8 +69,8 @@
                     <p class="text-lg font-semibold text-gray-900">{{ booking.excursion_availability.region }}</p>
                 </div>
                 <div class="bg-white rounded-lg shadow-sm p-4">
-                    <h4 class="text-sm font-medium text-gray-500 mb-1">Pickup Points</h4>
-                    <p class="text-lg font-semibold text-gray-900">{{ booking.excursion_availability.pickup_points }}</p>
+                    <h4 class="text-sm font-medium text-gray-500 mb-1">Pickup Point</h4>
+                    <p class="text-lg font-semibold text-gray-900">{{ booking.pickup_point }}</p>
                 </div>
             </div>
         </div>
@@ -89,33 +89,6 @@
                     <h4 class="text-sm font-medium text-gray-500 mb-1">Contact Email</h4>
                     <p class="text-lg font-semibold text-gray-900">{{ booking.guest_email }}</p>
                 </div>
-            </div>
-        </div>
-
-        <!-- Guest Breakdown -->
-        <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
-            <h3 class="text-lg leading-6 font-medium text-gray-900">Guest Breakdown</h3>
-        </div>
-        <div class="border-t border-gray-200">
-            <div class="grid grid-cols-4 gap-4 p-6">
-                {% if booking.adult_count %}
-                <div class="bg-white rounded-lg shadow-sm p-4">
-                    <h4 class="text-sm font-medium text-gray-500 mb-1">Adults</h4>
-                    <p class="text-lg font-semibold text-gray-900">{{ booking.adult_count }} × €{{ booking.availability.adult_price }}</p>
-                </div>
-                {% endif %}
-                {% if booking.child_count %}
-                <div class="bg-white rounded-lg shadow-sm p-4">
-                    <h4 class="text-sm font-medium text-gray-500 mb-1">Children</h4>
-                    <p class="text-lg font-semibold text-gray-900">{{ booking.child_count }} × €{{ booking.availability.child_price }}</p>
-                </div>
-                {% endif %}
-                {% if booking.infant_count %}
-                <div class="bg-white rounded-lg shadow-sm p-4">
-                    <h4 class="text-sm font-medium text-gray-500 mb-1">Infants</h4>
-                    <p class="text-lg font-semibold text-gray-900">{{ booking.infant_count }} × €{{ booking.availability.infant_price }}</p>
-                </div>
-                {% endif %}
             </div>
         </div>
     </div>

@@ -129,6 +129,10 @@ def excursion_detail(request, pk):
                 infants = int(request.POST.get('infants', 0))
                 total_price = int(request.POST.get('total_price', 0))
                 partial_price = int(request.POST.get('partial_price', 0))
+                voucher_id = request.POST.get('voucher', None)
+                reservation_instance = Reservation.objects.get(voucher_id=voucher_id)
+                guest_email = request.POST.get('guest_email', None)
+                guest_name = request.POST.get('guest_name', None)
 
                 booking = booking_form.save(commit=False)
                 booking.excursion_availability = excursion_availability
@@ -136,13 +140,17 @@ def excursion_detail(request, pk):
                 booking.total_adults = adults
                 booking.total_kids = children
                 booking.total_infants = infants
+                booking.voucher_id = reservation_instance
+                booking.guest_email = guest_email
+                booking.guest_name = guest_name
+                booking.price = total_price # price before discount or partial payment
 
                 if partial_price > 0:
                     final_price = total_price - partial_price
                 else:
                     final_price = total_price
 
-                booking.total_price = final_price
+                booking.total_price = final_price # price after discount or partial payment
 
                 selected_date = request.POST.get('selected_date')
                 availability_id = request.POST.get('availability_id')
@@ -334,7 +342,6 @@ def excursion_delete(request, pk):
     
 def manage_cookies(request, cookie_name, cookie_value, cookie_action):
 
-    
     if cookie_action == 'set':
         response = JsonResponse({
             'success': True,
@@ -343,7 +350,7 @@ def manage_cookies(request, cookie_name, cookie_value, cookie_action):
         response.set_cookie(
             cookie_name, 
             cookie_value, 
-            max_age=86400,  # 1 day in seconds
+            max_age=604800, # 7 days
             secure=True,
             httponly=True,
             samesite='Lax'
@@ -456,6 +463,7 @@ def booking_create(request, availability_pk):
 @login_required
 def booking_detail(request, pk):
     booking = get_object_or_404(Booking, pk=pk)
+
     return render(request, 'main/bookings/booking_detail.html', {
         'booking': booking,
     })
