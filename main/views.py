@@ -9,7 +9,7 @@ from django.utils import timezone
 from django.core.serializers.json import DjangoJSONEncoder
 import datetime
 from django.contrib.auth.models import User
-from django.http import JsonResponse, Http404
+from django.http import JsonResponse, Http404, HttpResponse
 from django.utils.text import slugify
 from .models import (
     Excursion, ExcursionImage, ExcursionAvailability,
@@ -52,11 +52,24 @@ def excursion_detail(request, pk):
     excursion_availability = excursion_availabilities.first()
     availability_dates_by_region = {}
     pickup_points = []
+    return_data = {}
 
-    user = request.user
+    voucher_code = manage_cookies(request, 'voucher_code', None, 'get')
+    print('found voucher code in cookies: ' + str(voucher_code))
 
-    # if user.is_authenticated:
-    #     return;
+    if voucher_code:
+        voucher = Reservation.objects.get(voucher_id=voucher_code)
+        print('found voucher object: ' + str(voucher))
+        if voucher:
+            region_id = voucher.hotel.pickup_group.region.id
+
+            return_data = {
+                'client_name': voucher.client_name,
+                'region_id': region_id,
+            }
+    else:
+        voucher_code = None
+        print('no voucher code found in cookies')
 
     if not excursion_availability:
         feedback_form = FeedbackForm()
@@ -69,6 +82,8 @@ def excursion_detail(request, pk):
             'excursion_availability': excursion_availability,
             'availability_dates_by_region': availability_dates_by_region,
             'pickup_points': pickup_points,
+            'voucher_code': voucher_code,
+            'return_data': return_data,
         })
 
 
@@ -213,6 +228,8 @@ def excursion_detail(request, pk):
         'booking_form': booking_form,
         'availability_dates_by_region': availability_dates_by_region,
         'pickup_points': pickup_points,
+        'voucher_code': voucher_code,
+        'return_data': return_data,
     })
 
 @user_passes_test(is_staff)
@@ -315,27 +332,76 @@ def excursion_delete(request, pk):
         messages.error(request, 'Excursion not deleted.')
         return redirect('excursion_list')
     
-def retrive_voucher(request):
+def manage_cookies(request, cookie_name, cookie_value, cookie_action):
+
     
+    if cookie_action == 'set':
+        response = JsonResponse({
+            'success': True,
+            'message': 'Cookie set successfully'
+        })
+        response.set_cookie(
+            cookie_name, 
+            cookie_value, 
+            max_age=86400,  # 1 day in seconds
+            secure=True,
+            httponly=True,
+            samesite='Lax'
+        )
+        return response
+    elif cookie_action == 'get':
+        return request.COOKIES.get(cookie_name)
+    elif cookie_action == 'delete':
+        response = JsonResponse({
+            'success': True,
+            'message': 'Cookie deleted successfully'
+        })
+        response.delete_cookie(cookie_name)
+        return response
+    return None
+
+def retrive_voucher(request):
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
+            action = data.get('action')
+            
+            if action == 'clear':
+                response = JsonResponse({
+                    'success': True,
+                    'message': 'Voucher cleared successfully.'
+                })
+                response.delete_cookie('voucher_code')
+                return response
+                
             voucher_code = data.get('voucher_code')
+            print('voucher_code from ajax: ' + str(voucher_code))
             voucher = Reservation.objects.get(voucher_id=voucher_code)
 
             if voucher:
                 region_id = voucher.hotel.pickup_group.region.id
-
-                return_data = {
-                    'client_name': voucher.client_name,
-                    'region_id': region_id,
-
-                }
-                return JsonResponse({
+                
+                # Create response with cookie
+                response = JsonResponse({
                     'success': True,
                     'message': 'Voucher is valid.',
-                    'return_data': return_data
+                    'return_data': {
+                        'client_name': voucher.client_name,
+                        'region_id': region_id,
+                    }
                 })
+                
+                # Set the cookie in the response
+                response.set_cookie(
+                    'voucher_code',
+                    voucher_code,
+                    max_age=86400,
+                    secure=True,
+                    httponly=True,
+                    samesite='Lax'
+                )
+                
+                return response
             else:
                 return JsonResponse({
                     'success': False,
@@ -351,7 +417,7 @@ def retrive_voucher(request):
             'success': False,
             'message': 'Invalid request method.'
         })
-    
+
 # ----- Booking Views -----
 def booking_create(request, availability_pk):
     availability = get_object_or_404(ExcursionAvailability, pk=availability_pk)

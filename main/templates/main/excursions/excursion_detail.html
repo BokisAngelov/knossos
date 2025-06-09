@@ -136,15 +136,15 @@
                                 <h2 class="text-xl font-semibold text-gray-900">Price Details</h2>
                                     <div class="space-y-2 mt-4 w-60">
                                         <div class="flex justify-between items-center p-2 bg-gray-50 rounded-lg">
-                                            <span class="text-sm font-medium text-gray-600">Price per adult</span>
+                                            <span class="text-sm font-medium text-gray-600">Adult</span>
                                             <span class="text-base font-semibold text-gray-900">€<span id="adult-price">0.00</span></span>
                                         </div>
                                         <div class="flex justify-between items-center p-2 bg-gray-50 rounded-lg">
-                                            <span class="text-sm font-medium text-gray-600">Price per child</span>
+                                            <span class="text-sm font-medium text-gray-600">Child</span>
                                             <span class="text-base font-semibold text-gray-900">€<span id="child-price">0.00</span></span>
                                         </div>
                                         <div class="flex justify-between items-center p-2 bg-gray-50 rounded-lg">
-                                            <span class="text-sm font-medium text-gray-600">Price per infant</span>
+                                            <span class="text-sm font-medium text-gray-600">Infant</span>
                                             <span class="text-base font-semibold text-gray-900">€<span id="infant-price">0.00</span></span>
                                         </div>
                                     </div>
@@ -257,9 +257,34 @@
                     <div class="flex flex-col gap-2">
                         <label class="block text-md font-medium text-gray-700">Do you have a voucher? </label>
                         <span id="voucher-message" class="text-sm text-gray-500"></span>
-                        <input type="text" name="voucher" id="voucher" class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2" placeholder="Enter your voucher code">
-                        <button type="button" id="submit-voucher-btn" class="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:cursor-pointer hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">Check Voucher</button>
-                        <div id="voucher-welcome" class="pb-2 mt-2 text-sm text-gray-500 border-b border-gray-200"></div>
+                        <input type="text" 
+                               name="voucher" 
+                               id="voucher" 
+                               class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2" 
+                               placeholder="Enter your voucher code" 
+                               value="{{ voucher_code|default:'' }}">
+                        <div class="grid grid-cols-2 gap-2">
+                            <div class="flex justify-between items-center">
+                                <button type="button" 
+                                        id="submit-voucher-btn" 
+                                        class="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:cursor-pointer hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                        Check Voucher
+                                </button>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <button type="button" 
+                                        id="clear-voucher-btn" 
+                                        class="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-600 hover:cursor-pointer hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                                        Clear Voucher
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div id="voucher-welcome" class="pb-2 mt-2 text-sm text-gray-500 border-b border-gray-200">
+                            {% if return_data.client_name %}
+                                <p>Welcome, {{ return_data.client_name }}! <br>Pickup points and prices are based on your accommodation and region.</p>
+                            {% endif %}
+                        </div>
                     </div>
                     <div class="flex flex-col gap-2">
                         <label class="block text-md font-medium text-gray-700">Region</label>
@@ -324,7 +349,7 @@
 
                     <div class="flex flex-col gap-2">
                         <label class="block text-md font-medium text-gray-700">Guest Name</label>
-                        <input type="text" name="guest_name" id="guest-name" class="mt-1 block w-full pl-3 pr-2 py-2 text-base border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md {% if form.guest_name.errors %}border-red-500{% endif %}">
+                        <input type="text" name="guest_name" id="guest-name" class="mt-1 block w-full pl-3 pr-2 py-2 text-base border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md {% if form.guest_name.errors %}border-red-500{% endif %}" value="{% if return_data.client_name is not None %}{{ return_data.client_name }}{% endif %}">
                         {% if form.guest_name.errors %}
                         <p class="mt-1 text-sm text-red-600">{{ form.guest_name.errors.0 }}</p>
                         {% endif %}
@@ -407,6 +432,114 @@
         
         if (!notAvailability) {
             let picker = null;
+            
+            // Function to check voucher on page load
+            function checkVoucherOnLoad() {
+                const voucherInput = document.getElementById('voucher');
+                const voucherCode = voucherInput.value.trim();
+                
+                if (voucherCode) {
+                    console.log('Checking voucher on load:', voucherCode);
+                    checkVoucher(voucherCode);
+                }
+            }
+
+            // Function to check voucher
+            function checkVoucher(code) {
+                fetch('/retrive_voucher/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({
+                        voucher_code: code
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById('voucher-message').textContent = data.message;
+                        document.getElementById('voucher-welcome').innerHTML = `Welcome, ${data.return_data.client_name}!<br>Pickup points and prices are based on your accommodation and region.`;
+                        
+                        const regionSelect = document.querySelector('select[name="region"]');
+                        const regionOption = regionSelect.querySelector(`option[value="${data.return_data.region_id}"]`);
+                        if (regionOption) {
+                            regionOption.selected = true;
+                            if (picker) {
+                                picker.destroy();
+                            }
+                            initializeDatePicker(data.return_data.region_id);
+                        }
+                    } else {
+                        document.getElementById('voucher-message').textContent = data.message;
+                        document.getElementById('voucher-welcome').innerHTML = '';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    document.getElementById('voucher-message').textContent = 'An error occurred while checking the voucher.';
+                });
+            }
+
+            // Add event listener for the voucher button
+            document.getElementById('submit-voucher-btn').addEventListener('click', function() {
+                const voucherInput = document.getElementById('voucher');
+                const voucherCode = voucherInput.value.trim();
+                
+                if (voucherCode) {
+                    console.log('Checking voucher:', voucherCode);
+                    checkVoucher(voucherCode);
+                } else {
+                    document.getElementById('voucher-message').textContent = 'Please enter a voucher code.';
+                }
+            });
+
+            // Add event listener for the clear voucher button
+            document.getElementById('clear-voucher-btn').addEventListener('click', function() {
+                // Make AJAX call to clear the cookie
+                fetch('/retrive_voucher/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({
+                        action: 'clear'
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Clear the UI
+                        document.getElementById('voucher').value = '';
+                        document.getElementById('voucher-message').textContent = '';
+                        document.getElementById('voucher-welcome').innerHTML = '';
+                        
+                        // Reset region selection if needed
+                        const regionSelect = document.querySelector('select[name="region"]');
+                        if (regionSelect) {
+                            regionSelect.selectedIndex = 0;
+                            if (picker) {
+                                picker.destroy();
+                            }
+                            initializeDatePicker(regionSelect.value);
+                        }
+                        
+                        // Reload the page to ensure all state is reset
+                        window.location.reload();
+                    } else {
+                        document.getElementById('voucher-message').textContent = 'Error clearing voucher.';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    document.getElementById('voucher-message').textContent = 'An error occurred while clearing the voucher.';
+                });
+            });
+
+            // Check voucher on page load if there's a value
+            document.addEventListener('DOMContentLoaded', checkVoucherOnLoad);
 
             function initializeDatePicker(regionId) {
                 const availableDates = availableDatesByRegion[regionId] || [];
@@ -697,42 +830,6 @@
                         }
                     }
                 });
-            });
-        
-
-            document.getElementById('submit-voucher-btn').addEventListener('click', function(e) {
-                e.preventDefault();
-                const voucher = document.getElementById('voucher').value;
-
-                fetch(`{% url 'retrive_voucher' %}`, {
-                    method: 'POST',
-                    body: JSON.stringify({ voucher_code: voucher }),
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': csrftoken
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        document.getElementById('voucher-message').textContent = data.message;
-                        document.getElementById('voucher-welcome').innerHTML = `Welcome ${data.return_data.client_name},<br>Pickup points and prices are based on your accommodation and region.`;
-                        // Fix the region selection
-                        const regionSelect = document.querySelector('select[name="region"]');
-                        console.log(regionSelect);
-                        console.log(data.return_data.region_id);
-                        const regionOption = regionSelect.querySelector(`option[value="${data.return_data.region_id}"]`);
-                        console.log(regionOption);
-                        if (regionOption) {
-                            regionOption.selected = true;
-                            regionSelect.dispatchEvent(new Event('change'));
-                        }
-                        document.getElementById('guest-name').value = data.return_data.client_name;
-                    } else {
-                        document.getElementById('voucher-message').textContent = data.message;
-                    }
-                });
-
             });
         }
     });

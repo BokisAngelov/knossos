@@ -12,6 +12,7 @@ urlpatterns = [
     path('excursions/<int:pk>/edit/', views.excursion_update, name='excursion_update'),
     path('excursions/<int:pk>/delete/', views.excursion_delete, name='excursion_delete'),
     path('retrive_voucher/', views.retrive_voucher, name='retrive_voucher'),
+    path('manage_cookies/', views.manage_cookies, name='manage_cookies'),
     # Booking URLs
     path('availability/<int:availability_pk>/book/', views.booking_create, name='booking_create'),
     path('bookings/<int:pk>/', views.booking_detail, name='booking_detail'),
