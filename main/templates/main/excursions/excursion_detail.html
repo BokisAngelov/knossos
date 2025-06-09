@@ -286,7 +286,7 @@
                             {% endif %}
                         </div>
                     </div>
-                    <div class="flex flex-col gap-2">
+                    <div class="flex flex-col gap-2 region-div" {% if voucher_code %}hidden{% endif %}>
                         <label class="block text-md font-medium text-gray-700">Region</label>
                         <select name="region" id="region" class="mt-1 block w-full pl-3 pr-2 py-2 text-base border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md {% if form.region.errors %}border-red-500{% endif %}">
                             {% for availability in excursion_availabilities.all %}
@@ -433,18 +433,15 @@
         if (!notAvailability) {
             let picker = null;
             
-            // Function to check voucher on page load
             function checkVoucherOnLoad() {
                 const voucherInput = document.getElementById('voucher');
                 const voucherCode = voucherInput.value.trim();
                 
                 if (voucherCode) {
-                    console.log('Checking voucher on load:', voucherCode);
                     checkVoucher(voucherCode);
                 }
             }
 
-            // Function to check voucher
             function checkVoucher(code) {
                 fetch('/retrive_voucher/', {
                     method: 'POST',
@@ -464,6 +461,7 @@
                         
                         const regionSelect = document.querySelector('select[name="region"]');
                         const regionOption = regionSelect.querySelector(`option[value="${data.return_data.region_id}"]`);
+
                         if (regionOption) {
                             regionOption.selected = true;
                             if (picker) {
@@ -471,6 +469,8 @@
                             }
                             initializeDatePicker(data.return_data.region_id);
                         }
+                        document.querySelector('.region-div').classList.add('hidden');
+                        document.querySelector('#guest-name').value = data.return_data.client_name;
                     } else {
                         document.getElementById('voucher-message').textContent = data.message;
                         document.getElementById('voucher-welcome').innerHTML = '';
@@ -515,6 +515,8 @@
                         document.getElementById('voucher').value = '';
                         document.getElementById('voucher-message').textContent = '';
                         document.getElementById('voucher-welcome').innerHTML = '';
+                        document.querySelector('.region-div').classList.remove('hidden');
+                        document.querySelector('#guest-name').value = '';
                         
                         // Reset region selection if needed
                         const regionSelect = document.querySelector('select[name="region"]');
