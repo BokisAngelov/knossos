@@ -20,21 +20,50 @@
 <body class="min-h-screen bg-gray-100 flex flex-col">
   <header class="bg-white shadow">
     <div class="container mx-auto px-4 py-6 flex justify-between items-center">
-      <a href="{% url 'excursion_list' %}" class="text-2xl font-bold text-gray-800">Knossos</a>
-      <nav>
-        <ul class="flex space-x-4">
-            <li><a href="{% url 'excursion_list' %}" class="text-gray-600 hover:text-gray-800">Excursions</a></li>
-            {% if user.is_authenticated %}
+      <a href="{% url 'homepage' %}" class="text-2xl font-bold text-gray-800">Knossos</a>
+      <nav class="flex items-center justify-between">
+        <ul class="flex items-center space-x-4">
+          <li><a href="{% url 'excursion_list' %}" class="text-gray-600 hover:text-gray-900">Excursions</a></li>
+          {% if user.is_authenticated %}
             {% if user.is_staff %}
-            <li><a href="{% url 'admin_dashboard' pk=user.profile.id %}" class="text-gray-600 hover:text-gray-800">Dashboard</a></li>
+              <li><a href="{% url 'admin_dashboard' user.profile.id %}" class="text-gray-600 hover:text-gray-900">Dashboard</a></li>
             {% else %}
-             <li><a href="{% url 'profile' pk=user.profile.id %}" class="text-gray-600 hover:text-gray-800">Profile</a></li>
+              <li><a href="{% url 'profile' user.id %}" class="text-gray-600 hover:text-gray-900">Profile</a></li>
             {% endif %}
-              <li><a href="{% url 'logout' %}" class="text-gray-600 hover:text-gray-800">Logout</a></li>
-            {% else %}
-            <li><a href="{% url 'login' %}" class="text-gray-600 hover:text-gray-800">Login</a></li>
-            <li><a href="{% url 'signup' %}" class="text-gray-600 hover:text-gray-800">Sign Up</a></li>
-            {% endif %}
+            <li><a href="{% url 'logout' %}" class="text-gray-600 hover:text-gray-900">Logout</a></li>
+          {% else %}
+            <li><a href="{% url 'login' %}" class="text-gray-600 hover:text-gray-900">Login</a></li>
+            <li><a href="{% url 'signup' %}" class="text-gray-600 hover:text-gray-900">Sign Up</a></li>
+          {% endif %}
+          <li class="flex items-center gap-2">
+            <div class="flex items-center gap-2 voucher-check" {% if voucher_code %}hidden{% endif %}>
+              <input type="text" 
+                     id="voucher" 
+                     name="voucher" 
+                     class="h-8 px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500" 
+                     placeholder="Enter voucher code" 
+                     value="{{ voucher_code|default:'' }}">
+              <button type="button" 
+                      id="submit-voucher-btn" 
+                      class="h-8 px-3 py-1 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                  Check
+              </button>
+            </div>
+            <div class="flex items-center gap-2">
+              {% if voucher_code %}
+                <span id="voucher-message" class="text-sm text-gray-500">Welcome, {{ voucher_data.client_name }}!</span>
+              {% else %}
+                <span id="voucher-message" class="text-sm text-gray-500"></span>
+              {% endif %}
+              {% if voucher_code %}
+                <button type="button" 
+                        id="clear-voucher-btn" 
+                        class="h-8 px-3 py-1 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    Clear Voucher
+                </button>
+              {% endif %}
+            </div>
+          </li>
         </ul>
       </nav>
     </div>
@@ -96,12 +125,145 @@
 
     // Auto-hide notifications after 4 seconds
     document.addEventListener('DOMContentLoaded', function() {
+      //  get csrf token for ajax requests
+      function getCookie(name) {
+          let cookieValue = null;
+          if (document.cookie && document.cookie !== '') {
+              const cookies = document.cookie.split(';');
+              for (let i = 0; i < cookies.length; i++) {
+                  const cookie = cookies[i].trim();
+                  if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                      cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                      break;
+                  }
+              }
+          }
+          return cookieValue;
+      }
+      const csrftoken = getCookie('csrftoken');
+
       const notifications = document.querySelectorAll('[id^="notification-"]');
       notifications.forEach(notification => {
         setTimeout(() => {
           closeNotification(notification.id);
         }, 3000);
       });
+
+      function checkVoucherOnLoad() {
+                const voucherInput = document.getElementById('voucher');
+                const voucherCode = voucherInput.value.trim();
+                console.log(voucherCode);
+                if (voucherCode) {
+                    checkVoucher(voucherCode);
+                }
+            }
+
+      function checkVoucher(code) {
+          fetch('/retrive_voucher/', {
+              method: 'POST',
+              headers: {
+                  'Content-Type': 'application/json',
+                  'X-CSRFToken': getCookie('csrftoken')
+              },
+              body: JSON.stringify({
+                  voucher_code: code
+              })
+          })
+          .then(response => response.json())
+          .then(data => {
+              if (data.success) {
+                  document.getElementById('voucher-message').innerHTML = `Welcome, ${data.return_data.client_name}!`;
+                  document.querySelector('.voucher-check').classList.add('hidden');
+                  // Show the clear button
+                  const clearButton = document.getElementById('clear-voucher-btn');
+                  if (clearButton) {
+                      clearButton.classList.remove('hidden');
+                  } else {
+                      // Create and append the clear button if it doesn't exist
+                      const buttonDiv = document.querySelector('.flex.items-center.gap-2:last-child');
+                      const newClearButton = document.createElement('button');
+                      newClearButton.id = 'clear-voucher-btn';
+                      newClearButton.type = 'button';
+                      newClearButton.className = 'h-8 px-3 py-1 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500';
+                      newClearButton.textContent = 'Clear Voucher';
+                      buttonDiv.appendChild(newClearButton);
+                      
+                      // Add event listener to the new button
+                      newClearButton.addEventListener('click', function() {
+                          clearVoucher();
+                      });
+                  }
+              } else {
+                  document.querySelector('.voucher-check').classList.remove('hidden');
+                  document.getElementById('voucher-message').textContent = data.message;
+                  // Hide the clear button
+                  const clearButton = document.getElementById('clear-voucher-btn');
+                  if (clearButton) {
+                      clearButton.classList.add('hidden');
+                  }
+              }
+          })
+          .catch(error => {
+              console.error('Error:', error);
+              document.getElementById('voucher-message').textContent = 'An error occurred while checking the voucher.';
+          });
+      }
+
+      function clearVoucher() {
+          fetch('/retrive_voucher/', {
+              method: 'POST',
+              headers: {
+                  'Content-Type': 'application/json',
+                  'X-CSRFToken': getCookie('csrftoken')
+              },
+              body: JSON.stringify({
+                  action: 'clear'
+              })
+          })
+          .then(response => response.json())
+          .then(data => {
+              if (data.success) {
+                  document.getElementById('voucher').value = '';
+                  document.getElementById('voucher-message').textContent = '';
+                  document.querySelector('.voucher-check').classList.remove('hidden');
+                  const clearButton = document.getElementById('clear-voucher-btn');
+                  if (clearButton) {
+                      clearButton.classList.add('hidden');
+                  }
+                  window.location.reload();
+              } else {
+                  document.getElementById('voucher-message').textContent = 'Error clearing voucher.';
+              }
+          })
+          .catch(error => {
+              console.error('Error:', error);
+              document.getElementById('voucher-message').textContent = 'An error occurred while clearing the voucher.';
+          });
+      }
+
+      // Add event listener for the clear voucher button if it exists
+      const clearButton = document.getElementById('clear-voucher-btn');
+      if (clearButton) {
+          clearButton.addEventListener('click', clearVoucher);
+      }
+
+      // Check voucher on page load if there's a value
+      // document.addEventListener('DOMContentLoaded', checkVoucherOnLoad);
+      checkVoucherOnLoad();
+
+      // Add event listener for the voucher button
+      document.getElementById('submit-voucher-btn').addEventListener('click', function() {
+          const voucherInput = document.getElementById('voucher');
+          const voucherCode = voucherInput.value.trim();
+          
+          if (voucherCode) {
+              console.log('Checking voucher:', voucherCode);
+              checkVoucher(voucherCode);
+          } else {
+              document.getElementById('voucher-message').textContent = 'Please enter a voucher code.';
+          }
+      });
+
     });
   </script>
 </body>

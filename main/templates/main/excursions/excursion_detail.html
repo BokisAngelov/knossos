@@ -261,8 +261,9 @@
                                id="voucher" 
                                class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2" 
                                placeholder="Enter your voucher code" 
-                               value="{{ voucher_code|default:'' }}">
-                        <div class="grid grid-cols-2 gap-2">
+                               value="{{ voucher_code|default:'' }}"
+                               {% if voucher_code %}hidden{% endif %}>
+                        <div class="grid grid-cols-2 gap-2" {% if voucher_code %}hidden{% endif %}>
                             <div class="flex justify-between items-center">
                                 <button type="button" 
                                         id="submit-voucher-btn" 
@@ -281,7 +282,7 @@
                         
                         <div id="voucher-welcome" class="pb-2 mt-2 text-sm text-gray-500 border-b border-gray-200">
                             {% if return_data.client_name %}
-                                <p>Welcome, {{ return_data.client_name }}! <br>Pickup points and prices are based on your accommodation and region.</p>
+                                <p class="text-md">Pickup points and prices are based on your accommodation and region.</p>
                             {% endif %}
                         </div>
                     </div>
