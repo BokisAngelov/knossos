@@ -49,19 +49,13 @@
                   Check
               </button>
             </div>
-            <div class="flex items-center gap-2">
-              {% if voucher_code %}
+            <div class="flex items-center gap-2 {% if not voucher_code %}hidden{% endif %}">
                 <span id="voucher-message" class="text-sm text-gray-500">Welcome, {{ voucher_data.client_name }}!</span>
-              {% else %}
-                <span id="voucher-message" class="text-sm text-gray-500"></span>
-              {% endif %}
-              {% if voucher_code %}
                 <button type="button" 
                         id="clear-voucher-btn" 
                         class="h-8 px-3 py-1 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                     Clear Voucher
                 </button>
-              {% endif %}
             </div>
           </li>
         </ul>
