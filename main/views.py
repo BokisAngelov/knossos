@@ -561,8 +561,6 @@ def profile_edit(request, pk):
 # @login_required
 @user_passes_test(is_staff)
 def admin_dashboard(request, pk):
-
-
     # Get admin stats
     active_excursions_count = Excursion.objects.filter(status='active').count()
     total_excursions_count = Excursion.objects.all().count()
