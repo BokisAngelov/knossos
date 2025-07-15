@@ -142,7 +142,7 @@ class PickupGroupWidget(forms.CheckboxSelectMultiple):
             value = [value]
         final_attrs = self.build_attrs(attrs)
         output = []
-        pickup_groups = list(PickupGroup.objects.all().select_related('region'))
+        pickup_groups = list(PickupGroup.objects.all())
         groups_per_col = 7
         num_cols = (len(pickup_groups) + groups_per_col - 1) // groups_per_col
         output.append('<div class="pickupgroup-grid">')
@@ -157,7 +157,7 @@ class PickupGroupWidget(forms.CheckboxSelectMultiple):
                 checkbox_id = f'id_{name}_{group.id}'
                 is_checked = str(group.id) in [str(v) for v in value]
                 group_html = f'''
-                    <div class="flex flex-col items-center mb-2" data-region-id="{group.region.id if group.region else ''}">
+                    <div class="flex flex-col items-center mb-2">
                         <div class="flex items-center gap-2 w-full">
                             <input type="checkbox" 
                                 name="{checkbox_name}" 
@@ -167,7 +167,7 @@ class PickupGroupWidget(forms.CheckboxSelectMultiple):
                                 class="w-4 h-4">
                             <label for="{checkbox_id}" class="px-3 py-1 bg-gray-100 rounded text-center font-medium flex-1">
                                 {group.name} 
-                                <span class="text-xs text-gray-500 mt-1">{group.region.name if group.region else ''}</span>
+                                <span class="text-xs text-gray-500 mt-1">{group.code}</span>
                             </label>
                             
                         </div>
@@ -184,7 +184,7 @@ class ExcursionAvailabilityForm(forms.ModelForm):
         model = ExcursionAvailability
         fields = [
             'excursion', 'start_date', 'end_date', 'start_time', 'end_time', 
-            'max_guests', 'region', 'adult_price', 'child_price', 'infant_price', 
+            'max_guests', 'adult_price', 'child_price', 'infant_price', 
             'weekdays', 'discount', 'status', 'pickup_groups'
         ]
         widgets = {
@@ -197,11 +197,10 @@ class ExcursionAvailabilityForm(forms.ModelForm):
             }),
             'end_time': forms.TimeInput(attrs={
                 'type': 'time',
-                'class': 'form-control',
+                'class': 'form-control',    
                 'inputmode': 'numeric',
                 'pattern': '[0-9]{2}:[0-9]{2}'
             }),
-            'region': forms.Select(attrs={'class': 'form-control'}),
             'pickup_groups': PickupGroupWidget,
             'weekdays': WeekdayCapacityWidget,
             'start_date': forms.DateInput(attrs={'type': 'date'}),
@@ -267,7 +266,7 @@ class PickupPointWidget(forms.CheckboxSelectMultiple):
                 checkbox_id = f'id_{name}_{point.id}'
                 is_checked = str(point.id) in [str(v) for v in value]
                 point_html = f'''
-                    <div class="flex flex-col items-center mb-2" data-region-id="{point.pickup_group.region.id if point.pickup_group else ''}">
+                    <div class="flex flex-col items-center mb-2">
                         <div class="flex items-center gap-2 w-full">
                             <input type="checkbox" 
                                 name="{checkbox_name}" 
@@ -309,13 +308,13 @@ class BookingForm(forms.ModelForm):
         if not user or not (user.is_staff or getattr(user.profile, 'role', None) == 'representative'):
             self.fields.pop('partial_paid', None)
             
-        # Filter pickup points based on the selected region
-        if 'data' in kwargs and 'region' in kwargs['data']:
-            region_id = kwargs['data'].get('region')
-            if region_id:
+        # Filter pickup points based on the selected pickup group
+        if 'data' in kwargs and 'pickup_group' in kwargs['data']:
+            pickup_group_id = kwargs['data'].get('pickup_group')
+            if pickup_group_id:
                 self.fields['pickup_point'].queryset = PickupPoint.objects.filter(
-                    pickup_group__region_id=region_id
-                ).order_by('priority')
+                    pickup_group_id=pickup_group_id
+                ).order_by('name')
             else:
                 self.fields['pickup_point'].queryset = PickupPoint.objects.none()
 

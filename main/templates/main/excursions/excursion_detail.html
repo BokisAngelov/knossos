@@ -105,17 +105,17 @@
                     </div>
 
                     <div class="prose max-w-none mb-6 border-t border-gray-200 pt-4">
-                        <p class="text-sm text-gray-500 mb-4">*Note: Pickup points and prices are based on the region you have selected. <span class="text-sm text-gray-500 font-normal">(Selected Region: <span class="pickup-region font-semibold">{{ excursion_availability.region.name }}</span>)</span></p>
+                        <p class="text-sm text-gray-500 mb-4">*Note: Pickup points and prices are based on the pickup group you have selected. <span class="text-sm text-gray-500 font-normal">(Selected Pickup Group: <span class="pickup-region font-semibold">{{ excursion_availability.pickup_groups.all.first.name }}</span>)</span></p>
                         <div class="grid grid-cols-2 gap-2">
                             <div class="flex flex-col gap-2">
                                 <h2 class="text-xl font-semibold text-gray-900">Pickup Points</h2>
                                 <div class="flex gap-6">
                                     {% for availability in excursion_availabilities %}
                                         {% for pick_group in availability.pickup_groups.all %}
-                                            <div class="flex flex-col gap-2 group-{{ availability.region.id }} pickup-group">
+                                            <div class="flex flex-col gap-2 group-{{ pick_group.id }} pickup-group">
                                                 <h2 class="text-lg font-semibold text-gray-900 mt-2">{{ pick_group.name }}</h2>
                                                 <ul class="pickup-points-list">
-                                                    {% for pickup_point in pick_group.pickup_points.all|dictsortreversed:"priority" %}
+                                                    {% for pickup_point in pick_group.pickup_points.all %}
                                                     <li>
                                                         <div class="flex items-center py-2">
                                                             <svg width="16" height="16" fill="#3B82F6" viewBox="0 0 16 16">
@@ -248,11 +248,11 @@
                     {% csrf_token %}
                     <input type="hidden" name="booking_submit" value="1">
                     {% for availability in excursion_availabilities.all %}
-                        <input type="hidden" name="{{ availability.region.id }}-adult-price" value="{{ availability.adult_price }}">
-                        <input type="hidden" name="{{ availability.region.id }}-child-price" value="{{ availability.child_price }}">
-                        <input type="hidden" name="{{ availability.region.id }}-infant-price" value="{{ availability.infant_price }}">
-                        <input type="hidden" name="{{ availability.region.id }}-region" value="{{ availability.region.name }}">
-                        <input type="hidden" name="{{ availability.region.id }}-available-capacity" value="{{ availability.weekdays.capacity }}">
+                        <input type="hidden" name="{{ availability.pickup_groups.all.first.id }}-adult-price" value="{{ availability.adult_price }}">
+                        <input type="hidden" name="{{ availability.pickup_groups.all.first.id }}-child-price" value="{{ availability.child_price }}">
+                        <input type="hidden" name="{{ availability.pickup_groups.all.first.id }}-infant-price" value="{{ availability.infant_price }}">
+                        <input type="hidden" name="{{ availability.pickup_groups.all.first.id }}-pickup-group" value="{{ availability.pickup_groups.all.first.name }}">
+                        <input type="hidden" name="{{ availability.pickup_groups.all.first.id }}-available-capacity" value="{{ availability.weekdays.capacity }}">
                     {% endfor %}
                     <div class="flex flex-col gap-2">
                         <span id="voucher-message" class="text-sm text-gray-500"></span>
@@ -282,7 +282,7 @@
                         
                         <div id="voucher-welcome" class="pb-2 mt-2 text-sm text-gray-500 border-b border-gray-200">
                             {% if return_data.client_name %}
-                                <p class="text-md">Pickup points and prices are based on your accommodation and region.</p>
+                                <p class="text-md">Pickup points and prices are based on your accommodation and pickup group.</p>
                             {% endif %}
                         </div>
                     </div>
@@ -294,15 +294,15 @@
                         <p class="mt-1 text-sm text-red-600">{{ form.date.errors.0 }}</p>
                         {% endif %}
                     </div>
-                    <div class="flex flex-col gap-2 region-div" {% if voucher_code %}hidden{% endif %}>
-                        <label class="block text-md font-medium text-gray-700">Region</label>
-                        <select name="region" id="region" class="mt-1 block w-full pl-3 pr-2 py-2 text-base border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md {% if form.region.errors %}border-red-500{% endif %}">
+                    <div class="flex flex-col gap-2 pickup-group-div" {% if voucher_code %}hidden{% endif %}>
+                        <label class="block text-md font-medium text-gray-700">Pickup Group</label>
+                        <select name="pickup_group" id="pickup-group" class="mt-1 block w-full pl-3 pr-2 py-2 text-base border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md {% if form.pickup_group.errors %}border-red-500{% endif %}">
                             {% for availability in excursion_availabilities.all %}
-                                <option value="{{ availability.region.id }}">{{ availability.region.name }}</option>
+                                <option value="{{ availability.pickup_groups.all.first.id }}">{{ availability.pickup_groups.all.first.name }}</option>
                             {% endfor %}
                         </select>
-                        {% if form.region.errors %}
-                        <p class="mt-1 text-sm text-red-600">{{ form.region.errors.0 }}</p>
+                        {% if form.pickup_group.errors %}
+                        <p class="mt-1 text-sm text-red-600">{{ form.pickup_group.errors.0 }}</p>
                         {% endif %}
                     </div>
                     
@@ -314,7 +314,7 @@
                             <option value="">Select a pickup point</option>
                             {% for pickup_point in pickup_points %}
                                 {% for point in pickup_point %}
-                                    <option data-region="{{ point.pickup_group__region }}" value="{{ point.id }}">{{ point.name }}</option>
+                                    <option data-pickup_group="{{ point.pickup_group }}" value="{{ point.id }}">{{ point.name }}</option>
                                 {% endfor %}
                             {% endfor %}
                         </select>
@@ -458,19 +458,19 @@
                 .then(data => {
                     if (data.success) {
                         document.getElementById('voucher-message').textContent = data.message;
-                        document.getElementById('voucher-welcome').innerHTML = `Welcome, ${data.return_data.client_name}!<br>Pickup points and prices are based on your accommodation and region.`;
+                        document.getElementById('voucher-welcome').innerHTML = `Welcome, ${data.return_data.client_name}!<br>Pickup points and prices are based on your accommodation and pickup group.`;
                         
-                        const regionSelect = document.querySelector('select[name="region"]');
-                        const regionOption = regionSelect.querySelector(`option[value="${data.return_data.region_id}"]`);
+                        const pickupGroupSelect = document.querySelector('select[name="pickup_group"]');
+                        const pickupGroupOption = pickupGroupSelect.querySelector(`option[value="${data.return_data.pickup_group_id}"]`);
 
-                        if (regionOption) {
-                            regionOption.selected = true;
+                        if (pickupGroupOption) {
+                            pickupGroupOption.selected = true;
                             if (picker) {
                                 picker.destroy();
                             }
-                            initializeDatePicker(data.return_data.region_id);
+                            initializeDatePicker(data.return_data.pickup_group_id);
                             
-                            // Update pickup points for the selected region
+                            // Update pickup points for the selected pickup group
                             const pickupPointSelect = document.getElementById('pickup-point');
                             const pickupPoints_options = pickupPointSelect.querySelectorAll('option');
                             
@@ -479,18 +479,18 @@
                                 option.classList.add('hidden');
                             });
                             
-                            // Show only options for the selected region
+                            // Show only options for the selected pickup group
                             pickupPoints_options.forEach(option => {
-                                if (option.dataset.region === data.return_data.region_id.toString()) {
+                                if (option.dataset.pickup_group === data.return_data.pickup_group_id.toString()) {
                                     option.classList.remove('hidden');
                                 }
                             });
                             
                             // Select the first available pickup point
                             const availableOptions = Array.from(pickupPoints_options).filter(option => 
-                                option.dataset.region === data.return_data.region_id.toString() && option.value !== ''
+                                option.dataset.pickup_group === data.return_data.pickup_group_id.toString() && option.value !== ''
                             );
-                            
+
                             if (availableOptions.length > 0) {
                                 pickupPointSelect.value = availableOptions[0].value;
                             } else {
@@ -500,7 +500,7 @@
                             // Update prices and pickup points display
                             updatePriceAndPickupPoints();
                         }
-                        document.querySelector('.region-div').classList.add('hidden');
+                        document.querySelector('.pickup-group-div').classList.add('hidden');
                         document.querySelector('#guest-name').value = data.return_data.client_name;
                     } else {
                         document.getElementById('voucher-message').textContent = data.message;
@@ -517,7 +517,8 @@
             document.getElementById('submit-voucher-btn').addEventListener('click', function() {
                 const voucherInput = document.getElementById('voucher');
                 const voucherCode = voucherInput.value.trim();
-                
+                console.log('voucherCode: ' + voucherCode);
+                console.log('voucherInput: ' + voucherInput);
                 if (voucherCode) {
                     console.log('Checking voucher:', voucherCode);
                     checkVoucher(voucherCode);
@@ -546,17 +547,17 @@
                         document.getElementById('voucher').value = '';
                         document.getElementById('voucher-message').textContent = '';
                         document.getElementById('voucher-welcome').innerHTML = '';
-                        document.querySelector('.region-div').classList.remove('hidden');
+                        document.querySelector('.pickup-group-div').classList.remove('hidden');
                         document.querySelector('#guest-name').value = '';
                         
                         // Reset region selection if needed
-                        const regionSelect = document.querySelector('select[name="region"]');
-                        if (regionSelect) {
-                            regionSelect.selectedIndex = 0;
+                        const pickupGroupSelect = document.querySelector('select[name="pickup_group"]');
+                        if (pickupGroupSelect) {
+                            pickupGroupSelect.selectedIndex = 0;
                             if (picker) {
                                 picker.destroy();
                             }
-                            initializeDatePicker(regionSelect.value);
+                            initializeDatePicker(pickupGroupSelect.value);
                         }
                         
                         // Reload the page to ensure all state is reset
@@ -574,8 +575,8 @@
             // Check voucher on page load if there's a value
             document.addEventListener('DOMContentLoaded', checkVoucherOnLoad);
 
-            function initializeDatePicker(regionId) {
-                const availableDates = availableDatesByRegion[regionId] || [];
+            function initializeDatePicker(pickupGroupId) {
+                const availableDates = availableDatesByRegion[pickupGroupId] || [];
 
                 // Clear existing picker if it exists
                 if (picker) {
@@ -603,25 +604,25 @@
             }
 
             // Initialize date picker for the initially selected region
-            const initialRegion = document.querySelector('select[name="region"]').value;
-            initializeDatePicker(initialRegion);
+            const initialPickupGroup = document.querySelector('select[name="pickup_group"]').value;
+            initializeDatePicker(initialPickupGroup);
 
             // Update date picker when region changes
-            document.querySelector('select[name="region"]').addEventListener('change', function(e) {
+            document.querySelector('select[name="pickup_group"]').addEventListener('change', function(e) {
                 initializeDatePicker(e.target.value);
                 updatePriceAndPickupPoints();
             });
 
             // Calculate total price based on number of guests
             function calculateTotal() {
-                const region = document.querySelector('select[name="region"]').value;
+                const pickupGroup = document.querySelector('select[name="pickup_group"]').value;
                 const adults = parseInt(document.querySelector('input[name="adults"]').value) || 0;
                 const children = parseInt(document.querySelector('input[name="children"]').value) || 0;
                 const infants = parseInt(document.querySelector('input[name="infants"]').value) || 0;
                 
-                const adultPrice = document.querySelector(`input[name="${region}-adult-price"]`).value;
-                const childPrice = document.querySelector(`input[name="${region}-child-price"]`).value;
-                const infantPrice = document.querySelector(`input[name="${region}-infant-price"]`).value;
+                const adultPrice = document.querySelector(`input[name="${pickupGroup}-adult-price"]`).value;
+                const childPrice = document.querySelector(`input[name="${pickupGroup}-child-price"]`).value;
+                const infantPrice = document.querySelector(`input[name="${pickupGroup}-infant-price"]`).value;
                 
                 const total = (adults * adultPrice) + (children * childPrice) + (infants * infantPrice);
                 document.getElementById('total-price').textContent = total.toFixed(2);
@@ -632,17 +633,17 @@
             calculateTotal();
 
             function updatePriceAndPickupPoints() {
-                const region = document.querySelector('select[name="region"]').value;
+                const pickupGroupId = document.querySelector('select[name="pickup_group"]').value;
                 const adults = parseInt(document.querySelector('input[name="adults"]').value) || 0;
                 const children = parseInt(document.querySelector('input[name="children"]').value) || 0;
                 const infants = parseInt(document.querySelector('input[name="infants"]').value) || 0;
 
-                const regionName = document.querySelector(`input[name="${region}-region"]`).value;
-                document.querySelector('.pickup-region').textContent = regionName;
+                const pickupGroupName = document.querySelector(`input[name="${pickupGroupId}-pickup-group"]`).value;
+                document.querySelector('.pickup-region').textContent = pickupGroupName;
                 document.querySelectorAll('.pickup-group').forEach(group => {
                     group.classList.add('hidden');
                 });
-                const pickupGroup = document.querySelectorAll('.group-' + region).forEach(group => {
+                const pickupGroup = document.querySelectorAll('.group-' + pickupGroupId).forEach(group => {
                     group.classList.remove('hidden');
                 });
 
@@ -654,7 +655,7 @@
                 
                 pickupPoints_options.forEach(point => {
                     point.classList.add('hidden');
-                    if (point.dataset.region === region) {
+                    if (point.dataset.pickup_group === pickupGroupId) {
                         point.classList.remove('hidden');
                     }
                 });
@@ -662,7 +663,7 @@
                 // Select the first available pickup point for the selected region
                 const pickupPointSelect = document.getElementById('pickup-point');
                 const availableOptions = Array.from(pickupPoints_options).filter(option => 
-                    option.dataset.region === region && option.value !== ''
+                    option.dataset.pickup_group === pickupGroupId && option.value !== ''
                 );
                 
                 if (availableOptions.length > 0) {
@@ -671,9 +672,9 @@
                     pickupPointSelect.value = '';
                 }
 
-                const adultPrice = document.querySelector(`input[name="${region}-adult-price"]`).value;
-                const childPrice = document.querySelector(`input[name="${region}-child-price"]`).value;
-                const infantPrice = document.querySelector(`input[name="${region}-infant-price"]`).value;
+                const adultPrice = document.querySelector(`input[name="${pickupGroupId}-adult-price"]`).value;
+                const childPrice = document.querySelector(`input[name="${pickupGroupId}-child-price"]`).value;
+                const infantPrice = document.querySelector(`input[name="${pickupGroupId}-infant-price"]`).value;
 
                 document.getElementById('adult-price').textContent = adultPrice;
                 document.getElementById('child-price').textContent = childPrice;
@@ -687,10 +688,10 @@
             // Add event listeners to number inputs
             document.querySelectorAll('input[type="number"]').forEach(input => {
                 input.addEventListener('change', calculateTotal);
-                input.addEventListener('input', calculateTotal);
+                input.addEventListener('input', calculateTotal);    
             });
 
-            document.querySelector('select[name="region"]').addEventListener('change', updatePriceAndPickupPoints);
+            document.querySelector('select[name="pickup_group"]').addEventListener('change', updatePriceAndPickupPoints);
 
             updatePriceAndPickupPoints();
 
@@ -760,7 +761,7 @@
                 const adults = parseInt(document.querySelector('input[name="adults"]').value) || 0;
                 const children = parseInt(document.querySelector('input[name="children"]').value) || 0;
                 const infants = parseInt(document.querySelector('input[name="infants"]').value) || 0;
-                const regionId = document.querySelector('select[name="region"]').value;
+                const pickupGroupId = document.querySelector('select[name="pickup_group"]').value;
 
                 // Validate form
                 let errors = [];

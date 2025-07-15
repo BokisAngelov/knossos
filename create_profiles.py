@@ -7,33 +7,38 @@ django.setup()
 
 # Import models
 from django.contrib.auth.models import User
-from main.models import UserProfile, Region, PickupPoint, AvailabilityDays, DayOfWeek
+from main.models import UserProfile, Region, PickupPoint, AvailabilityDays, DayOfWeek, Reservation, PickupGroup
 from django.utils.text import slugify
 from django.contrib.auth import get_user_model
 
-# Create regions
-regions = [
-    'Larnaca',
-    'Paphos',
-    'Limassol',
-    'Ayia Napa - Protaras',
-]
+# res = Reservation.objects.all().values()
 
-weekdays = [
-    'MON',
-    'TUE',
-    'WED',
-    'THU',
-    'FRI',
-    'SAT',
-    'SUN',
-]
+# for r in res:
+#     print('reservation: ' + str(r))
+    # r.pickup_group_id = 1
+    # r.save()
+# regions = [
+#     'Larnaca',
+#     'Paphos',
+#     'Limassol',
+#     'Ayia Napa - Protaras',
+# ]
 
-# (new loop for DayOfWeek)
-for (code, _) in DayOfWeek.WEEKDAY_CHOICES:
-    DayOfWeek.objects.get_or_create(code=code, defaults={'capacity': 0})
+# weekdays = [
+#     'MON',
+#     'TUE',
+#     'WED',
+#     'THU',
+#     'FRI',
+#     'SAT',
+#     'SUN',
+# ]
 
-print("All weekdays (DayOfWeek) created (or updated) (with default capacity 0).")
+# # (new loop for DayOfWeek)
+# for (code, _) in DayOfWeek.WEEKDAY_CHOICES:
+#     DayOfWeek.objects.get_or_create(code=code, defaults={'capacity': 0})
+
+# print("All weekdays (DayOfWeek) created (or updated) (with default capacity 0).")
 
 # AvailabilityDays.objects.all().delete()
 

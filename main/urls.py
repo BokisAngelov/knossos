@@ -13,6 +13,9 @@ urlpatterns = [
     path('excursions/<int:pk>/delete/', views.excursion_delete, name='excursion_delete'),
     path('retrive_voucher/', views.retrive_voucher, name='retrive_voucher'),
     path('manage_cookies/', views.manage_cookies, name='manage_cookies'),
+    path('sync_pickup_groups/', views.sync_pickup_groups, name='sync_pickup_groups'),
+    path('sync_pickup_points/', views.sync_pickup_points, name='sync_pickup_points'),
+    path('sync_hotels/', views.sync_hotels, name='sync_hotels'),
     # Booking URLs
     path('availability/<int:availability_pk>/book/', views.booking_create, name='booking_create'),
     path('bookings/<int:pk>/', views.booking_detail, name='booking_detail'),

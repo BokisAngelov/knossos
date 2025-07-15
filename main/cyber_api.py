@@ -20,3 +20,7 @@ def get_hotels():
     token = get_token()
     response = requests.get(API_URL + "/hotels", headers={'Authorization': 'Bearer ' + token})
     return response.json()
+
+def get_pickup_points():
+    response = requests.get(API_URL + "/excursionPickupPoints" )
+    return response.json()

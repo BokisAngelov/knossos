@@ -11,7 +11,7 @@ def voucher_context(request):
             if voucher:
                 return_data = {
                     'client_name': voucher.client_name,
-                    'region_id': voucher.hotel.pickup_group.region.id,
+                    'pickup_group_id': voucher.hotel.pickup_group.id,
                 }
         except Exception:
             voucher_code = None

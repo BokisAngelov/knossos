@@ -69,25 +69,25 @@
                                 <input type="text" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ hotel.name }}">
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <span class="editable-address">{{ hotel.address }}</span>
+                                <span class="editable-address">{% if hotel.address %}{{ hotel.address }}{% else %}None{% endif %}</span>
                                 <input type="text" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ hotel.address }}">
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <span class="editable-phone">{{ hotel.phone_number }}</span>
+                                <span class="editable-phone">{% if hotel.phone_number %}{{ hotel.phone_number }}{% else %}None{% endif %}</span>
                                 <input type="tel" class="edit-input hidden w-full border rounded px-2 py-1" 
                                        pattern="[+]?[0-9\s\-\(\)]{8,20}"
                                        title="Please enter a valid phone number (8-20 digits, may include +, spaces, hyphens, and parentheses)"
                                        value="{{ hotel.phone_number }}">
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <span class="editable-email">{{ hotel.email }}</span>
+                                <span class="editable-email">{% if hotel.email %}{{ hotel.email }}{% else %}None{% endif %}</span>
                                 <input type="email" class="edit-input hidden w-full border rounded px-2 py-1" 
                                        pattern="[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}"
                                        title="Please enter a valid email address"
                                        value="{{ hotel.email }}">
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <span class="editable-pickup-group">{% if hotel.pickup_group %}{{ hotel.pickup_group.name }}{% endif %}</span>
+                                <span class="editable-pickup-group">{% if hotel.pickup_group %}{{ hotel.pickup_group.name }}{% else %}None{% endif %}</span>
                                 <select class="edit-input hidden w-full border rounded px-2 py-1 bg-white">
                                     {% for pickup_group in pickup_groups %}
                                         <option value="{{ pickup_group.id }}" {% if hotel.pickup_group and hotel.pickup_group.id == pickup_group.id %}selected{% endif %}>{{ pickup_group.name }}</option>
@@ -275,19 +275,19 @@
 
                     // Validate phone number
                     const phoneRegex = /^[+]?[0-9\s\-\(\)]{8,20}$/;
-                    if (!phoneRegex.test(phone)) {
+                    if (!phoneRegex.test(phone) && phone !== 'None') {
                         Swal.showValidationMessage('Please enter a valid phone number (8-20 digits, may include +, spaces, hyphens, and parentheses)');
                         return false;
                     }
 
                     // Validate email
                     const emailRegex = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
-                    if (!emailRegex.test(email)) {
+                    if (!emailRegex.test(email) && email !== 'None') {
                         Swal.showValidationMessage('Please enter a valid email address');
                         return false;
                     }
 
-                    if (!name || !address || !phone || !email || !pickup_group) {
+                    if (!name || !address || !pickup_group) {
                         Swal.showValidationMessage('Please fill in all fields');
                         return false;
                     }
@@ -337,7 +337,7 @@
                     // Validate phone number
                     const phone = inputs[2].value.trim();
                     const phoneRegex = /^[+]?[0-9\s\-\(\)]{8,20}$/;
-                    if (!phoneRegex.test(phone)) {
+                    if (!phoneRegex.test(phone) && phone !== 'None') {
                         Swal.fire({
                             icon: 'error',
                             title: 'Invalid Phone Number',
@@ -349,7 +349,7 @@
                     // Validate email
                     const email = inputs[3].value.trim();
                     const emailRegex = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
-                    if (!emailRegex.test(email)) {
+                    if (!emailRegex.test(email) && email !== 'None') {
                         Swal.fire({
                             icon: 'error',
                             title: 'Invalid Email',
@@ -377,7 +377,9 @@
                     inputs.forEach((input, index) => {
                         if (input.tagName === 'SELECT') {
                             // Reset select to original value
-                            const pickup_groupName = spans[4].textContent.trim();
+                            const pickup_groupSpan = spans[4];
+                            const pickup_groupName = pickup_groupSpan ? pickup_groupSpan.textContent.trim() : '';
+
                             for (let i = 0; i < input.options.length; i++) {
                                 if (input.options[i].text === pickup_groupName) {
                                     input.selectedIndex = i;

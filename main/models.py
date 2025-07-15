@@ -36,6 +36,14 @@ class Region(models.Model):
     def __str__(self):
         return self.name
     
+class PickupGroup(models.Model):
+    name = models.CharField(max_length=255)
+    code = models.CharField(max_length=255, unique=True, null=True, blank=True)
+    # cl_id = models.IntegerField(null=True, blank=True, unique=True)
+    # region = models.ForeignKey(Region, on_delete=models.SET_NULL, null=True, related_name='pickup_groups')
+    def __str__(self):
+        return self.name
+    
 class UserProfile(models.Model):
     STATUS_CHOICES = [
         ('active', 'Active'),
@@ -57,7 +65,8 @@ class UserProfile(models.Model):
     status = models.CharField(max_length=8, choices=STATUS_CHOICES, default='active')
     address = models.CharField(max_length=255, null=True, blank=True)
     zipcode = models.CharField(max_length=255, null=True, blank=True)
-    region = models.ForeignKey(Region, on_delete=models.SET_NULL, blank=True, null=True, related_name='user_profiles')
+    # region = models.ForeignKey(Region, on_delete=models.SET_NULL, blank=True, null=True, related_name='user_profiles')
+    pickup_group = models.ForeignKey(PickupGroup, on_delete=models.SET_NULL, blank=True, null=True, related_name='user_profiles')
 
     def __str__(self):
         return self.name
@@ -92,41 +101,34 @@ class DayOfWeek(models.Model):
 
     def __str__(self):
         return dict(self.WEEKDAY_CHOICES)[self.code]
-        
-class PickupGroup(models.Model):
-    name = models.CharField(max_length=255)
-    slug = models.SlugField(max_length=255, unique=True, null=True, blank=True)
-    region = models.ForeignKey(Region, on_delete=models.SET_NULL, null=True, related_name='pickup_groups')
-    def __str__(self):
-        return self.name
-    
+         
 class PickupPoint(models.Model):
     STATUS_CHOICES = [
         ('active', 'Active'),
         ('inactive', 'Inactive'),
     ]
 
-    TYPE_CHOICES = [
-        ('hotel', 'Hotel'),
-        ('port', 'Port'),
-        ('airport', 'Airport'),
-        ('bus_station', 'Bus Station'),
-        ('other', 'Other'),
-    ]
+    # TYPE_CHOICES = [
+    #     ('hotel', 'Hotel'),
+    #     ('port', 'Port'),
+    #     ('airport', 'Airport'),
+    #     ('bus_station', 'Bus Station'),
+    #     ('other', 'Other'),
+    # ]
     
     name = models.CharField(max_length=255)
     address = models.CharField(max_length=255, blank=True, null=True)
-    status = models.CharField(max_length=8, choices=STATUS_CHOICES, default='active')
-    type = models.CharField(max_length=15, choices=TYPE_CHOICES, default='other')
+    # status = models.CharField(max_length=8, choices=STATUS_CHOICES, default='active')
+    # type = models.CharField(max_length=15, choices=TYPE_CHOICES, default='other')
     pickup_group = models.ForeignKey(PickupGroup, on_delete=models.SET_NULL, null=True, related_name='pickup_points')
     google_maps_link = models.CharField(max_length=255, blank=True, null=True)
-    priority = models.PositiveIntegerField(default=0)    
+    # priority = models.PositiveIntegerField(default=0)    
 
     def __str__(self):
         return self.name
     
     class Meta:
-        ordering = ['priority']
+        ordering = ['name']
     
 class Excursion(models.Model):
     STATUS_CHOICES = [
@@ -178,12 +180,13 @@ class ExcursionAvailability(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     start_date = models.DateField()
     end_date = models.DateField()
-    region = models.ForeignKey(Region, on_delete=models.SET_NULL, null=True, related_name='availabilities')
+    # region = models.ForeignKey(Region, on_delete=models.SET_NULL, null=True, related_name='availabilities')
+    # pickup_group = models.ForeignKey(PickupGroup, on_delete=models.SET_NULL, null=True, related_name='availabilities')
     max_guests = models.PositiveIntegerField()
     booked_guests = models.PositiveIntegerField(default=0)
     is_active = models.BooleanField(default=True)
     weekdays = models.ManyToManyField(DayOfWeek, blank=True)
-    pickup_groups = models.ManyToManyField(PickupGroup, blank=True)
+    pickup_groups = models.ManyToManyField(PickupGroup, blank=True, related_name='availabilities')
     start_time = models.TimeField(null=True, blank=True)
     end_time = models.TimeField(null=True, blank=True)
     discount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
@@ -229,7 +232,7 @@ class Hotel(models.Model):
     address = models.CharField(max_length=255, null=True, blank=True)
     zipcode = models.CharField(max_length=255, null=True, blank=True)
     pickup_group = models.ForeignKey(PickupGroup, on_delete=models.SET_NULL,blank=True, null=True, related_name='hotels')
-    region = models.ForeignKey(Region, on_delete=models.SET_NULL, blank=True, null=True, related_name='hotels')
+    # region = models.ForeignKey(Region, on_delete=models.SET_NULL, blank=True, null=True, related_name='hotels')
     phone_number = models.CharField(max_length=255, blank=True, null=True)
     email = models.EmailField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -244,6 +247,7 @@ class Reservation(models.Model):
     check_in = models.DateField()
     check_out = models.DateField()
     flight_number = models.CharField(max_length=255, blank=True)
+    pickup_group = models.ForeignKey(PickupGroup, on_delete=models.SET_NULL, null=True, blank=True, related_name='reservations')
 
     def __str__(self):
         return self.voucher_id

@@ -55,7 +55,7 @@
                     <thead class="bg-gray-50">
                         <tr>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Region</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Code</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"><a class="text-blue-600 hover:text-blue-800" href="{% url 'pickup_points_list' %}">Pickup Points</a></th>
                             <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                         </tr>
@@ -68,12 +68,8 @@
                                 <input type="text" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ group.name }}">
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <span class="editable-region">{% if group.region %}{{ group.region.name }}{% endif %}</span>
-                                <select class="edit-input hidden w-full border rounded px-2 py-1 bg-white">
-                                    {% for region in regions %}
-                                        <option value="{{ region.id }}" {% if group.region and group.region.id == region.id %}selected{% endif %}>{{ region.name }}</option>
-                                    {% endfor %}
-                                </select>
+                                <span class="editable-code">{{ group.code }}</span>
+                                <input type="text" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ group.code }}">
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 {% for point in group.pickup_points.all %}
@@ -124,7 +120,7 @@
     {% csrf_token %}
     <input type="hidden" name="action_type" value="add_group">
     <input type="hidden" name="name" id="add-group-name">
-    <input type="hidden" name="region" id="add-group-region">
+    <input type="hidden" name="code" id="add-group-code">
 </form>
 
 <form id="edit-group-form" action="{% url 'manage_pickup_groups' %}" method="post" class="hidden">
@@ -132,7 +128,7 @@
     <input type="hidden" name="action_type" value="edit_group">
     <input type="hidden" name="item_id" id="edit-group-id">
     <input type="hidden" name="name" id="edit-group-name">
-    <input type="hidden" name="region" id="edit-group-region">
+    <input type="hidden" name="code" id="edit-group-code">
 </form>
 
 <form id="delete-group-form" action="{% url 'manage_pickup_groups' %}" method="post" class="hidden">
@@ -204,7 +200,7 @@
                 btn.addEventListener('click', function(e) {
                     e.preventDefault();
                     const row = this.closest('tr');
-                    const spans = row.querySelectorAll('.editable-name, .editable-region');
+                    const spans = row.querySelectorAll('.editable-name, .editable-code');
                     const inputs = row.querySelectorAll('.edit-input');
                     spans.forEach(span => span.classList.add('hidden'));
                     inputs.forEach(input => input.classList.remove('hidden'));
@@ -224,7 +220,7 @@
                     
                     document.getElementById('edit-group-id').value = itemId;
                     document.getElementById('edit-group-name').value = inputs[0].value.trim();
-                    document.getElementById('edit-group-region').value = inputs[1].value;
+                    document.getElementById('edit-group-code').value = inputs[1].value;
                     document.getElementById('edit-group-form').submit();
                 });
             });
@@ -234,7 +230,7 @@
                 btn.addEventListener('click', function(e) {
                     e.preventDefault();
                     const row = this.closest('tr');
-                    const spans = row.querySelectorAll('.editable-name, .editable-region');
+                    const spans = row.querySelectorAll('.editable-name, .editable-code');
                     const inputs = row.querySelectorAll('.edit-input');
                     inputs.forEach((input, index) => {
                         if (input.tagName === 'SELECT') {

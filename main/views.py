@@ -27,6 +27,7 @@ import re
 import json
 from django.db.models import Q, Sum, Count
 from django.apps import apps
+from .cyber_api import get_groups, get_hotels, get_pickup_points
 
 def is_staff(user):
     return user.is_staff
@@ -36,6 +37,150 @@ def homepage(request):
     return render(request, 'main/home.html', {
         'excursions': excursions,
     })
+def manage_cookies(request, cookie_name, cookie_value, cookie_action):
+
+    if cookie_action == 'set':
+        response = JsonResponse({
+            'success': True,
+            'message': 'Cookie set successfully'
+        })
+        response.set_cookie(
+            cookie_name, 
+            cookie_value, 
+            max_age=604800, # 7 days
+            secure=True,
+            httponly=True,
+            samesite='Lax'
+        )
+        return response
+    elif cookie_action == 'get':
+        return request.COOKIES.get(cookie_name)
+    elif cookie_action == 'delete':
+        response = JsonResponse({
+            'success': True,
+            'message': 'Cookie deleted successfully'
+        })
+        response.delete_cookie(cookie_name)
+        return response
+    return None
+
+def retrive_voucher(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            action = data.get('action')
+            
+            if action == 'clear':
+                response = JsonResponse({
+                    'success': True,
+                    'message': 'Voucher cleared successfully.'
+                })
+                response.delete_cookie('voucher_code')
+                return response
+                
+            voucher_code = data.get('voucher_code')
+            print('voucher_code from ajax: ' + str(voucher_code))
+            voucher = Reservation.objects.get(voucher_id=voucher_code)
+
+            if voucher:
+                pickup_group_id = voucher.hotel.pickup_group.id
+                
+                # Create response with cookie
+                response = JsonResponse({
+                    'success': True,
+                    'message': 'Voucher is valid.',
+                    'return_data': {
+                        'client_name': voucher.client_name,
+                        'pickup_group_id': pickup_group_id,
+                    }
+                })
+                
+                # Set the cookie in the response
+                response.set_cookie(
+                    'voucher_code',
+                    voucher_code,
+                    max_age=86400,
+                    secure=True,
+                    httponly=True,
+                    samesite='Lax'
+                )
+                
+                return response
+            else:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Voucher is invalid.'    
+                })
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'message': str(e)
+            })
+    else:
+        return JsonResponse({
+            'success': False,
+            'message': 'Invalid request method.'
+        })
+
+def sync_pickup_groups(request):
+    if request.method == 'POST':
+        try:
+            # PickupGroup.objects.all().delete()
+            pickup_groups_cl = get_groups()
+            for group in pickup_groups_cl:
+                pick_name = group['Name']
+                pick_id = group['Id']
+                pick_code = group['Code']
+                pickup_group, created = PickupGroup.objects.get_or_create(
+                    id=pick_id,
+                    defaults={'name': pick_name, 'code': pick_code}
+                )
+                if created:
+                    print('created pickup group: ' + str(pickup_group))
+            return JsonResponse({'success': True, 'message': 'Sync successful!'})
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': f'Error syncing pickup groups: {str(e)}'})
+    return JsonResponse({'success': False, 'message': 'Invalid request method.'})
+
+def sync_pickup_points(request):
+    if request.method == 'POST':
+        try:
+            
+            pickup_points_cl = get_pickup_points()
+            for point in pickup_points_cl:
+                pick_name = point['Name']
+                pick_id = point['Id']
+                pick_group_id = point['GroupId']
+                pickup_point, created = PickupPoint.objects.get_or_create(
+                    id=pick_id,
+                    defaults={'name': pick_name, 'pickup_group_id': pick_group_id}
+                )
+                if created:
+                    print('created pickup point: ' + str(pickup_point))
+            return JsonResponse({'success': True, 'message': 'Sync successful!'})
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': f'Error syncing pickup points: {str(e)}'})
+    return JsonResponse({'success': False, 'message': 'Invalid request method.'})
+
+def sync_hotels(request):
+    if request.method == 'POST':
+        try:
+            hotels_cl = get_hotels()
+            for hotel in hotels_cl:
+                hotel_name = hotel['Acc_name']
+                hotel_id = hotel['Acc_id']
+                hotel_address = hotel['Acc_address']
+                hotel_zipcode = hotel['acc_zip_code']
+                hotel_entry, created = Hotel.objects.get_or_create(
+                    id=hotel_id,
+                    defaults={'name': hotel_name, 'address': hotel_address, 'zipcode': hotel_zipcode}
+                )
+                if created:
+                    print('created hotel: ' + str(hotel_entry))
+            return JsonResponse({'success': True, 'message': 'Sync successful!'})
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': f'Error syncing hotels: {str(e)}'})
+    return JsonResponse({'success': False, 'message': 'Invalid request method.'})
 
 # ----- Excursion Views -----
 def excursion_list(request):
@@ -56,16 +201,16 @@ def excursion_detail(request, pk):
 
     voucher_code = manage_cookies(request, 'voucher_code', None, 'get')
     print('found voucher code in cookies: ' + str(voucher_code))
-
+    
     if voucher_code:
         voucher = Reservation.objects.get(voucher_id=voucher_code)
         print('found voucher object: ' + str(voucher))
         if voucher:
-            region_id = voucher.hotel.pickup_group.region.id
+            pickup_group_id = voucher.hotel.pickup_group.id
 
             return_data = {
                 'client_name': voucher.client_name,
-                'region_id': region_id,
+                'pickup_group_id': pickup_group_id,
             }
     else:
         voucher_code = None
@@ -88,7 +233,7 @@ def excursion_detail(request, pk):
 
 
     for availability in excursion_availabilities:
-        region_id = availability.region.id  
+        pickup_group_id = availability.pickup_groups.all().first().id
         days = availability.availability_days.all()
         
         # Convert queryset to list of dicts
@@ -96,10 +241,10 @@ def excursion_detail(request, pk):
             {"date": day.date_day.isoformat(), "id": day.id}
             for day in days
         ]
-        availability_dates_by_region[str(region_id)] = date_entries
+        availability_dates_by_region[str(pickup_group_id)] = date_entries
 
-        pickup_points_obj = PickupPoint.objects.filter(pickup_group__in=availability.pickup_groups.all()).select_related('pickup_group__region').order_by('priority')
-        pickup_points.append(pickup_points_obj.values('id', 'name', 'pickup_group', 'pickup_group__region'))
+        pickup_points_obj = PickupPoint.objects.filter(pickup_group__in=availability.pickup_groups.all()).select_related('pickup_group').order_by('name')
+        pickup_points.append(pickup_points_obj.values('id', 'name', 'pickup_group'))
 
     # Handle feedback submission
     if request.method == 'POST' and 'feedback_submit' in request.POST:
@@ -340,90 +485,6 @@ def excursion_delete(request, pk):
         messages.error(request, 'Excursion not deleted.')
         return redirect('excursion_list')
     
-def manage_cookies(request, cookie_name, cookie_value, cookie_action):
-
-    if cookie_action == 'set':
-        response = JsonResponse({
-            'success': True,
-            'message': 'Cookie set successfully'
-        })
-        response.set_cookie(
-            cookie_name, 
-            cookie_value, 
-            max_age=604800, # 7 days
-            secure=True,
-            httponly=True,
-            samesite='Lax'
-        )
-        return response
-    elif cookie_action == 'get':
-        return request.COOKIES.get(cookie_name)
-    elif cookie_action == 'delete':
-        response = JsonResponse({
-            'success': True,
-            'message': 'Cookie deleted successfully'
-        })
-        response.delete_cookie(cookie_name)
-        return response
-    return None
-
-def retrive_voucher(request):
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body)
-            action = data.get('action')
-            
-            if action == 'clear':
-                response = JsonResponse({
-                    'success': True,
-                    'message': 'Voucher cleared successfully.'
-                })
-                response.delete_cookie('voucher_code')
-                return response
-                
-            voucher_code = data.get('voucher_code')
-            print('voucher_code from ajax: ' + str(voucher_code))
-            voucher = Reservation.objects.get(voucher_id=voucher_code)
-
-            if voucher:
-                region_id = voucher.hotel.pickup_group.region.id
-                
-                # Create response with cookie
-                response = JsonResponse({
-                    'success': True,
-                    'message': 'Voucher is valid.',
-                    'return_data': {
-                        'client_name': voucher.client_name,
-                        'region_id': region_id,
-                    }
-                })
-                
-                # Set the cookie in the response
-                response.set_cookie(
-                    'voucher_code',
-                    voucher_code,
-                    max_age=86400,
-                    secure=True,
-                    httponly=True,
-                    samesite='Lax'
-                )
-                
-                return response
-            else:
-                return JsonResponse({
-                    'success': False,
-                    'message': 'Voucher is invalid.'    
-                })
-        except Exception as e:
-            return JsonResponse({
-                'success': False,
-                'message': str(e)
-            })
-    else:
-        return JsonResponse({
-            'success': False,
-            'message': 'Invalid request method.'
-        })
 
 # ----- Booking Views -----
 def booking_create(request, availability_pk):
@@ -572,6 +633,12 @@ def admin_dashboard(request, pk):
     
     # Recent bookings
     recent_bookings = Booking.objects.all().order_by('-created_at')[:5]
+
+    # pickup_groups = get_groups()
+    # hotels = get_hotels()
+    # print(hotels)
+    # for hotel in hotels:
+    #     print(f'  - {hotel}')
     
     context = {
         'active_excursions_count': active_excursions_count,
@@ -1036,11 +1103,11 @@ def availability_form(request, pk=None):
     
     if request.method == 'POST':
         form = ExcursionAvailabilityForm(request.POST, instance=availability)
-        
+        pickup_groups = request.POST.getlist('pickup_groups')
         excursion = request.POST.get('excursion')
         start_date = request.POST.get('start_date')
         end_date = request.POST.get('end_date')
-        region = request.POST.get('region')
+        # region = request.POST.get('region')
 
         
         
@@ -1048,9 +1115,10 @@ def availability_form(request, pk=None):
             excursion=excursion,
             start_date__lte=end_date,
             end_date__gte=start_date,
-            region=region,
+            pickup_groups__in=pickup_groups,
+            # region=region,
             status='active'
-        ).values('region')
+        )
 
         if pk:
             overlapping_query = overlapping_query.exclude(pk=pk)
@@ -1069,7 +1137,7 @@ def availability_form(request, pk=None):
                 # First validate weekday capacities from form data
                 max_guests = int(request.POST.get('max_guests', 0))
                 selected_weekday_ids = request.POST.getlist('weekdays')
-                pickup_group_ids = request.POST.getlist('pickup_groups')
+                pickup_group_ids = pickup_groups
 
                 # Validate capacities before saving
                 for weekday_id in selected_weekday_ids:
@@ -1148,8 +1216,8 @@ def availability_form(request, pk=None):
                     current_date += datetime.timedelta(days=1)
 
                 # Create entries for each pickup group
-                region_id = availability.region_id
-                for pickup_group in PickupGroup.objects.filter(region_id=region_id, id__in=pickup_group_ids):
+                # region_id = availability.region_id
+                for pickup_group in PickupGroup.objects.filter(id__in=pickup_group_ids):
                     PickupGroupAvailability.objects.create(
                         excursion_availability=availability,
                         pickup_group=pickup_group
@@ -1194,6 +1262,7 @@ def availability_form(request, pk=None):
         'form': form,
         'availability': availability,
         'is_update': bool(pk),
+        'pickup_groups': PickupGroup.objects.all(),
     })
 
 @user_passes_test(is_staff)
@@ -1230,7 +1299,7 @@ def availability_delete(request, pk):
     
 @user_passes_test(is_staff)
 def pickup_points_list(request):
-    pickup_points = PickupPoint.objects.all().select_related('pickup_group').order_by('pickup_group__name', '-priority')
+    pickup_points = PickupPoint.objects.all().select_related('pickup_group').order_by('name')
     pickup_groups = PickupGroup.objects.all()
     
     # Convert pickup groups to JSON-serializable format
@@ -1263,12 +1332,10 @@ def manage_pickup_points(request):
         if action_type == 'add_point':
             name = request.POST.get('name', '').strip()
             address = request.POST.get('address', '').strip()
-            type = request.POST.get('type', '').strip()
             pickup_group_id = request.POST.get('pickup_group')
             google_maps_link = request.POST.get('google_maps_link', '').strip()
-            priority = request.POST.get('priority', '').strip()
 
-            if not all([name, address, type, pickup_group_id, priority]):
+            if not all([name, address, pickup_group_id]):
                 messages.error(request, 'Please fill in all required fields')
                 return redirect('pickup_points_list')
             
@@ -1281,10 +1348,8 @@ def manage_pickup_points(request):
             PickupPoint.objects.create(
                 name=name,
                 address=address,
-                type=type,
                 pickup_group=pickup_group,
                 google_maps_link=google_maps_link if google_maps_link else None,
-                priority=priority
             )
             messages.success(request, 'Pickup point added successfully')
             
@@ -1292,12 +1357,10 @@ def manage_pickup_points(request):
             item_id = request.POST.get('item_id')
             name = request.POST.get('name', '').strip()
             address = request.POST.get('address', '').strip()
-            type = request.POST.get('type', '').strip()
             pickup_group_id = request.POST.get('pickup_group')
             google_maps_link = request.POST.get('google_maps_link', '').strip()
-            priority = request.POST.get('priority', '').strip()
 
-            if not all([item_id, name, address, type, pickup_group_id, priority]):
+            if not all([item_id, name, address, pickup_group_id]):
                 messages.error(request, 'Please fill in all required fields')
                 return redirect('pickup_points_list')
             
@@ -1310,10 +1373,8 @@ def manage_pickup_points(request):
             
             point.name = name
             point.address = address
-            point.type = type
             point.pickup_group = pickup_group
             point.google_maps_link = google_maps_link if google_maps_link else None
-            point.priority = priority
             point.save()
             messages.success(request, 'Pickup point updated successfully')
             
@@ -1323,7 +1384,7 @@ def manage_pickup_points(request):
                 messages.error(request, 'Invalid pickup point selected')
                 return redirect('pickup_points_list')
             
-            try:
+            try:    
                 point = PickupPoint.objects.get(id=item_id)
                 point.delete()
                 messages.success(request, 'Pickup point deleted successfully')
@@ -1620,14 +1681,13 @@ def manage_pickup_groups(request):
         try:
             if action_type == 'add_group':
                 name = request.POST.get('name', '').strip()
-                region_id = request.POST.get('region', '').strip()
+                code = request.POST.get('code', '').strip()
 
-                if name and region_id:
+                if name and code:
                     try:
-                        region = get_object_or_404(Region, id=region_id)
                         PickupGroup.objects.create(
                             name=name,
-                            region=region,
+                            code=code,
                         )
                         messages.success(request, 'Pickup group created successfully.')
                         return redirect('pickup_groups_list')
@@ -1638,13 +1698,12 @@ def manage_pickup_groups(request):
             elif action_type == 'edit_group':
                 group = get_object_or_404(PickupGroup, pk=item_id)
                 name = request.POST.get('name', '').strip()
-                region_id = request.POST.get('region', '').strip()
+                code = request.POST.get('code', '').strip()
 
                 if name:    
                     group.name = name
-                    if region_id:
-                        region = get_object_or_404(Region, id=region_id)
-                        group.region = region
+                    if code:
+                        group.code = code
                     group.save()
                     messages.success(request, 'Pickup group updated successfully.')
                     return redirect('pickup_groups_list')
