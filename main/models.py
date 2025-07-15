@@ -137,10 +137,10 @@ class Excursion(models.Model):
     ]
 
     title = models.CharField(max_length=255)
-    description = models.TextField()
-    intro_image = models.ImageField(upload_to=excursion_intro_image_path)
-    category = models.ManyToManyField(Category, related_name='excursions')
-    tags = models.ManyToManyField(Tag, related_name='excursions', blank=True)
+    description = models.TextField(blank=True, null=True)
+    intro_image = models.ImageField(upload_to=excursion_intro_image_path, blank=True, null=True)
+    category = models.ManyToManyField(Category, related_name='excursions', blank=True, null=True)
+    tags = models.ManyToManyField(Tag, related_name='excursions', blank=True, null=True)
     feedbacks = models.ManyToManyField('Feedback', related_name='excursions', blank=True)
     overall_rating = models.DecimalField(max_digits=3, decimal_places=2, null=True, blank=True)
     status = models.CharField(max_length=8, choices=STATUS_CHOICES, default='inactive')

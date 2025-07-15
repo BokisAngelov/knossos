@@ -7,9 +7,15 @@ django.setup()
 
 # Import models
 from django.contrib.auth.models import User
-from main.models import UserProfile, Region, PickupPoint, AvailabilityDays, DayOfWeek, Reservation, PickupGroup
+from main.models import UserProfile, Region, PickupPoint, AvailabilityDays, DayOfWeek, Reservation, PickupGroup, Booking, Excursion
 from django.utils.text import slugify
 from django.contrib.auth import get_user_model
+
+book = Booking.objects.all().delete()
+print('bookings deleted')
+excursion = Excursion.objects.all().delete()
+print('excursions deleted')
+
 
 # res = Reservation.objects.all().values()
 

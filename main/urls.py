@@ -16,6 +16,9 @@ urlpatterns = [
     path('sync_pickup_groups/', views.sync_pickup_groups, name='sync_pickup_groups'),
     path('sync_pickup_points/', views.sync_pickup_points, name='sync_pickup_points'),
     path('sync_hotels/', views.sync_hotels, name='sync_hotels'),
+    path('sync_excursions/', views.sync_excursions, name='sync_excursions'),
+    path('sync_providers/', views.sync_providers, name='sync_providers'),
+    path('sync_excursion_availabilities/', views.sync_excursion_availabilities, name='sync_excursion_availabilities'),
     # Booking URLs
     path('availability/<int:availability_pk>/book/', views.booking_create, name='booking_create'),
     path('bookings/<int:pk>/', views.booking_detail, name='booking_detail'),

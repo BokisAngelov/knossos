@@ -7,7 +7,7 @@ from django.contrib import messages
 from django.db import transaction
 from django.utils import timezone
 from django.core.serializers.json import DjangoJSONEncoder
-import datetime
+from datetime import date, datetime
 from django.contrib.auth.models import User
 from django.http import JsonResponse, Http404, HttpResponse
 from django.utils.text import slugify
@@ -27,7 +27,7 @@ import re
 import json
 from django.db.models import Q, Sum, Count
 from django.apps import apps
-from .cyber_api import get_groups, get_hotels, get_pickup_points
+from .cyber_api import get_groups, get_hotels, get_pickup_points, get_excursions, get_excursion_description, get_providers, get_excursion_availabilities
 
 def is_staff(user):
     return user.is_staff
@@ -127,6 +127,7 @@ def sync_pickup_groups(request):
         try:
             # PickupGroup.objects.all().delete()
             pickup_groups_cl = get_groups()
+            total_synced = 0
             for group in pickup_groups_cl:
                 pick_name = group['Name']
                 pick_id = group['Id']
@@ -137,7 +138,13 @@ def sync_pickup_groups(request):
                 )
                 if created:
                     print('created pickup group: ' + str(pickup_group))
-            return JsonResponse({'success': True, 'message': 'Sync successful!'})
+                    total_synced += 1
+
+                if total_synced > 0:
+                    message = 'Sync successful! Total pickup groups synced: ' + str(total_synced)
+                else:
+                    message = 'Pickup groups are up to date.'
+            return JsonResponse({'success': True, 'message': message})
         except Exception as e:
             return JsonResponse({'success': False, 'message': f'Error syncing pickup groups: {str(e)}'})
     return JsonResponse({'success': False, 'message': 'Invalid request method.'})
@@ -145,7 +152,7 @@ def sync_pickup_groups(request):
 def sync_pickup_points(request):
     if request.method == 'POST':
         try:
-            
+            total_synced = 0
             pickup_points_cl = get_pickup_points()
             for point in pickup_points_cl:
                 pick_name = point['Name']
@@ -157,7 +164,13 @@ def sync_pickup_points(request):
                 )
                 if created:
                     print('created pickup point: ' + str(pickup_point))
-            return JsonResponse({'success': True, 'message': 'Sync successful!'})
+                    total_synced += 1
+
+                if total_synced > 0:
+                    message = 'Sync successful! Total pickup points synced: ' + str(total_synced)
+                else:
+                    message = 'Pickup points are up to date.'
+            return JsonResponse({'success': True, 'message': message})
         except Exception as e:
             return JsonResponse({'success': False, 'message': f'Error syncing pickup points: {str(e)}'})
     return JsonResponse({'success': False, 'message': 'Invalid request method.'})
@@ -166,6 +179,7 @@ def sync_hotels(request):
     if request.method == 'POST':
         try:
             hotels_cl = get_hotels()
+            total_synced = 0
             for hotel in hotels_cl:
                 hotel_name = hotel['Acc_name']
                 hotel_id = hotel['Acc_id']
@@ -177,10 +191,172 @@ def sync_hotels(request):
                 )
                 if created:
                     print('created hotel: ' + str(hotel_entry))
-            return JsonResponse({'success': True, 'message': 'Sync successful!'})
+                    total_synced += 1
+
+                if total_synced > 0:
+                    message = 'Sync successful! Total hotels synced: ' + str(total_synced)
+                else:
+                    message = 'Hotels are up to date.'
+            return JsonResponse({'success': True, 'message': message})
         except Exception as e:
             return JsonResponse({'success': False, 'message': f'Error syncing hotels: {str(e)}'})
     return JsonResponse({'success': False, 'message': 'Invalid request method.'})
+
+def sync_excursions(request):
+    if request.method == 'POST':
+        try:
+            excursions_cl = get_excursions()
+            total_synced = 0
+            for excursion in excursions_cl['Data']:
+                
+                excursion_name = excursion['Name']
+                excursion_id = excursion['Id']
+                excursion_provider = excursion['Organizer_Name']
+                # print('excursion_name: ' + str(excursion_name))
+                excursion_provider_id = UserProfile.objects.get(name=excursion_provider, role='provider').id
+                excursion_description_response = get_excursion_description(excursion_id)
+                excursion_description = excursion_description_response['Overview'][0]['Description']['MainDescription']
+                excursion_intro_image = excursion_description_response['Media']['DefaultImage']['MainUrl']
+                # print('excursion_provider_id: ' + str(excursion_provider_id))
+                # print('excursion description: ' + str(excursion_description))
+                print('excursion intro image: ' + str(excursion_intro_image))
+                                
+                excursion_entry, created = Excursion.objects.get_or_create(
+                    id=excursion_id,
+                    defaults={'title': excursion_name, 'description': excursion_description, 'provider_id': excursion_provider_id, 'intro_image': excursion_intro_image}
+                )
+                if created:
+                    print('created excursion: ' + str(excursion_entry))
+                    total_synced += 1
+
+                if total_synced > 0:
+                    message = 'Sync successful! Total excursions synced: ' + str(total_synced)
+                else:
+                    message = 'Excursions are up to date.'
+            return JsonResponse({'success': True, 'message': message})
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': f'Error syncing excursions: {str(e)}'})
+    return JsonResponse({'success': False, 'message': 'Invalid request method.'})
+
+def sync_providers(request):
+    if request.method == 'POST':
+        try:
+            providers_cl = get_providers()
+            total_synced = 0
+            for provider in providers_cl:
+                provider_name = provider['Name']
+                provider_id = provider['Id']
+                provider_email = provider['Email']
+                provider_phone = provider['Telephone1']
+                provider_address = provider['Address']
+                provider_zipcode = provider['Zip']
+
+                # 1. Get or create the User instance
+                user, user_created = User.objects.get_or_create(
+                    username=provider_email or f"provider_{provider_id}",
+                    defaults={
+                        'first_name': provider_name,
+                        'email': provider_email or "",
+                        
+                    }
+                )
+
+                # 2. Get or create the UserProfile instance
+                profile, profile_created = UserProfile.objects.get_or_create(
+                    user=user,
+                    defaults={
+                        'id': provider_id,
+                        'name': provider_name,
+                        'role': 'provider',
+                        'email': provider_email,
+                        'phone': provider_phone,
+                        'address': provider_address,
+                        'zipcode': provider_zipcode
+                    }
+                )
+                if profile_created:
+                    print('created provider: ' + str(profile))
+                    total_synced += 1
+
+                if total_synced > 0:
+                    message = 'Sync successful! Total providers synced: ' + str(total_synced)
+                else:
+                    message = 'Providers are up to date.'
+            return JsonResponse({'success': True, 'message': message})
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': f'Error syncing providers: {str(e)}'})
+    return JsonResponse({'success': False, 'message': 'Invalid request method.'})
+
+def sync_excursion_availabilities(request):
+    if request.method == 'POST':
+        try:
+            # excursion_availabilities_cl = get_excursion_availabilities()
+            excursions = Excursion.objects.all()
+            availabilities = []
+            today = datetime.now().strftime("%Y-%m-%d")
+            excursion_availabilities_cl = get_excursion_availabilities(excursion_id=3909)
+            availability = excursion_availabilities_cl[0]['Availability']
+            if availability:
+                # print('availability: ' + str(availability[0]['Date']))
+                availabilities.append(availability)
+                # print('excursion id with availability: ' + str(excursion_id))
+
+
+            print('availabilities: ' + str(availabilities))
+
+            for i, av in enumerate(availabilities):
+                av_date = av[i]['Date']
+                print('av_date: ' + str(av_date))
+
+            # for excursion in excursions:
+            #     excursion_id = excursion.id
+            #     excursion_availabilities_cl = get_excursion_availabilities(excursion_id)
+            #     availability = excursion_availabilities_cl[0]['Availability']
+            #     if availability:
+            #         # print('availability: ' + str(availability[0]['Date']))
+            #         availabilities.append(availability)
+            #         print('excursion id with availability: ' + str(excursion_id))
+
+
+            #     print('availabilities: ' + str(availabilities))
+                # for av in availabilities:
+                #     av_date = av[0]['Date']
+                #     # av_date = datetime.strptime(av_date_str, "%Y-%m-%d")
+                #     print('av_date: ' + str(av_date))
+                    # print('today: ' + str(today))
+                    # print('today: ' + str(today))
+                    # if av_date > today:
+                    #     print('av_date is in the future: ' + str(av_date))
+
+                # print('availability: ' + str(availability))
+                        
+            total_synced = 0
+            # for availability in excursion_availabilities_cl[0]['Availability']:
+            #     print('availability: ' + str(availability['Date']))
+
+                # availability = excursion_availabilities['Data'][0]
+                # excursion_availability_id = excursion_availability['Id']
+                # excursion_id = excursion_availability['ExcursionId']
+                # excursion = Excursion.objects.get(id=excursion_id)
+
+                # excursion_availability_entry, created = ExcursionAvailability.objects.get_or_create(
+                #     id=excursion_availability_id,
+                #     defaults={'excursion': excursion}
+                # )
+                # if created:
+                #     print('created excursion availability: ' + str(excursion_availability_entry))
+                #     total_synced += 1
+
+                # if total_synced > 0:
+                #     message = 'Sync successful! Total excursion availabilities synced: ' + str(total_synced)
+                # else:
+                #     message = 'Excursion availabilities are up to date.'
+            message = 'Hiiiii.'
+            return JsonResponse({'success': True, 'message': message})
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': f'Error syncing excursion availabilities: {str(e)}'})
+    return JsonResponse({'success': False, 'message': 'Invalid request method.'})
+
 
 # ----- Excursion Views -----
 def excursion_list(request):

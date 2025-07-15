@@ -257,6 +257,13 @@
                         form.action = form.action.replace('0', itemId);
                         form.submit();
                     }
+                }).catch(error => {
+                    console.error('Error:', error);
+                    Swal.fire({
+                        title: 'Error',
+                        text: 'An error occurred while deleting excursion.',
+                        icon: 'error'
+                    });
                 });
             });
         });
