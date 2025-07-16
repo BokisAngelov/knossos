@@ -72,6 +72,10 @@
                     <p class="text-lg font-semibold text-gray-900">{{ availability.start_time|time:"H:i" }} - {{ availability.end_time|time:"H:i" }}</p>
                 </div>
                 <div class="bg-white rounded-lg shadow-sm p-4">
+                    <h4 class="text-sm font-medium text-gray-500 mb-1">Maximum Guests</h4>
+                    <p class="text-lg font-semibold text-gray-900">{{ availability.max_guests }}</p>
+                </div>
+                <div class="bg-white rounded-lg shadow-sm p-4">
                     <h4 class="text-sm font-medium text-gray-500 mb-1">Pickup groups</h4>
                     {% for pickup_group in pickup_groups.all %}
                     <p class="text-lg font-semibold text-gray-900">{{ pickup_group.name }}</p>
@@ -83,10 +87,7 @@
                     <p class="text-lg font-semibold text-gray-900">{{ pickup_point.name }}</p>
                     {% endfor %}
                 </div>
-                <div class="bg-white rounded-lg shadow-sm p-4">
-                    <h4 class="text-sm font-medium text-gray-500 mb-1">Maximum Guests</h4>
-                    <p class="text-lg font-semibold text-gray-900">{{ availability.max_guests }}</p>
-                </div>
+                
             </div>
         </div>
 

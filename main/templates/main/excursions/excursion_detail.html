@@ -67,7 +67,7 @@
             <!-- Hero section -->
             <div class="bg-white rounded-lg shadow-md overflow-hidden">
                 <div class="relative">
-                    <img src="{{ excursion.intro_image.url }}" alt="{{ excursion.title }}" class="w-full h-96 object-cover">
+                    <img src="{% if excursion.intro_image %}{{ excursion.intro_image.url }}{% else %}{% static 'main/images/excursion-default.jpg' %}{% endif %}" alt="{{ excursion.title }}" class="w-full h-96 object-cover">
                     <div class="absolute top-4 right-4">
                         {% if excursion.guide %}
                         <span class="px-3 py-1 text-sm font-semibold rounded-full bg-green-100 text-green-800">
@@ -121,7 +121,7 @@
                                                             <svg width="16" height="16" fill="#3B82F6" viewBox="0 0 16 16">
                                                                 <path d="M8 0C5.243 0 3 2.243 3 5c0 3.25 4.5 10.5 4.5 10.5s4.5-7.25 4.5-10.5c0-2.757-2.243-5-5-5zm0 7.5A2.5 2.5 0 1 1 8 2.5a2.5 2.5 0 0 1 0 5z"/>
                                                             </svg>
-                                                            <a href="{{ pickup_point.google_maps_link }}">{{ pickup_point.name }}</a>
+                                                            <a href="{% if pickup_point.google_maps_link %}{{ pickup_point.google_maps_link }}{% else %}#{% endif %}">{{ pickup_point.name }}</a>
                                                         </div>
                                                     </li>
                                                     {% endfor %}
@@ -293,8 +293,9 @@
                         {% if form.date.errors %}
                         <p class="mt-1 text-sm text-red-600">{{ form.date.errors.0 }}</p>
                         {% endif %}
-                    </div>
-                    <div class="flex flex-col gap-2 pickup-group-div" {% if voucher_code %}hidden{% endif %}>
+                    </div> 
+                    <!-- {% if voucher_code %}hidden{% endif %} -->
+                    <div class="flex flex-col gap-2 pickup-group-div" >
                         <label class="block text-md font-medium text-gray-700">Pickup Group</label>
                         <select name="pickup_group" id="pickup-group" class="mt-1 block w-full pl-3 pr-2 py-2 text-base border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md {% if form.pickup_group.errors %}border-red-500{% endif %}">
                             {% for availability in excursion_availabilities.all %}

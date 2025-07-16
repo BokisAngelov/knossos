@@ -11,17 +11,11 @@ urlpatterns = [
     path('excursions/<int:pk>/', views.excursion_detail, name='excursion_detail'),
     path('excursions/<int:pk>/edit/', views.excursion_update, name='excursion_update'),
     path('excursions/<int:pk>/delete/', views.excursion_delete, name='excursion_delete'),
-    path('retrive_voucher/', views.retrive_voucher, name='retrive_voucher'),
-    path('manage_cookies/', views.manage_cookies, name='manage_cookies'),
-    path('sync_pickup_groups/', views.sync_pickup_groups, name='sync_pickup_groups'),
-    path('sync_pickup_points/', views.sync_pickup_points, name='sync_pickup_points'),
-    path('sync_hotels/', views.sync_hotels, name='sync_hotels'),
-    path('sync_excursions/', views.sync_excursions, name='sync_excursions'),
-    path('sync_providers/', views.sync_providers, name='sync_providers'),
-    path('sync_excursion_availabilities/', views.sync_excursion_availabilities, name='sync_excursion_availabilities'),
+
     # Booking URLs
     path('availability/<int:availability_pk>/book/', views.booking_create, name='booking_create'),
     path('bookings/<int:pk>/', views.booking_detail, name='booking_detail'),
+    path('bookings/<int:pk>/delete/', views.booking_delete, name='booking_delete'),
 
     # Checkout URL
     path('checkout/<int:booking_pk>/', views.checkout, name='checkout'),
@@ -55,6 +49,15 @@ urlpatterns = [
     path('manage_pickup_groups/', views.manage_pickup_groups, name='manage_pickup_groups'),
     path('pickup_points_list/', views.pickup_points_list, name='pickup_points_list'),
     path('manage_pickup_points/', views.manage_pickup_points, name='manage_pickup_points'),
+    # sync urls
+    path('retrive_voucher/', views.retrive_voucher, name='retrive_voucher'),
+    path('manage_cookies/', views.manage_cookies, name='manage_cookies'),
+    path('sync_pickup_groups/', views.sync_pickup_groups, name='sync_pickup_groups'),
+    path('sync_pickup_points/', views.sync_pickup_points, name='sync_pickup_points'),
+    path('sync_hotels/', views.sync_hotels, name='sync_hotels'),
+    path('sync_excursions/', views.sync_excursions, name='sync_excursions'),
+    path('sync_providers/', views.sync_providers, name='sync_providers'),
+    path('sync_excursion_availabilities/', views.sync_excursion_availabilities, name='sync_excursion_availabilities'),
 
     # Availability URLs
     path('availability/', views.availability_list, name='availability_list'),

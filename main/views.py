@@ -7,7 +7,7 @@ from django.contrib import messages
 from django.db import transaction
 from django.utils import timezone
 from django.core.serializers.json import DjangoJSONEncoder
-from datetime import date, datetime
+from datetime import date, datetime, time, timedelta
 from django.contrib.auth.models import User
 from django.http import JsonResponse, Http404, HttpResponse
 from django.utils.text import slugify
@@ -83,7 +83,7 @@ def retrive_voucher(request):
             voucher = Reservation.objects.get(voucher_id=voucher_code)
 
             if voucher:
-                pickup_group_id = voucher.hotel.pickup_group.id
+                pickup_group_id = voucher.pickup_group
                 
                 # Create response with cookie
                 response = JsonResponse({
@@ -382,7 +382,7 @@ def excursion_detail(request, pk):
         voucher = Reservation.objects.get(voucher_id=voucher_code)
         print('found voucher object: ' + str(voucher))
         if voucher:
-            pickup_group_id = voucher.hotel.pickup_group.id
+            pickup_group_id = voucher.pickup_group
 
             return_data = {
                 'client_name': voucher.client_name,
@@ -697,8 +697,28 @@ def booking_create(request, availability_pk):
     })
 
 # Booking detail: only authenticated users (clients/reps/admins)
-@login_required
+@user_passes_test(is_staff)
+def booking_delete(request, pk):
+    booking = get_object_or_404(Booking, pk=pk)
+    # if request.method == 'POST':
+    try:
+        if request.method == 'POST':
+            booking.delete()
+            messages.success(request, 'Booking deleted.')
+        else:
+            messages.error(request, 'Booking not deleted.')
+    except Exception as e:
+        messages.error(request, f'Error deleting booking: {str(e)}')
+        
+    # else:
+    #     messages.error(request, 'Booking not deleted.')
+
+    return redirect('admin_dashboard', pk=request.user.profile.id)
+        
+
+@login_required 
 def booking_detail(request, pk):
+    
     booking = get_object_or_404(Booking, pk=pk)
 
     return render(request, 'main/bookings/booking_detail.html', {
@@ -1269,10 +1289,7 @@ def availability_list(request):
 
 @user_passes_test(is_staff)
 def availability_form(request, pk=None):
-    """
-    Unified view for creating and updating availability.
-    If pk is provided, it's an update operation. Otherwise, it's a create operation.
-    """
+
     availability = None
     if pk:
         availability = get_object_or_404(ExcursionAvailability, pk=pk)
@@ -1329,7 +1346,7 @@ def availability_form(request, pk=None):
                                 raise e
                             raise ValueError(f"Invalid capacity value for {DayOfWeek.objects.get(id=weekday_id).get_code_display()}")
 
-                # Now save the availability
+                
                 availability = form.save(commit=False)
                 excursion_pk = request.POST.get('excursion')
 
@@ -1357,9 +1374,8 @@ def availability_form(request, pk=None):
                                 capacity = max_guests
                             DayOfWeek.objects.filter(id=weekday_id).update(capacity=capacity)
                         except ValueError:
-                            pass  # We already validated above
+                            pass  
                 
-                # Set excursion status to active
                 if excursion.status != 'active':
                     excursion.status = 'active'
                     excursion.save()
@@ -1389,7 +1405,7 @@ def availability_form(request, pk=None):
                             excursion_availability=availability,
                             date_day=current_date
                         )
-                    current_date += datetime.timedelta(days=1)
+                    current_date += timedelta(days=1)
 
                 # Create entries for each pickup group
                 # region_id = availability.region_id

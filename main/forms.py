@@ -167,7 +167,6 @@ class PickupGroupWidget(forms.CheckboxSelectMultiple):
                                 class="w-4 h-4">
                             <label for="{checkbox_id}" class="px-3 py-1 bg-gray-100 rounded text-center font-medium flex-1">
                                 {group.name} 
-                                <span class="text-xs text-gray-500 mt-1">{group.code}</span>
                             </label>
                             
                         </div>

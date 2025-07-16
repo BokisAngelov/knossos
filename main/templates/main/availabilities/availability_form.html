@@ -158,11 +158,11 @@
       </div>
 
       <!-- Region -->
-      <div class="space-y-1">
+      <!-- <div class="space-y-1">
         <label for="{{ form.region.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.region.label }}</label>
         <div class="w-full auth-input-field">{{ form.region }}</div>
         {% if form.region.errors %}<div class="text-red-500 text-xs mt-1">{{ form.region.errors }}</div>{% endif %}
-      </div>
+      </div> -->
 
       <!-- Max Guests -->
       <div class="space-y-1">
@@ -196,9 +196,9 @@
       </div>
 
 
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
         <!-- Weekdays -->
-        <div class="space-y-1">
+        <div class="md:col-span-1 space-y-1">
           <label for="{{ form.weekdays.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.weekdays.label }}</label>
           <div class="w-full overflow-x-auto">
             <div class="flex flex-row flex-wrap gap-2">
@@ -208,7 +208,7 @@
           {% if form.weekdays.errors %}<div class="text-red-500 text-xs mt-1">{{ form.weekdays.errors }}</div>{% endif %}
         </div>
         <!-- Pickup Groups -->
-        <div class="space-y-1">
+        <div class="md:col-span-2 space-y-1">
           <label for="{{ form.pickup_groups.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.pickup_groups.label }}</label>
           <div class="w-full overflow-x-auto">
             {{ form.pickup_groups }}
