@@ -58,6 +58,7 @@ urlpatterns = [
     path('sync_excursions/', views.sync_excursions, name='sync_excursions'),
     path('sync_providers/', views.sync_providers, name='sync_providers'),
     path('sync_excursion_availabilities/', views.sync_excursion_availabilities, name='sync_excursion_availabilities'),
+    path('check_reservation/', views.check_reservation, name='check_reservation'),
 
     # Availability URLs
     path('availability/', views.availability_list, name='availability_list'),

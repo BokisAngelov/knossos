@@ -244,10 +244,17 @@ class Reservation(models.Model):
     voucher_id = models.CharField(max_length=255, unique=True)
     hotel = models.ForeignKey(Hotel, on_delete=models.SET_NULL, null=True, related_name='reservations')
     client_name = models.CharField(max_length=255, blank=True)
+    client_email = models.EmailField(blank=True, null=True)
+    client_phone = models.CharField(max_length=255, blank=True, null=True)
+    total_adults = models.PositiveIntegerField(null=True, blank=True)
+    total_kids = models.PositiveIntegerField(null=True, blank=True)
+
     check_in = models.DateField()
     check_out = models.DateField()
     flight_number = models.CharField(max_length=255, blank=True)
     pickup_group = models.ForeignKey(PickupGroup, on_delete=models.SET_NULL, null=True, blank=True, related_name='reservations')
+    pickup_point = models.ForeignKey(PickupPoint, on_delete=models.SET_NULL, null=True, blank=True, related_name='reservations')
+    departure_time = models.TimeField(null=True, blank=True)
 
     def __str__(self):
         return self.voucher_id

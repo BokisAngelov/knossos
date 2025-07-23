@@ -62,3 +62,13 @@ def get_excursion_availabilities(excursion_id):
     # print('response: ' + str(response.json()))
     return response.json()
 
+def get_reservation(booking_id):
+    token = get_token()
+    # booking_id = 49941
+    response = requests.get(API_URL + "/bookings/" + str(booking_id) + "/itinerary", headers={'Authorization': 'Bearer ' + token})
+
+    return response.json()
+
+
+
+

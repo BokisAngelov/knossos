@@ -11,13 +11,46 @@ from main.models import UserProfile, Region, PickupPoint, AvailabilityDays, DayO
 from django.utils.text import slugify
 from django.contrib.auth import get_user_model
 
-book = Booking.objects.all().delete()
-print('bookings deleted')
-excursion = Excursion.objects.all().delete()
-print('excursions deleted')
+# book = Booking.objects.all().delete()
+# print('bookings deleted')
+# excursion = Excursion.objects.all().delete()
+# print('excursions deleted')
 
 
-# res = Reservation.objects.all().values()
+res = Reservation.objects.all()
+print(res)
+for r in res:
+    print('reservation: ' + str(r.voucher_id))
+# print('reservations deleted')
+
+# unique_field = 'name'  # or 'email', or a tuple like ('name', 'email')
+
+# seen = set()
+# duplicates = []
+
+# for profile in UserProfile.objects.filter(role='provider').order_by('id'):
+#     value = getattr(profile, unique_field)
+#     if value in seen:
+#         duplicates.append(profile)
+#     else:
+#         seen.add(value)
+
+# print(f"Found {len(duplicates)} duplicates. Deleting...")
+
+# for dup in duplicates:
+#     user = dup.user
+#     dup.delete()
+#     print('deleted: ' + str(dup.name))
+#     if user:
+#         user.delete()
+#         print('deleted: ' + str(user.username))
+        
+
+
+
+
+
+
 
 # for r in res:
 #     print('reservation: ' + str(r))

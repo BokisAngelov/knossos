@@ -11,17 +11,5 @@ from django.contrib.auth.models import User
 from datetime import datetime, timedelta
 
 User = get_user_model()
-
-def fix_providers():
     
     
-    res = Reservation.objects.all()
-
-    for r in res:
-        print('reservation created with id: ', r.hotel.name)
-
-
-
-
-
-fix_providers() 

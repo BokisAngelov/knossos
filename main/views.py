@@ -27,7 +27,7 @@ import re
 import json
 from django.db.models import Q, Sum, Count
 from django.apps import apps
-from .cyber_api import get_groups, get_hotels, get_pickup_points, get_excursions, get_excursion_description, get_providers, get_excursion_availabilities
+from .cyber_api import get_groups, get_hotels, get_pickup_points, get_excursions, get_excursion_description, get_providers, get_excursion_availabilities, get_reservation
 
 def is_staff(user):
     return user.is_staff
@@ -49,8 +49,8 @@ def manage_cookies(request, cookie_name, cookie_value, cookie_action):
             cookie_value, 
             max_age=604800, # 7 days
             secure=True,
-            httponly=True,
-            samesite='Lax'
+            httponly=False,
+            samesite='None'
         )
         return response
     elif cookie_action == 'get':
@@ -76,41 +76,78 @@ def retrive_voucher(request):
                     'message': 'Voucher cleared successfully.'
                 })
                 response.delete_cookie('voucher_code')
+                response.delete_cookie('pickup_group')
+                response.delete_cookie('pickup_point')
                 return response
                 
             voucher_code = data.get('voucher_code')
-            print('voucher_code from ajax: ' + str(voucher_code))
-            voucher = Reservation.objects.get(voucher_id=voucher_code)
 
-            if voucher:
-                pickup_group_id = voucher.pickup_group
+            # print('voucher_code from ajax: ' + str(voucher_code))
+            # vouchers = Reservation.objects.all()
+            # print('vouchers: ' + str(vouchers))
+            # for voucher in vouchers:
+            #     print('voucher in for: ' + str(voucher.client_name) + ' id: ' + str(voucher.voucher_id))
                 
+            voucher = Reservation.objects.filter(voucher_id=voucher_code).first()
+            
+            if voucher:
+                # pickup_group_id = voucher.pickup_group
+                # print('voucher: ' + str(voucher.client_name) + ' ' + str(voucher.voucher_id))
                 # Create response with cookie
                 response = JsonResponse({
                     'success': True,
                     'message': 'Voucher is valid.',
                     'return_data': {
                         'client_name': voucher.client_name,
-                        'pickup_group_id': pickup_group_id,
+                        'pickup_group_id': voucher.pickup_group.id,
+                        'pickup_point_id': voucher.pickup_point.id,
                     }
                 })
-                
-                # Set the cookie in the response
-                response.set_cookie(
-                    'voucher_code',
-                    voucher_code,
-                    max_age=86400,
-                    secure=True,
-                    httponly=True,
-                    samesite='Lax'
-                )
-                
+                if request.COOKIES.get('voucher_code') is None:
+                    response.set_cookie(
+                        'voucher_code',
+                        voucher_code,
+                        max_age=86400,
+                        secure=True,
+                        httponly=False,
+                        samesite='None'
+                    )
+                if request.COOKIES.get('pickup_group') is None:
+                    response.set_cookie('pickup_group', voucher.pickup_group.id, max_age=86400, secure=True, httponly=False, samesite='None')
+                if request.COOKIES.get('pickup_point') is None:
+                    response.set_cookie('pickup_point', voucher.pickup_point.id, max_age=86400, secure=True, httponly=False, samesite='None')
+
+
+                print('response: ' + str(response))
                 return response
             else:
-                return JsonResponse({
-                    'success': False,
-                    'message': 'Voucher is invalid.'    
-                })
+                booking_data = get_reservation(voucher_code)
+                # print(booking_data)
+                reservation_response = create_reservation(booking_data)
+                print('reservation_response: ' + str(reservation_response))
+                if reservation_response.get('success') is not False:
+                    print('get success: ' + str(reservation_response.get('success')))
+                    return_data = reservation_response.get('return_data', {})
+                    print('return_data: ' + str(return_data))
+
+                    response = JsonResponse({
+                        'success': True,
+                        'message': 'Reservation created successfully.',
+                        'return_data': return_data
+                    })
+                    response.set_cookie('voucher_code', booking_data.get("Id"), max_age=86400, secure=True, httponly=False, samesite='None')
+                    response.set_cookie('pickup_group', return_data.get('pickup_group'), max_age=86400, secure=True, httponly=False, samesite='None')
+                    response.set_cookie('pickup_point', return_data.get('pickup_point'), max_age=86400, secure=True, httponly=False, samesite='None')
+
+
+                    return response
+                else:
+                    return JsonResponse({
+                        'success': False,
+                        'message': 'Reservation not created or found.'
+                    })
+
+                
         except Exception as e:
             return JsonResponse({
                 'success': False,
@@ -121,7 +158,100 @@ def retrive_voucher(request):
             'success': False,
             'message': 'Invalid request method.'
         })
+    # return JsonResponse({
+    #     'success': False,
+    #     'message': 'Invalid request method.'
+    # })
+    
+def create_reservation(booking_data):
+    if booking_data is not None:
+        try:
+        
+            booking_id = booking_data.get("Id")
+            lead_name = booking_data.get("LeadName")
+            lead_email = booking_data.get("LeadEmail")
+            lead_phone = booking_data.get("LeadPhone")
+            adults = booking_data.get("Adults")
+            children = booking_data.get("Children")
+            date_from_full = booking_data.get("DateFrom")
+            date_from = date_from_full.split("T")[0]
+            # date_from = datetime.strptime(date_from_part, "%Y-%m-%d").strftime("%d-%m-%Y")
+            date_to_full = booking_data.get("DateTo")
+            date_to = date_to_full.split("T")[0]
+            # date_to = datetime.strptime(date_to_part, "%Y-%m-%d").strftime("%d-%m-%Y")
 
+            pickup_point_id = None
+            hotel_id = None
+            pickup_time = None
+            for service in booking_data.get("Services", []):
+                if "PickupPoint" in service and pickup_point_id is None:
+                    pickup_point_id = service["PickupPoint"].get("Id")
+                if service.get("Type") == "Hotel" and hotel_id is None:
+                    hotel_id = service.get("Id")
+
+                if service.get("TransferType") == "DepartureTransfer":
+                    pickup_time = service.get("PickupTime")
+
+                if pickup_point_id is not None and hotel_id is not None and pickup_time is not None:
+                    break
+
+            pickup_group_id = PickupPoint.objects.get(id=pickup_point_id).pickup_group.id
+            pickup_point_instance = PickupPoint.objects.get(id=pickup_point_id) if pickup_point_id else None
+            pickup_group_instance = PickupGroup.objects.get(id=pickup_group_id) if pickup_group_id else None
+
+            print(f"Pickup Group ID: {pickup_group_id}")
+            print(f"Pickup Time: {pickup_time}")
+            print(f"Date From: {date_from}")
+            print(f"Date To: {date_to}")
+
+            hotel_instance = Hotel.objects.get(id=hotel_id) if hotel_id else None
+
+            booking, created = Reservation.objects.get_or_create(
+                voucher_id=booking_id,
+                defaults={
+                    'client_name': lead_name,
+                    'client_email': lead_email,
+                    'client_phone': lead_phone,
+                    'total_adults': adults,
+                    'total_kids': children,
+                    'check_in': date_from,
+                    'check_out': date_to,
+                    'pickup_point': pickup_point_instance.id,
+                    'pickup_group': pickup_group_instance.id,
+                    'hotel': hotel_instance,
+                    'departure_time': pickup_time,
+                }
+            )
+
+            if created:
+                print(f"Booking created: {booking}")
+            else:
+                print(f"Booking already exists: {booking}")
+
+            
+
+            return {
+                'success': True,
+                'message': 'Reservation found.',
+                'return_data': {
+                    'client_name': lead_name,
+                    'pickup_group': pickup_group_instance.name if pickup_group_instance else None,
+                    'pickup_point': pickup_point_instance.name if pickup_point_instance else None,
+                }
+            }
+
+        except Exception as e:
+            return {
+                'success': False,
+                'message': str(e)
+            }
+    else:
+        return {
+            'success': False,
+            'message': 'Reservation not found.'
+        }
+    
+        
 def sync_pickup_groups(request):
     if request.method == 'POST':
         try:
@@ -253,11 +383,11 @@ def sync_providers(request):
 
                 # 1. Get or create the User instance
                 user, user_created = User.objects.get_or_create(
+                    id=provider_id,
                     username=provider_email or f"provider_{provider_id}",
                     defaults={
                         'first_name': provider_name,
                         'email': provider_email or "",
-                        
                     }
                 )
 
@@ -265,7 +395,7 @@ def sync_providers(request):
                 profile, profile_created = UserProfile.objects.get_or_create(
                     user=user,
                     defaults={
-                        'id': provider_id,
+                        # 'id': provider_id,
                         'name': provider_name,
                         'role': 'provider',
                         'email': provider_email,
@@ -357,6 +487,89 @@ def sync_excursion_availabilities(request):
             return JsonResponse({'success': False, 'message': f'Error syncing excursion availabilities: {str(e)}'})
     return JsonResponse({'success': False, 'message': 'Invalid request method.'})
 
+def check_reservation(request):
+    voucher_code = request.POST.get('voucher_code')
+
+    try:
+        booking_exists = Reservation.objects.filter(voucher_id=voucher_code).exists()
+        if booking_exists:
+            return JsonResponse({'success': True, 'message': 'Booking exists.'})
+        else:
+            return JsonResponse({'success': False, 'message': 'Booking does not exist.'})
+
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': f'Error checking reservation: {str(e)}'})
+    
+    booking_data = get_reservation()
+
+    print(booking_data)
+
+    booking_id = booking_data.get("Id")
+    lead_name = booking_data.get("LeadName")
+    lead_email = booking_data.get("LeadEmail")
+    lead_phone = booking_data.get("LeadPhone")
+    adults = booking_data.get("Adults")
+    children = booking_data.get("Children")
+    date_from_full = booking_data.get("DateFrom")
+    date_from_part = date_from_full.split("T")[0]
+    date_from = datetime.strptime(date_from_part, "%Y-%m-%d").strftime("%d-%m-%Y")
+    date_to_full = booking_data.get("DateTo")
+    date_to_part = date_to_full.split("T")[0]
+    date_to = datetime.strptime(date_to_part, "%Y-%m-%d").strftime("%d-%m-%Y")
+
+    pickup_point_id = None
+    hotel_id = None
+    pickup_time = None
+    try:
+        for service in booking_data.get("Services", []):
+            if "PickupPoint" in service and pickup_point_id is None:
+                pickup_point_id = service["PickupPoint"].get("Id")
+            if service.get("Type") == "Hotel" and hotel_id is None:
+                hotel_id = service.get("Id")
+
+            if service.get("TransferType") == "DepartureTransfer":
+                pickup_time = service.get("PickupTime")
+
+            if pickup_point_id is not None and hotel_id is not None and pickup_time is not None:
+                break
+
+        pickup_group_id = PickupPoint.objects.get(id=pickup_point_id).pickup_group.id
+
+        print(f"Pickup Group ID: {pickup_group_id}")
+        print(f"Pickup Time: {pickup_time}")
+        print(f"Date From: {date_from}")
+        print(f"Date To: {date_to}")
+
+
+        # booking, created = Reservation.objects.get_or_create(
+        #     id=booking_id,
+        #     defaults={
+        #         'client_name': lead_name,
+        #         'client_email': lead_email,
+        #         'client_phone': lead_phone,
+        #         'total_adults': adults,
+        #         'total_kids': children,
+        #         'check_in': date_from,
+        #         'check_out': date_to,
+        #         'pickup_point': pickup_point_id,
+        #         'pickup_group': pickup_group_id,
+        #         'hotel': hotel_id,
+        #         'departure_time': pickup_time,
+        #     }
+        # )
+
+        # if created:
+        #     print(f"Booking created: {booking}")
+        # else:
+        #     print(f"Booking already exists: {booking}")
+        
+        return JsonResponse({'success': True, 'message': 'Booking created successfully.'})
+    except Exception as e:
+        print(f"Error: {e}")
+        return JsonResponse({'success': False, 'message': 'Error creating booking.'})
+       
+
+    
 
 # ----- Excursion Views -----
 def excursion_list(request):

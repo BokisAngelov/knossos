@@ -49,7 +49,7 @@
                   Check
               </button>
             </div>
-            <div class="flex items-center gap-2 {% if not voucher_code %}hidden{% endif %}">
+            <div class="flex items-center gap-2 voucher-clear {% if not voucher_code %}hidden{% endif %}">
                 <span id="voucher-message" class="text-sm text-gray-500">Welcome, {{ voucher_data.client_name }}!</span>
                 <button type="button" 
                         id="clear-voucher-btn" 
@@ -144,13 +144,15 @@
       });
 
       function checkVoucherOnLoad() {
-                const voucherInput = document.getElementById('voucher');
-                const voucherCode = voucherInput.value.trim();
-                console.log(voucherCode);
-                if (voucherCode) {
-                    checkVoucher(voucherCode);
-                }
-            }
+          // const voucherInput = document.getElementById('voucher');
+          const voucherCode = getCookie('voucher_code');
+
+          console.log("code from cookie: " + voucherCode);
+
+          if (voucherCode) {
+              checkVoucher(voucherCode);
+          }
+      }
 
       function checkVoucher(code) {
           fetch('/retrive_voucher/', {
@@ -165,36 +167,18 @@
           })
           .then(response => response.json())
           .then(data => {
+            console.log(data);
               if (data.success) {
+                  console.log(data);
                   document.getElementById('voucher-message').innerHTML = `Welcome, ${data.return_data.client_name}!`;
                   document.querySelector('.voucher-check').classList.add('hidden');
-                  // Show the clear button
-                  const clearButton = document.getElementById('clear-voucher-btn');
-                  if (clearButton) {
-                      clearButton.classList.remove('hidden');
-                  } else {
-                      // Create and append the clear button if it doesn't exist
-                      const buttonDiv = document.querySelector('.flex.items-center.gap-2:last-child');
-                      const newClearButton = document.createElement('button');
-                      newClearButton.id = 'clear-voucher-btn';
-                      newClearButton.type = 'button';
-                      newClearButton.className = 'h-8 px-3 py-1 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500';
-                      newClearButton.textContent = 'Clear Voucher';
-                      buttonDiv.appendChild(newClearButton);
-                      
-                      // Add event listener to the new button
-                      newClearButton.addEventListener('click', function() {
-                          clearVoucher();
-                      });
-                  }
+                  document.querySelector('.voucher-clear').classList.remove('hidden');
+                  
               } else {
                   document.querySelector('.voucher-check').classList.remove('hidden');
                   document.getElementById('voucher-message').textContent = data.message;
                   // Hide the clear button
-                  const clearButton = document.getElementById('clear-voucher-btn');
-                  if (clearButton) {
-                      clearButton.classList.add('hidden');
-                  }
+                  document.querySelector('.voucher-clear').classList.add('hidden');
               }
           })
           .catch(error => {
