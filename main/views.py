@@ -158,10 +158,7 @@ def retrive_voucher(request):
             'success': False,
             'message': 'Invalid request method.'
         })
-    # return JsonResponse({
-    #     'success': False,
-    #     'message': 'Invalid request method.'
-    # })
+
     
 def create_reservation(booking_data):
     if booking_data is not None:
@@ -486,90 +483,6 @@ def sync_excursion_availabilities(request):
         except Exception as e:
             return JsonResponse({'success': False, 'message': f'Error syncing excursion availabilities: {str(e)}'})
     return JsonResponse({'success': False, 'message': 'Invalid request method.'})
-
-def check_reservation(request):
-    voucher_code = request.POST.get('voucher_code')
-
-    try:
-        booking_exists = Reservation.objects.filter(voucher_id=voucher_code).exists()
-        if booking_exists:
-            return JsonResponse({'success': True, 'message': 'Booking exists.'})
-        else:
-            return JsonResponse({'success': False, 'message': 'Booking does not exist.'})
-
-    except Exception as e:
-        return JsonResponse({'success': False, 'message': f'Error checking reservation: {str(e)}'})
-    
-    booking_data = get_reservation()
-
-    print(booking_data)
-
-    booking_id = booking_data.get("Id")
-    lead_name = booking_data.get("LeadName")
-    lead_email = booking_data.get("LeadEmail")
-    lead_phone = booking_data.get("LeadPhone")
-    adults = booking_data.get("Adults")
-    children = booking_data.get("Children")
-    date_from_full = booking_data.get("DateFrom")
-    date_from_part = date_from_full.split("T")[0]
-    date_from = datetime.strptime(date_from_part, "%Y-%m-%d").strftime("%d-%m-%Y")
-    date_to_full = booking_data.get("DateTo")
-    date_to_part = date_to_full.split("T")[0]
-    date_to = datetime.strptime(date_to_part, "%Y-%m-%d").strftime("%d-%m-%Y")
-
-    pickup_point_id = None
-    hotel_id = None
-    pickup_time = None
-    try:
-        for service in booking_data.get("Services", []):
-            if "PickupPoint" in service and pickup_point_id is None:
-                pickup_point_id = service["PickupPoint"].get("Id")
-            if service.get("Type") == "Hotel" and hotel_id is None:
-                hotel_id = service.get("Id")
-
-            if service.get("TransferType") == "DepartureTransfer":
-                pickup_time = service.get("PickupTime")
-
-            if pickup_point_id is not None and hotel_id is not None and pickup_time is not None:
-                break
-
-        pickup_group_id = PickupPoint.objects.get(id=pickup_point_id).pickup_group.id
-
-        print(f"Pickup Group ID: {pickup_group_id}")
-        print(f"Pickup Time: {pickup_time}")
-        print(f"Date From: {date_from}")
-        print(f"Date To: {date_to}")
-
-
-        # booking, created = Reservation.objects.get_or_create(
-        #     id=booking_id,
-        #     defaults={
-        #         'client_name': lead_name,
-        #         'client_email': lead_email,
-        #         'client_phone': lead_phone,
-        #         'total_adults': adults,
-        #         'total_kids': children,
-        #         'check_in': date_from,
-        #         'check_out': date_to,
-        #         'pickup_point': pickup_point_id,
-        #         'pickup_group': pickup_group_id,
-        #         'hotel': hotel_id,
-        #         'departure_time': pickup_time,
-        #     }
-        # )
-
-        # if created:
-        #     print(f"Booking created: {booking}")
-        # else:
-        #     print(f"Booking already exists: {booking}")
-        
-        return JsonResponse({'success': True, 'message': 'Booking created successfully.'})
-    except Exception as e:
-        print(f"Error: {e}")
-        return JsonResponse({'success': False, 'message': 'Error creating booking.'})
-       
-
-    
 
 # ----- Excursion Views -----
 def excursion_list(request):
