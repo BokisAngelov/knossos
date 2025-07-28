@@ -21,7 +21,7 @@
                 <div class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300">
                     <a href="{% url 'excursion_detail' excursion.pk %}" class="block">
                         <div class="relative">
-                            <img src="{{ excursion.intro_image.url }}" alt="{{ excursion.title }}" class="w-full h-48 object-cover">
+                            <img src="{% if excursion.intro_image %}{{ excursion.intro_image.url }}{% else %}{% static 'main/images/default-excursion-image.jpg' %}{% endif %}" alt="{{ excursion.title }}" class="w-full h-48 object-cover">
                             <div class="absolute top-2 right-2">
                                 <span class="px-2 py-1 text-xs font-semibold rounded-full {% if excursion.status == 'active' %}bg-green-100 text-green-800{% else %}bg-red-100 text-red-800{% endif %}">
                                     {{ excursion.status|title }}

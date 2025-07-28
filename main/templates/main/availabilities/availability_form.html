@@ -231,44 +231,95 @@
 </div>
 
 <script>
+  //  get csrf token for ajax requests
+  function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    const csrftoken = getCookie('csrftoken');
 document.addEventListener('DOMContentLoaded', function() {
-    const regionSelect = document.getElementById('id_region');
+  
+    // const regionSelect = document.getElementById('id_region');
     const pickupGroupDivs = document.querySelectorAll('[data-region-id]');
     const weekdaysCheckboxes = document.querySelectorAll('input[name="weekdays"]');
     const allPriceFields = document.querySelectorAll('.price-field');
+    const excursionSelect = document.querySelector('#id_excursion');
 
-    function filterPickupGroups() {
-        const selectedRegion = regionSelect.value;
-        pickupGroupDivs.forEach(div => {
-            if (!selectedRegion || div.getAttribute('data-region-id') === selectedRegion) {
-                div.style.display = '';
-            } else {
-                div.style.display = 'none';
+    // if excursion is changed, clear the pickup groups
+    excursionSelect.addEventListener('change', function() {
+        const selectedExcursion = excursionSelect.value;
+        console.log(selectedExcursion);
+        
+        fetch('/check_excursion_pickup_groups/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrftoken
+            },
+            body: JSON.stringify({
+              excursion_id: selectedExcursion
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.pickup_groups) {
+                data.pickup_groups.forEach(pickupGroup => {
+                  group_id = pickupGroup.pickup_groups;
+                  const pickCheckbox = document.querySelector(`input[value="${group_id}"]`);
+                  const pickLabel = document.querySelector(`label[for="id_pickup_groups_${group_id}"]`);
+                  if (pickCheckbox) {
+                    pickCheckbox.setAttribute('disabled', 'disabled');
+                    pickCheckbox.style.opacity = 0.5;
+                    pickLabel.style.opacity = 0.5;
+                  }
+                });
             }
         });
-    }
+    });
 
-    if (regionSelect) {
-        regionSelect.addEventListener('change', filterPickupGroups);
-        filterPickupGroups(); // Initial call in case of edit
-    }
+
+    // function filterPickupGroups() {
+    //     const selectedRegion = regionSelect.value;
+    //     pickupGroupDivs.forEach(div => {
+    //         if (!selectedRegion || div.getAttribute('data-region-id') === selectedRegion) {
+    //             div.style.display = '';
+    //         } else {
+    //             div.style.display = 'none';
+    //         }
+    //     });
+    // }
+
+    // if (regionSelect) {
+    //     regionSelect.addEventListener('change', filterPickupGroups);
+    //     filterPickupGroups(); // Initial call in case of edit
+    // }
 
     // Fix for M2M fields not being selected when editing
     function checkSelectedValues() {
         // For region checkboxes
-        const selectedRegionsData = document.querySelector('#id_region').getAttribute('data-initial-values');
-        if (selectedRegionsData) {
-            try {
-                const selectedRegions = JSON.parse(selectedRegionsData);
-                regionCheckboxes.forEach(checkbox => {
-                    if (selectedRegions.includes(parseInt(checkbox.value))) {
-                        checkbox.checked = true;
-                    }
-                });
-            } catch (e) {
-                console.error('Error parsing selected regions:', e);
-            }
-        }
+        // const selectedRegionsData = document.querySelector('#id_region').getAttribute('data-initial-values');
+        // if (selectedRegionsData) {
+        //     try {
+        //         const selectedRegions = JSON.parse(selectedRegionsData);
+        //         regionCheckboxes.forEach(checkbox => {
+        //             if (selectedRegions.includes(parseInt(checkbox.value))) {
+        //                 checkbox.checked = true;
+        //             }
+        //         });
+        //     } catch (e) {
+        //         console.error('Error parsing selected regions:', e);
+        //     }
+        // }
 
         // For weekdays checkboxes
         const selectedWeekdaysData = document.querySelector('#id_weekdays').getAttribute('data-initial-values');
@@ -287,7 +338,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     }
 
-    checkSelectedValues();
+    // checkSelectedValues();
+
   
     // Form submission handling
     const form = document.getElementById('availability-form');

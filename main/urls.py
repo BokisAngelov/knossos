@@ -40,6 +40,7 @@ urlpatterns = [
     path('manage_staff/', views.manage_staff, name='manage_staff'),
     path('guides_list/', views.guides_list, name='guides_list'),
     path('manage_guides/', views.manage_guides, name='manage_guides'),
+    path('check_excursion_pickup_groups/', views.check_excursion_pickup_groups, name='check_excursion_pickup_groups'),
     # location urls
     path('hotel_list/', views.hotel_list, name='hotel_list'),
     path('manage_hotels/', views.manage_hotels, name='manage_hotels'),

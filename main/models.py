@@ -187,6 +187,7 @@ class ExcursionAvailability(models.Model):
     is_active = models.BooleanField(default=True)
     weekdays = models.ManyToManyField(DayOfWeek, blank=True)
     pickup_groups = models.ManyToManyField(PickupGroup, blank=True, related_name='availabilities')
+    pickup_points = models.ManyToManyField(PickupPoint, blank=True, related_name='availabilities')
     start_time = models.TimeField(null=True, blank=True)
     end_time = models.TimeField(null=True, blank=True)
     discount = models.DecimalField(max_digits=10, decimal_places=2, default=0)

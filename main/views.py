@@ -497,6 +497,7 @@ def excursion_detail(request, pk):
     feedback_form, booking_form = None, None
     excursion_availabilities = ExcursionAvailability.objects.filter(excursion=excursion)
     excursion_availability = excursion_availabilities.first()
+    
     availability_dates_by_region = {}
     pickup_points = []
     return_data = {}
@@ -535,18 +536,32 @@ def excursion_detail(request, pk):
 
 
     for availability in excursion_availabilities:
-        pickup_group_id = availability.pickup_groups.all().first().id
-        days = availability.availability_days.all()
-        
-        # Convert queryset to list of dicts
-        date_entries = [
-            {"date": day.date_day.isoformat(), "id": day.id}
-            for day in days
-        ]
-        availability_dates_by_region[str(pickup_group_id)] = date_entries
+        for pickup_group in availability.pickup_groups.all():
+            group_id = str(pickup_group.id)
+            days = availability.availability_days.all()
+            
+            # Convert queryset to list of dicts
+            date_entries = [
+                {"date": day.date_day.isoformat(), "id": day.id}
+                for day in days
+            ]
+            # If the group already exists, append dates; else, create new entry
+            if group_id not in availability_dates_by_region:
+                availability_dates_by_region[group_id] = []
+            availability_dates_by_region[group_id].extend(date_entries)
 
-        pickup_points_obj = PickupPoint.objects.filter(pickup_group__in=availability.pickup_groups.all()).select_related('pickup_group').order_by('name')
-        pickup_points.append(pickup_points_obj.values('id', 'name', 'pickup_group'))
+            # Get pickup points for this group
+            points = PickupPoint.objects.filter(pickup_group=pickup_group).order_by('name')
+            pickup_points.append({
+                "pickup_group": group_id,
+                "points": list(points.values('id', 'name'))
+            })
+
+    pickup_group_ids = [int(gid) for gid in availability_dates_by_region.keys()]
+    pickup_groups = PickupGroup.objects.filter(id__in=pickup_group_ids).values('id', 'name')
+    # Optionally, build a dict for easy lookup in JS
+    pickup_group_map = {str(g['id']): g['name'] for g in pickup_groups}
+
 
     # Handle feedback submission
     if request.method == 'POST' and 'feedback_submit' in request.POST:
@@ -685,6 +700,7 @@ def excursion_detail(request, pk):
         'pickup_points': pickup_points,
         'voucher_code': voucher_code,
         'return_data': return_data,
+        'pickup_group_map': pickup_group_map,
     })
 
 @user_passes_test(is_staff)
@@ -1414,6 +1430,21 @@ def availability_list(request):
     })
 
 @user_passes_test(is_staff)
+def check_excursion_pickup_groups(request):
+
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            excursion_id = data.get('excursion_id')
+            
+            pickup_groups = ExcursionAvailability.objects.filter(excursion=excursion_id).values('pickup_groups').distinct()
+
+            return JsonResponse({'pickup_groups': list(pickup_groups)})
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
+
+
+@user_passes_test(is_staff)
 def availability_form(request, pk=None):
 
     availability = None
@@ -1428,8 +1459,7 @@ def availability_form(request, pk=None):
         end_date = request.POST.get('end_date')
         # region = request.POST.get('region')
 
-        
-        
+
         overlapping_query = ExcursionAvailability.objects.filter(
             excursion=excursion,
             start_date__lte=end_date,
@@ -1443,7 +1473,7 @@ def availability_form(request, pk=None):
             overlapping_query = overlapping_query.exclude(pk=pk)
         
         if overlapping_query.exists():
-            error_message = 'Availability already exists for this excursion during the selected dates.'
+            error_message = 'Availability already exists for this excursion during the selected dates with the selected pickup groups.'
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return JsonResponse({
                     'success': False,
