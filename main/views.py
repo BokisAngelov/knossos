@@ -175,6 +175,7 @@ def create_reservation(booking_data):
             # date_from = datetime.strptime(date_from_part, "%Y-%m-%d").strftime("%d-%m-%Y")
             date_to_full = booking_data.get("DateTo")
             date_to = date_to_full.split("T")[0]
+            print('date_to - create_reservation function: ' + str(date_to))
             # date_to = datetime.strptime(date_to_part, "%Y-%m-%d").strftime("%d-%m-%Y")
 
             pickup_point_id = None
@@ -192,11 +193,18 @@ def create_reservation(booking_data):
                 if pickup_point_id is not None and hotel_id is not None and pickup_time is not None:
                     break
 
-            pickup_group_id = PickupPoint.objects.get(id=pickup_point_id).pickup_group.id
             pickup_point_instance = PickupPoint.objects.get(id=pickup_point_id) if pickup_point_id else None
-            pickup_group_instance = PickupGroup.objects.get(id=pickup_group_id) if pickup_group_id else None
+            pickup_group_instance = pickup_point_instance.pickup_group if pickup_point_instance else None
 
-            print(f"Pickup Group ID: {pickup_group_id}")
+            # Convert pickup_time string to time object
+            departure_time_obj = None
+            if pickup_time:
+                try:
+                    departure_time_obj = datetime.strptime(pickup_time, '%H:%M').time()
+                except (ValueError, TypeError):
+                    departure_time_obj = None
+
+            print(f"Pickup Group ID: {pickup_group_instance.id if pickup_group_instance else None}")
             print(f"Pickup Time: {pickup_time}")
             print(f"Date From: {date_from}")
             print(f"Date To: {date_to}")
@@ -213,10 +221,10 @@ def create_reservation(booking_data):
                     'total_kids': children,
                     'check_in': date_from,
                     'check_out': date_to,
-                    'pickup_point': pickup_point_instance.id,
-                    'pickup_group': pickup_group_instance.id,
+                    'pickup_point': pickup_point_instance,
+                    'pickup_group': pickup_group_instance,
                     'hotel': hotel_instance,
-                    'departure_time': pickup_time,
+                    'departure_time': departure_time_obj,
                 }
             )
 
@@ -234,7 +242,8 @@ def create_reservation(booking_data):
                     'client_name': lead_name,
                     'pickup_group': pickup_group_instance.name if pickup_group_instance else None,
                     'pickup_point': pickup_point_instance.name if pickup_point_instance else None,
-                }
+                },
+                'created': created
             }
 
         except Exception as e:
@@ -538,6 +547,7 @@ def excursion_detail(request, pk):
     for availability in excursion_availabilities:
         for pickup_group in availability.pickup_groups.all():
             group_id = str(pickup_group.id)
+            # days = availability.availability_days.filter(excursion_availability=availability)
             days = availability.availability_days.all()
             
             # Convert queryset to list of dicts
@@ -561,6 +571,7 @@ def excursion_detail(request, pk):
     pickup_groups = PickupGroup.objects.filter(id__in=pickup_group_ids).values('id', 'name')
     # Optionally, build a dict for easy lookup in JS
     pickup_group_map = {str(g['id']): g['name'] for g in pickup_groups}
+    print('pickup points: ' + str(pickup_points))
 
 
     # Handle feedback submission
@@ -1430,6 +1441,97 @@ def availability_list(request):
     })
 
 @user_passes_test(is_staff)
+def admin_reservations(request):
+    reservations = Reservation.objects.all()
+
+    try:
+        # Handle search
+        search_query = request.GET.get('search', '').strip()
+        if search_query:
+            reservations = reservations.filter(
+                Q(client_name__icontains=search_query) |
+                Q(client_email__icontains=search_query) |
+                Q(client_phone__icontains=search_query) |
+                Q(voucher_id__icontains=search_query)
+            )
+
+        return render(request, 'main/admin/admin_reservations.html', {
+            'reservations': reservations,
+        })   
+    except Reservation.DoesNotExist:
+        messages.error(request, 'No reservations found')
+        return redirect('admin_reservations')
+    except Exception as e:
+        messages.error(request, f'Error fetching reservations: {str(e)}')
+        return redirect('admin_reservations')
+
+
+@user_passes_test(is_staff)
+def manage_reservations(request):
+    if request.method == 'POST':
+        action_type = request.POST.get('action_type')
+        item_id = request.POST.get('item_id')
+
+        if action_type == 'add_reservation':
+            reservation_id = request.POST.get('voucher_id', '').strip()
+
+            if reservation_id is not None:
+                booking_data = get_reservation(int(reservation_id))
+                print('booking_data from manage reservations: ' + str(booking_data))
+                if booking_data.get('ErrorMessage') is None:
+                    reservation_response = create_reservation(booking_data)
+                    print('reservation_response from manage reservations: ' + str(reservation_response))
+                    if reservation_response.get('message') == "Reservation found.":
+                        messages.error(request, f'Reservation {reservation_id} already exists.')
+                        return redirect('admin_reservations')
+                    else:
+                        messages.success(request, f'Reservation {reservation_id} created successfully.')
+                        return redirect('admin_reservations')
+                else:
+                    messages.error(request, f'No reservation found with ID: {reservation_id}.')
+                    return redirect('admin_reservations')   
+
+            else:
+                messages.error(request, 'Please fill in all fields')
+                return redirect('admin_reservations')
+            
+        elif action_type == 'edit_reservation':
+            reservation = get_object_or_404(Reservation, pk=item_id)
+
+            current_departure_time = reservation.departure_time
+            
+            email = request.POST.get('email', '').strip()
+            phone = request.POST.get('phone', '').strip()
+            departure_time = request.POST.get('departure_time', '').strip()
+
+            if email and phone and departure_time:
+                reservation.client_email = email
+                reservation.client_phone = phone
+                reservation.departure_time = departure_time
+
+                if current_departure_time != departure_time:
+                    # we need to inform the client 
+                    # def inform_client(reservation_id, email, phone, new_departure_time)
+                    print('departure_time changed')
+
+                reservation.save()
+                messages.success(request, 'Reservation updated successfully.')
+                return redirect('admin_reservations')
+            else:
+                messages.error(request, 'Please fill in all fields')
+                return redirect('admin_reservations')
+            
+        elif action_type == 'delete_reservation':
+            reservation = get_object_or_404(Reservation, pk=item_id)
+            reservation.delete()
+            messages.success(request, 'Reservation deleted successfully.')
+            return redirect('admin_reservations')
+        
+    return render(request, 'main/admin/admin_reservations.html', {
+        'reservations': Reservation.objects.filter(status='active'),
+    })
+
+@user_passes_test(is_staff)
 def check_excursion_pickup_groups(request):
 
     if request.method == 'POST':
@@ -1442,7 +1544,6 @@ def check_excursion_pickup_groups(request):
             return JsonResponse({'pickup_groups': list(pickup_groups)})
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=400)
-
 
 @user_passes_test(is_staff)
 def availability_form(request, pk=None):

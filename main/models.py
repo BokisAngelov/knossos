@@ -242,6 +242,10 @@ class Hotel(models.Model):
         return self.name
 
 class Reservation(models.Model):
+    STATUS_CHOICES = [
+        ('active', 'Active'),
+        ('inactive', 'Inactive'),
+    ]
     voucher_id = models.CharField(max_length=255, unique=True)
     hotel = models.ForeignKey(Hotel, on_delete=models.SET_NULL, null=True, related_name='reservations')
     client_name = models.CharField(max_length=255, blank=True)
@@ -256,9 +260,16 @@ class Reservation(models.Model):
     pickup_group = models.ForeignKey(PickupGroup, on_delete=models.SET_NULL, null=True, blank=True, related_name='reservations')
     pickup_point = models.ForeignKey(PickupPoint, on_delete=models.SET_NULL, null=True, blank=True, related_name='reservations')
     departure_time = models.TimeField(null=True, blank=True)
+    status = models.CharField(max_length=255, choices=STATUS_CHOICES, default='active')
 
     def __str__(self):
         return self.voucher_id
+    
+    def update_status(self):
+        if self.check_out < datetime.now().date():
+            self.status = 'inactive'
+            self.save()
+        return True
 
 class Booking(models.Model):
     PAYMENT_STATUS_CHOICES = [

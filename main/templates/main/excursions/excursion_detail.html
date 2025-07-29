@@ -315,9 +315,7 @@
                         <select name="pickup_point" id="pickup-point" class="mt-1 block w-full pl-3 pr-2 py-2 text-base border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md {% if form.pickup_point.errors %}border-red-500{% endif %}">
                             <option value="">Select a pickup point</option>
                             {% for pickup_point in pickup_points %}
-                                {% for point in pickup_point %}
-                                    <option data-pickup_group="{{ point.pickup_group }}" value="{{ point.id }}">{{ point.name }}</option>
-                                {% endfor %}
+                                <option data-pickup_group="{{ pickup_point.pickup_group }}" value="{{ pickup_point.id }}">{{ pickup_point.name }}</option>
                             {% endfor %}
                         </select>
                         {% if form.pickup_point.errors %}

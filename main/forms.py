@@ -284,7 +284,6 @@ class ExcursionAvailabilityForm(forms.ModelForm):
         return cleaned
 
 # ----- Booking & Pricing Forms -----
-
 class BookingForm(forms.ModelForm):
     class Meta:
         model = Booking
