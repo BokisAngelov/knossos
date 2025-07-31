@@ -930,8 +930,9 @@ def logout_view(request):
 
 @login_required
 def profile(request, pk):
-    user_profile = get_object_or_404(User, pk=pk)
-    bookings = Booking.objects.filter(user=user_profile)
+    user = get_object_or_404(User, pk=pk)
+    bookings = Booking.objects.filter(user=user)
+    user_profile = user.profile
     
     # Only allow users to view their own profile unless they're staff
     if request.user.id != user_profile.id and not request.user.is_staff:

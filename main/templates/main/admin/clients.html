@@ -76,7 +76,7 @@
                                     <div class="flex items-center">
                                         <div class="ml-4">
                                             <div class="text-sm font-medium text-gray-900">
-                                                <span class="editable-name">{{ client.name }}</span>
+                                                <span class="editable-name"><a href="{% url 'profile' pk=client.id %}">{{ client.name }}</a></span>
                                                 <input type="text" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ client.name }}">
                                             </div>
                                         </div>
