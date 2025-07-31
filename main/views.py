@@ -509,24 +509,24 @@ def excursion_detail(request, pk):
     
     availability_dates_by_region = {}
     pickup_points = []
-    return_data = {}
+    # return_data = {}
 
-    voucher_code = manage_cookies(request, 'voucher_code', None, 'get')
-    print('found voucher code in cookies: ' + str(voucher_code))
+    # voucher_code = manage_cookies(request, 'voucher_code', None, 'get')
+    # print('found voucher code in cookies: ' + str(voucher_code))
     
-    if voucher_code:
-        voucher = Reservation.objects.get(voucher_id=voucher_code)
-        print('found voucher object: ' + str(voucher))
-        if voucher:
-            pickup_group_id = voucher.pickup_group
+    # if voucher_code:
+    #     voucher = Reservation.objects.get(voucher_id=voucher_code)
+    #     print('found voucher object: ' + str(voucher))
+    #     if voucher:
+    #         pickup_group_id = voucher.pickup_group
 
-            return_data = {
-                'client_name': voucher.client_name,
-                'pickup_group_id': pickup_group_id,
-            }
-    else:
-        voucher_code = None
-        print('no voucher code found in cookies')
+    #         return_data = {
+    #             'client_name': voucher.client_name,
+    #             'pickup_group_id': pickup_group_id,
+    #         }
+    # else:
+    #     voucher_code = None
+    #     print('no voucher code found in cookies')
 
     if not excursion_availability:
         feedback_form = FeedbackForm()
@@ -539,8 +539,8 @@ def excursion_detail(request, pk):
             'excursion_availability': excursion_availability,
             'availability_dates_by_region': availability_dates_by_region,
             'pickup_points': pickup_points,
-            'voucher_code': voucher_code,
-            'return_data': return_data,
+            # 'voucher_code': voucher_code,
+            # 'return_data': return_data,
         })
 
 
@@ -709,8 +709,8 @@ def excursion_detail(request, pk):
         'booking_form': booking_form,
         'availability_dates_by_region': availability_dates_by_region,
         'pickup_points': pickup_points,
-        'voucher_code': voucher_code,
-        'return_data': return_data,
+        # 'voucher_code': voucher_code,
+        # 'return_data': return_data,
         'pickup_group_map': pickup_group_map,
     })
 

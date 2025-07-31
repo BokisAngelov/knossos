@@ -248,15 +248,19 @@
                     {% csrf_token %}
                     <input type="hidden" name="booking_submit" value="1">
                     {% for availability in excursion_availabilities.all %}
-                        <input type="hidden" name="{{ availability.pickup_groups.all.first.id }}-adult-price" value="{{ availability.adult_price }}">
-                        <input type="hidden" name="{{ availability.pickup_groups.all.first.id }}-child-price" value="{{ availability.child_price }}">
-                        <input type="hidden" name="{{ availability.pickup_groups.all.first.id }}-infant-price" value="{{ availability.infant_price }}">
-                        <input type="hidden" name="{{ availability.pickup_groups.all.first.id }}-pickup-group" value="{{ availability.pickup_groups.all.first.name }}">
-                        <input type="hidden" name="{{ availability.pickup_groups.all.first.id }}-available-capacity" value="{{ availability.weekdays.capacity }}">
+                        <input type="hidden" name="{{ availability.id }}-adult-price" value="{{ availability.adult_price }}">
+                        <input type="hidden" name="{{ availability.id }}-child-price" value="{{ availability.child_price }}">
+                        <input type="hidden" name="{{ availability.id }}-infant-price" value="{{ availability.infant_price }}">
+                        <!-- <input type="hidden" name="{{ availability.id }}-pickup-group" value="{{ availability.pickup_groups.all.first.name }}"> -->
+                        <!-- <input type="hidden" name="{{ availability.id }}-available-capacity" value="{{ availability.weekdays.capacity }}"> -->
+                        {% for pickup_group in availability.pickup_groups.all %}
+                            <input type="hidden" name="{{ pickup_group.id }}-pickup-group" value="{{ pickup_group.name }}" data-availability-id="{{ availability.id }}">
+                            <!-- <input type="hidden" name="{{ pickup_group.id }}-availability-id" value="{{ availability.id }}"> -->
+                        {% endfor %}
                     {% endfor %}
                     <div class="flex flex-col gap-2">
                         <span id="voucher-message" class="text-sm text-gray-500"></span>
-                        <input type="text" 
+                        <!-- <input type="text" 
                                name="voucher" 
                                id="voucher" 
                                class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2" 
@@ -278,23 +282,14 @@
                                         Clear Voucher
                                 </button>
                             </div>
-                        </div>
+                        </div> -->
                         
-                        <div id="voucher-welcome" class="pb-2 mt-2 text-sm text-gray-500 border-b border-gray-200">
-                            {% if return_data.client_name %}
-                                <p class="text-md">Pickup points and prices are based on your accommodation and pickup group.</p>
-                            {% endif %}
-                        </div>
+                        <!-- <div id="voucher-welcome" class="pb-2 mt-2 text-sm text-gray-500 border-b border-gray-200">
+                            <p class="text-md">Pickup points and prices are based on your accommodation and pickup group.</p>
+                        </div> -->
                     </div>
-                    <div>
-                        <label class="block text-md font-medium text-gray-700">Date</label>
-                        <input type="text" id="date-picker" class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 {% if form.date.errors %}border-red-500{% endif %}" placeholder="Select a date">
-                        <input type="hidden" name="availability_id" id="availability-id">
-                        {% if form.date.errors %}
-                        <p class="mt-1 text-sm text-red-600">{{ form.date.errors.0 }}</p>
-                        {% endif %}
-                    </div> 
-                    <!-- {% if voucher_code %}hidden{% endif %} -->
+                    <input type="hidden" name="availability_id" id="availability-id" value="">
+                     
                     <div class="flex flex-col gap-2 pickup-group-div" >
                         <label class="block text-md font-medium text-gray-700">Pickup Group</label>
                         <select name="pickup_group" id="pickup-group" class="mt-1 block w-full pl-3 pr-2 py-2 text-base border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md {% if form.pickup_group.errors %}border-red-500{% endif %}">
@@ -320,6 +315,15 @@
                         </select>
                         {% if form.pickup_point.errors %}
                             <p class="mt-1 text-sm text-red-600">{{ form.pickup_point.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+
+                    <div>
+                        <label class="block text-md font-medium text-gray-700">Date</label>
+                        <input type="text" id="date-picker" class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 {% if form.date.errors %}border-red-500{% endif %}" placeholder="Select a date">
+                        
+                        {% if form.date.errors %}
+                        <p class="mt-1 text-sm text-red-600">{{ form.date.errors.0 }}</p>
                         {% endif %}
                     </div>
 
@@ -428,7 +432,9 @@
     const pickupGroupSelect = document.getElementById('pickup-group');
     const pickupPointSelect = document.getElementById('pickup-point');
     const datePickerInput = document.getElementById('date-picker');
-    const availabilityIdInput = document.getElementById('availability-id');
+    // const availabilityIdInput = document.getElementById('availability-id');
+
+    // console.log(availabilityIdInput);
 
     let picker = null;
 
@@ -462,7 +468,7 @@
             }
         });
         datePickerInput.value = '';
-        availabilityIdInput.value = '';
+        // availabilityIdInput.value = '';
     }
 
     // On pickup group change, update both date picker and pickup points
@@ -487,146 +493,144 @@
         if (!notAvailability) {
             let picker = null;
             
-            function checkVoucherOnLoad() {
-                const voucherInput = document.getElementById('voucher');
-                const voucherCode = voucherInput.value.trim();
+            // function checkVoucherOnLoad() {
+            //     const voucherInput = document.getElementById('voucher');
+            //     const voucherCode = voucherInput.value.trim();
                 
-                if (voucherCode) {
-                    checkVoucher(voucherCode);
-                }
-            }
-            checkVoucherOnLoad();
-            function checkVoucher(code) {
-                fetch('/retrive_voucher/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCookie('csrftoken')
-                    },
-                    body: JSON.stringify({
-                        voucher_code: code
-                    })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        document.getElementById('voucher-message').textContent = data.message;
-                        document.getElementById('voucher-welcome').innerHTML = `Welcome, ${data.return_data.client_name}!<br>Pickup points and prices are based on your accommodation and pickup group.`;
+            //     if (voucherCode) {
+            //         checkVoucher(voucherCode);
+            //     }
+            // }
+            // checkVoucherOnLoad();
+            // function checkVoucher(code) {
+            //     fetch('/retrive_voucher/', {
+            //         method: 'POST',
+            //         headers: {
+            //             'Content-Type': 'application/json',
+            //             'X-CSRFToken': getCookie('csrftoken')
+            //         },
+            //         body: JSON.stringify({
+            //             voucher_code: code
+            //         })
+            //     })
+            //     .then(response => response.json())
+            //     .then(data => {
+            //         if (data.success) {
+            //             document.getElementById('voucher-message').textContent = data.message;
+            //             document.getElementById('voucher-welcome').innerHTML = `Welcome, ${data.return_data.client_name}!<br>Pickup points and prices are based on your accommodation and pickup group.`;
                         
-                        const pickupGroupSelect = document.querySelector('select[name="pickup_group"]');
-                        const pickupGroupOption = pickupGroupSelect.querySelector(`option[value="${data.return_data.pickup_group_id}"]`);
+            //             const pickupGroupSelect = document.querySelector('select[name="pickup_group"]');
+            //             const pickupGroupOption = pickupGroupSelect.querySelector(`option[value="${data.return_data.pickup_group_id}"]`);
 
-                        if (pickupGroupOption) {
-                            pickupGroupOption.selected = true;
-                            if (picker) {
-                                picker.destroy();
-                            }
-                            initializeDatePicker(data.return_data.pickup_group_id);
+            //             if (pickupGroupOption) {
+            //                 pickupGroupOption.selected = true;
+            //                 if (picker) {
+            //                     picker.destroy();
+            //                 }
+            //                 initializeDatePicker(data.return_data.pickup_group_id);
                             
-                            // Update pickup points for the selected pickup group
-                            const pickupPointSelect = document.getElementById('pickup-point');
-                            const pickupPoints_options = pickupPointSelect.querySelectorAll('option');
+            //                 // Update pickup points for the selected pickup group
+            //                 const pickupPointSelect = document.getElementById('pickup-point');
+            //                 const pickupPoints_options = pickupPointSelect.querySelectorAll('option');
                             
-                            // Hide all options first
-                            pickupPoints_options.forEach(option => {
-                                option.classList.add('hidden');
-                            });
+            //                 // Hide all options first
+            //                 pickupPoints_options.forEach(option => {
+            //                     option.classList.add('hidden');
+            //                 });
                             
-                            // Show only options for the selected pickup group
-                            pickupPoints_options.forEach(option => {
-                                if (option.dataset.pickup_group === data.return_data.pickup_group_id.toString()) {
-                                    option.classList.remove('hidden');
-                                }
-                            });
+            //                 // Show only options for the selected pickup group
+            //                 pickupPoints_options.forEach(option => {
+            //                     if (option.dataset.pickup_group === data.return_data.pickup_group_id.toString()) {
+            //                         option.classList.remove('hidden');
+            //                     }
+            //                 });
                             
-                            // Select the first available pickup point
-                            const availableOptions = Array.from(pickupPoints_options).filter(option => 
-                                option.dataset.pickup_group === data.return_data.pickup_group_id.toString() && option.value !== ''
-                            );
+            //                 // Select the first available pickup point
+            //                 const availableOptions = Array.from(pickupPoints_options).filter(option => 
+            //                     option.dataset.pickup_group === data.return_data.pickup_group_id.toString() && option.value !== ''
+            //                 );
 
-                            if (availableOptions.length > 0) {
-                                pickupPointSelect.value = availableOptions[0].value;
-                            } else {
-                                pickupPointSelect.value = '';
-                            }
+            //                 if (availableOptions.length > 0) {
+            //                     pickupPointSelect.value = availableOptions[0].value;
+            //                 } else {
+            //                     pickupPointSelect.value = '';
+            //                 }
                             
-                            // Update prices and pickup points display
-                            updatePriceAndPickupPoints();
-                        }
-                        document.querySelector('.pickup-group-div').classList.add('hidden');
-                        document.querySelector('#guest-name').value = data.return_data.client_name;
-                    } else {
-                        document.getElementById('voucher-message').textContent = data.message;
-                        document.getElementById('voucher-welcome').innerHTML = '';
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    document.getElementById('voucher-message').textContent = 'An error occurred while checking the voucher.';
-                });
-            }
+            //                 // Update prices and pickup points display
+            //                 updatePriceAndPickupPoints();
+            //             }
+            //             document.querySelector('.pickup-group-div').classList.add('hidden');
+            //             document.querySelector('#guest-name').value = data.return_data.client_name;
+            //         } else {
+            //             document.getElementById('voucher-message').textContent = data.message;
+            //             document.getElementById('voucher-welcome').innerHTML = '';
+            //         }
+            //     })
+            //     .catch(error => {
+            //         console.error('Error:', error);
+            //         document.getElementById('voucher-message').textContent = 'An error occurred while checking the voucher.';
+            //     });
+            // }
 
-            // Add event listener for the voucher button
-            document.getElementById('submit-voucher-btn').addEventListener('click', function() {
-                const voucherInput = document.getElementById('voucher');
-                const voucherCode = voucherInput.value.trim();
-                console.log('voucherCode: ' + voucherCode);
-                console.log('voucherInput: ' + voucherInput);
-                if (voucherCode) {
-                    console.log('Checking voucher:', voucherCode);
-                    checkVoucher(voucherCode);
-                } else {
-                    document.getElementById('voucher-message').textContent = 'Please enter a voucher code.';
-                }
-            });
+            // // Add event listener for the voucher button
+            // document.getElementById('submit-voucher-btn').addEventListener('click', function() {
+            //     const voucherInput = document.getElementById('voucher');
+            //     const voucherCode = voucherInput.value.trim();
+            //     console.log('voucherCode: ' + voucherCode);
+            //     console.log('voucherInput: ' + voucherInput);
+            //     if (voucherCode) {
+            //         console.log('Checking voucher:', voucherCode);
+            //         checkVoucher(voucherCode);
+            //     } else {
+            //         document.getElementById('voucher-message').textContent = 'Please enter a voucher code.';
+            //     }
+            // });
 
-            // Add event listener for the clear voucher button
-            document.getElementById('clear-voucher-btn').addEventListener('click', function() {
-                // Make AJAX call to clear the cookie
-                fetch('/retrive_voucher/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCookie('csrftoken')
-                    },
-                    body: JSON.stringify({
-                        action: 'clear'
-                    })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        // Clear the UI
-                        document.getElementById('voucher').value = '';
-                        document.getElementById('voucher-message').textContent = '';
-                        document.getElementById('voucher-welcome').innerHTML = '';
-                        document.querySelector('.pickup-group-div').classList.remove('hidden');
-                        document.querySelector('#guest-name').value = '';
+            // // Add event listener for the clear voucher button
+            // document.getElementById('clear-voucher-btn').addEventListener('click', function() {
+            //     // Make AJAX call to clear the cookie
+            //     fetch('/retrive_voucher/', {
+            //         method: 'POST',
+            //         headers: {
+            //             'Content-Type': 'application/json',
+            //             'X-CSRFToken': getCookie('csrftoken')
+            //         },
+            //         body: JSON.stringify({
+            //             action: 'clear'
+            //         })
+            //     })
+            //     .then(response => response.json())
+            //     .then(data => {
+            //         if (data.success) {
+            //             // Clear the UI
+            //             document.getElementById('voucher').value = '';
+            //             document.getElementById('voucher-message').textContent = '';
+            //             document.getElementById('voucher-welcome').innerHTML = '';
+            //             document.querySelector('.pickup-group-div').classList.remove('hidden');
+            //             document.querySelector('#guest-name').value = '';
                         
-                        // Reset region selection if needed
-                        const pickupGroupSelect = document.querySelector('select[name="pickup_group"]');
-                        if (pickupGroupSelect) {
-                            pickupGroupSelect.selectedIndex = 0;
-                            if (picker) {
-                                picker.destroy();
-                            }
-                            initializeDatePicker(pickupGroupSelect.value);
-                        }
+            //             // Reset region selection if needed
+            //             const pickupGroupSelect = document.querySelector('select[name="pickup_group"]');
+            //             if (pickupGroupSelect) {
+            //                 pickupGroupSelect.selectedIndex = 0;
+            //                 if (picker) {
+            //                     picker.destroy();
+            //                 }
+            //                 initializeDatePicker(pickupGroupSelect.value);
+            //             }
                         
-                        // Reload the page to ensure all state is reset
-                        window.location.reload();
-                    } else {
-                        document.getElementById('voucher-message').textContent = 'Error clearing voucher.';
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    document.getElementById('voucher-message').textContent = 'An error occurred while clearing the voucher.';
-                });
-            });
+            //             // Reload the page to ensure all state is reset
+            //             window.location.reload();
+            //         } else {
+            //             document.getElementById('voucher-message').textContent = 'Error clearing voucher.';
+            //         }
+            //     })
+            //     .catch(error => {
+            //         console.error('Error:', error);
+            //         document.getElementById('voucher-message').textContent = 'An error occurred while clearing the voucher.';
+            //     });
+            // });
 
-            // Check voucher on page load if there's a value
-            // document.addEventListener('DOMContentLoaded', checkVoucherOnLoad);
 
             function initializeDatePicker(pickupGroupId) {
                 const availableDates = availableDatesByRegion[pickupGroupId] || [];
@@ -672,10 +676,14 @@
                 const adults = parseInt(document.querySelector('input[name="adults"]').value) || 0;
                 const children = parseInt(document.querySelector('input[name="children"]').value) || 0;
                 const infants = parseInt(document.querySelector('input[name="infants"]').value) || 0;
-                
-                const adultPrice = document.querySelector(`input[name="${pickupGroup}-adult-price"]`).value;
-                const childPrice = document.querySelector(`input[name="${pickupGroup}-child-price"]`).value;
-                const infantPrice = document.querySelector(`input[name="${pickupGroup}-infant-price"]`).value;
+                const availabilityId = document.querySelector(`input[name="${pickupGroup}-pickup-group"]`).dataset.availabilityId;
+
+                console.log('calculateTotal availabilityId: ' + availabilityId);
+                console.log(availabilityId);
+
+                const adultPrice = document.querySelector(`input[name="${availabilityId}-adult-price"]`).value;
+                const childPrice = document.querySelector(`input[name="${availabilityId}-child-price"]`).value;
+                const infantPrice = document.querySelector(`input[name="${availabilityId}-infant-price"]`).value;
                 
                 const total = (adults * adultPrice) + (children * childPrice) + (infants * infantPrice);
                 document.getElementById('total-price').textContent = total.toFixed(2);
@@ -690,8 +698,12 @@
                 const adults = parseInt(document.querySelector('input[name="adults"]').value) || 0;
                 const children = parseInt(document.querySelector('input[name="children"]').value) || 0;
                 const infants = parseInt(document.querySelector('input[name="infants"]').value) || 0;
+                const availabilityId = document.querySelector(`input[name="${pickupGroupId}-pickup-group"]`).dataset.availabilityId;
+
+                console.log('updatePriceAndPickupPoints availabilityId: ' + availabilityId);
 
                 const pickupGroupName = document.querySelector(`input[name="${pickupGroupId}-pickup-group"]`).value;
+                console.log(pickupGroupName);
                 document.querySelector('.pickup-region').textContent = pickupGroupName;
                 document.querySelectorAll('.pickup-group').forEach(group => {
                     group.classList.add('hidden');
@@ -706,12 +718,12 @@
 
                 const pickupPoints_options = document.querySelectorAll('select[name="pickup_point"] option');
                 
-                pickupPoints_options.forEach(point => {
-                    point.classList.add('hidden');
-                    if (point.dataset.pickup_group === pickupGroupId) {
-                        point.classList.remove('hidden');
-                    }
-                });
+                // pickupPoints_options.forEach(point => {
+                //     point.classList.add('hidden');
+                //     if (point.dataset.pickup_group === pickupGroupId) {
+                //         point.classList.remove('hidden');
+                //     }
+                // });
 
                 // Select the first available pickup point for the selected region
                 const pickupPointSelect = document.getElementById('pickup-point');
@@ -725,9 +737,9 @@
                     pickupPointSelect.value = '';
                 }
 
-                const adultPrice = document.querySelector(`input[name="${pickupGroupId}-adult-price"]`).value;
-                const childPrice = document.querySelector(`input[name="${pickupGroupId}-child-price"]`).value;
-                const infantPrice = document.querySelector(`input[name="${pickupGroupId}-infant-price"]`).value;
+                const adultPrice = document.querySelector(`input[name="${availabilityId}-adult-price"]`).value;
+                const childPrice = document.querySelector(`input[name="${availabilityId}-child-price"]`).value;
+                const infantPrice = document.querySelector(`input[name="${availabilityId}-infant-price"]`).value;
 
                 document.getElementById('adult-price').textContent = adultPrice;
                 document.getElementById('child-price').textContent = childPrice;
@@ -736,6 +748,8 @@
                 const total = (adults * adultPrice) + (children * childPrice) + (infants * infantPrice);
                 document.getElementById('total-price').textContent = total.toFixed(2);
                 document.getElementById('total-price-input').value = total;
+
+                calculateTotal();
             }
 
             // Add event listeners to number inputs
