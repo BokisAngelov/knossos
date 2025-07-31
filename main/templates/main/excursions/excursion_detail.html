@@ -489,6 +489,8 @@
         const notAvailability = document.querySelector('.not-availability');
         const bookingForm = document.getElementById('booking-form');
         const formErrors = document.getElementById('form-errors');
+        const voucherCode = getCookie('voucher_code');
+        console.log('voucherCode: ' + voucherCode);
         
         if (!notAvailability) {
             let picker = null;
@@ -824,11 +826,12 @@
                 
                 // Get form values
                 const selectedDate = document.getElementById('date-picker').value;
-                const availabilityId = document.getElementById('availability-id').value;
+                // const availabilityId = document.getElementById('availability-id').value;
                 const adults = parseInt(document.querySelector('input[name="adults"]').value) || 0;
                 const children = parseInt(document.querySelector('input[name="children"]').value) || 0;
                 const infants = parseInt(document.querySelector('input[name="infants"]').value) || 0;
                 const pickupGroupId = document.querySelector('select[name="pickup_group"]').value;
+                const availabilityId = document.querySelector(`input[name="${pickupGroupId}-pickup-group"]`).dataset.availabilityId;
 
                 // Validate form
                 let errors = [];
@@ -870,6 +873,7 @@
                 const formData = new FormData(bookingForm);
                 formData.append('selected_date', selectedDate);
                 formData.append('availability_id', availabilityId);
+                formData.append('voucher_code', voucherCode);
 
                 // Submit form via AJAX
                 fetch(window.location.href, {
@@ -901,7 +905,8 @@
                                     input.classList.add('border-red-500');
                                     const errorDiv = document.createElement('p');
                                     errorDiv.className = 'mt-1 text-sm text-red-600';
-                                    errorDiv.textContent = data.errors[field][0];
+                                    // errorDiv.textContent = data.errors[field][0];
+                                    errorDiv.textContent = data.errors;
                                     input.parentNode.appendChild(errorDiv);
                                 }
                             });

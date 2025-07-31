@@ -571,7 +571,7 @@ def excursion_detail(request, pk):
     pickup_groups = PickupGroup.objects.filter(id__in=pickup_group_ids).values('id', 'name')
     # Optionally, build a dict for easy lookup in JS
     pickup_group_map = {str(g['id']): g['name'] for g in pickup_groups}
-    print('pickup points: ' + str(pickup_points))
+    # print('pickup points: ' + str(pickup_points))
 
 
     # Handle feedback submission
@@ -602,14 +602,23 @@ def excursion_detail(request, pk):
                 infants = int(request.POST.get('infants', 0))
                 total_price = int(request.POST.get('total_price', 0))
                 partial_price = int(request.POST.get('partial_price', 0))
-                voucher_id = request.POST.get('voucher', None)
-                reservation_instance = Reservation.objects.get(voucher_id=voucher_id)
+                voucher_id = request.POST.get('voucher_code', None)
+                if voucher_id:
+                    reservation_instance = Reservation.objects.get(voucher_id=voucher_id)
+                else:
+                    reservation_instance = None
                 guest_email = request.POST.get('guest_email', None)
                 guest_name = request.POST.get('guest_name', None)
 
+                user = request.user
+                if user:
+                    user_instance = user
+                else:
+                    user_instance = None
+
                 booking = booking_form.save(commit=False)
                 booking.excursion_availability = excursion_availability
-                booking.user = request.user
+                booking.user = user_instance
                 booking.total_adults = adults
                 booking.total_kids = children
                 booking.total_infants = infants
@@ -666,7 +675,12 @@ def excursion_detail(request, pk):
                 try:
                     booking = booking_form.save(commit=False)
                     booking.excursion_availability = excursion_availability
-                    booking.user = request.user
+                    user = request.user
+                    if user:
+                        user_instance = user
+                    else:
+                        user_instance = None
+                    booking.user = user_instance
 
                     selected_date = request.POST.get('selected_date')
                     availability_id = request.POST.get('availability_id')
@@ -873,6 +887,16 @@ def booking_delete(request, pk):
 def booking_detail(request, pk):
     
     booking = get_object_or_404(Booking, pk=pk)
+
+    print('booking: ' + str(booking.user.profile.name))
+    print('booking price: ' + str(booking.price))
+    print('booking total price: ' + str(booking.total_price))
+    print('booking total adults: ' + str(booking.total_adults))
+    print('booking total kids: ' + str(booking.total_kids))
+    print('booking total infants: ' + str(booking.total_infants))
+    print('booking date: ' + str(booking.date))
+    print('booking pickup point: ' + str(booking.pickup_point))
+    print('booking voucher: ' + str(booking.voucher_id))
 
     return render(request, 'main/bookings/booking_detail.html', {
         'booking': booking,
