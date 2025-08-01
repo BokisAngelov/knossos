@@ -64,6 +64,29 @@ def manage_cookies(request, cookie_name, cookie_value, cookie_action):
         return response
     return None
 
+def check_voucher(request):
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        return_data = {}
+        voucher_code = data.get('voucher_code')
+        if voucher_code:
+            voucher = Reservation.objects.filter(voucher_id=voucher_code).first()
+            if voucher:
+                return_data = {
+                    'client_name': voucher.client_name,
+                    'pickup_group_id': voucher.pickup_group.id,
+                    'pickup_point_id': voucher.pickup_point.id,
+                    'client_email': voucher.client_email,
+                }
+                return JsonResponse({'success': True, 'message': 'Voucher found in database.', 'return_data': return_data})
+            else:
+                return JsonResponse({'success': False, 'message': 'Voucher not found in database.', 'return_data': return_data})
+        else:
+            return JsonResponse({'success': False, 'message': 'Voucher code is required.', 'return_data': return_data})
+    else:
+        return JsonResponse({'success': False, 'message': 'Invalid request method.'})
+    
+
 def retrive_voucher(request):
     if request.method == 'POST':
         try:
@@ -158,8 +181,7 @@ def retrive_voucher(request):
             'success': False,
             'message': 'Invalid request method.'
         })
-
-    
+   
 def create_reservation(booking_data):
     if booking_data is not None:
         try:
@@ -257,7 +279,6 @@ def create_reservation(booking_data):
             'message': 'Reservation not found.'
         }
     
-        
 def sync_pickup_groups(request):
     if request.method == 'POST':
         try:
@@ -668,48 +689,48 @@ def excursion_detail(request, pk):
                     'success': False,
                     'message': str(e)
                 })
-        else:
-            # Handle non-AJAX form submission
-            booking_form = BookingForm(request.POST)
-            if booking_form.is_valid():
-                try:
-                    booking = booking_form.save(commit=False)
-                    booking.excursion_availability = excursion_availability
-                    user = request.user
-                    if user:
-                        user_instance = user
-                    else:
-                        user_instance = None
-                    booking.user = user_instance
+        # else:
+        #     # Handle non-AJAX form submission
+        #     booking_form = BookingForm(request.POST)
+        #     if booking_form.is_valid():
+        #         try:
+        #             booking = booking_form.save(commit=False)
+        #             booking.excursion_availability = excursion_availability
+        #             user = request.user
+        #             if user:
+        #                 user_instance = user
+        #             else:
+        #                 user_instance = None
+        #             booking.user = user_instance
 
-                    selected_date = request.POST.get('selected_date')
-                    availability_id = request.POST.get('availability_id')
+        #             selected_date = request.POST.get('selected_date')
+        #             availability_id = request.POST.get('availability_id')
                     
-                    if not selected_date or not availability_id:
-                        messages.error(request, 'Please select a date.')
-                        return redirect('excursion_detail', excursion.pk)
+        #             if not selected_date or not availability_id:
+        #                 messages.error(request, 'Please select a date.')
+        #                 return redirect('excursion_detail', excursion.pk)
                     
-                    adults = int(request.POST.get('adults', 0))
-                    children = int(request.POST.get('children', 0))
-                    infants = int(request.POST.get('infants', 0))
+        #             adults = int(request.POST.get('adults', 0))
+        #             children = int(request.POST.get('children', 0))
+        #             infants = int(request.POST.get('infants', 0))
                     
-                    if adults + children + infants == 0:
-                        messages.error(request, 'Please select at least one participant.')
-                        return redirect('excursion_detail', excursion.pk)
+        #             if adults + children + infants == 0:
+        #                 messages.error(request, 'Please select at least one participant.')
+        #                 return redirect('excursion_detail', excursion.pk)
 
-                    booking.date = selected_date
-                    booking.availability_id = availability_id
-                    booking.save()
+        #             booking.date = selected_date
+        #             booking.availability_id = availability_id
+        #             booking.save()
 
-                    messages.success(request, 'Booking created successfully.')
-                    return redirect('booking_detail', booking.pk)
+        #             messages.success(request, 'Booking created successfully.')
+        #             return redirect('booking_detail', booking.pk)
 
-                except Exception as e:
-                    messages.error(request, f'An error occurred: {str(e)}')
-                    return redirect('excursion_detail', excursion.pk)
-            else:
-                messages.error(request, 'Please correct the errors below.')
-                return redirect('excursion_detail', excursion.pk)
+        #         except Exception as e:
+        #             messages.error(request, f'An error occurred: {str(e)}')
+        #             return redirect('excursion_detail', excursion.pk)
+        #     else:
+        #         messages.error(request, 'Please correct the errors below.')
+        #         return redirect('excursion_detail', excursion.pk)
 
     # pickup_points = PickupPoint.objects.none()
     # if excursion_availability:
@@ -830,25 +851,28 @@ def excursion_delete(request, pk):
     
 
 # ----- Booking Views -----
-def booking_create(request, availability_pk):
+# def booking_create(request, availability_pk):
     availability = get_object_or_404(ExcursionAvailability, pk=availability_pk)
     if request.method == 'POST':
         form = BookingForm(request.POST, user=request.user if request.user.is_authenticated else None)
         if form.is_valid():
             booking = form.save(commit=False)
-            booking.user = request.user if request.user.is_authenticated else None
+            # booking.user = request.user if request.user.is_authenticated else None
             booking.excursion_availability = availability
-            # Role-based payment status
-            if request.user.is_authenticated:
+            
+            if request.user:
+                booking.user = request.user
                 role = getattr(request.user.profile, 'role', None)
-                if request.user.is_staff:
+
+                if request.user.is_staff == True:
                     booking.payment_status = 'completed'
                 elif role == 'representative':
                     booking.payment_status = 'pending'
                 else:
+                    booking.user = None
                     booking.payment_status = 'pending'
-            else:
-                booking.payment_status = 'pending'
+
+
             booking.save()
             messages.success(request, 'Booking created.')
             # Redirect logic: reps/admin skip checkout
@@ -887,6 +911,9 @@ def booking_delete(request, pk):
 def booking_detail(request, pk):
     
     booking = get_object_or_404(Booking, pk=pk)
+
+    print('request.user.is_staff: ' + str(request.user.is_staff))
+    print('request.user.profile.role: ' + str(request.user.profile.role))
 
     print('booking: ' + str(booking.user.profile.name))
     print('booking price: ' + str(booking.price))

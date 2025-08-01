@@ -308,14 +308,14 @@ class BookingForm(forms.ModelForm):
             self.fields.pop('partial_paid', None)
             
         # Filter pickup points based on the selected pickup group
-        if 'data' in kwargs and 'pickup_group' in kwargs['data']:
-            pickup_group_id = kwargs['data'].get('pickup_group')
-            if pickup_group_id:
-                self.fields['pickup_point'].queryset = PickupPoint.objects.filter(
-                    pickup_group_id=pickup_group_id
-                ).order_by('name')
-            else:
-                self.fields['pickup_point'].queryset = PickupPoint.objects.none()
+        # if 'data' in kwargs and 'pickup_group' in kwargs['data']:
+        #     pickup_group_id = kwargs['data'].get('pickup_group')
+        #     if pickup_group_id:
+        #         self.fields['pickup_point'].queryset = PickupPoint.objects.filter(
+        #             pickup_group_id=pickup_group_id
+        #         ).order_by('name')
+        #     else:
+        #         self.fields['pickup_point'].queryset = PickupPoint.objects.none()
 
 class TransactionForm(forms.ModelForm):
     class Meta:

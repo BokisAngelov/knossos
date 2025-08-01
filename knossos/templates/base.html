@@ -147,14 +147,15 @@
           // const voucherInput = document.getElementById('voucher');
           const voucherCode = getCookie('voucher_code');
 
-          console.log("code from cookie: " + voucherCode);
+          // console.log("code from cookie: " + voucherCode);
 
           if (voucherCode) {
-              checkVoucher(voucherCode);
+              checkVoucher(voucherCode, false); 
           }
       }
-
-      function checkVoucher(code) {
+      checkVoucherOnLoad();
+      function checkVoucher(code, shouldReload = true) {
+        
           fetch('/retrive_voucher/', {
               method: 'POST',
               headers: {
@@ -167,18 +168,30 @@
           })
           .then(response => response.json())
           .then(data => {
-            console.log(data);
+            // console.log(data);
               if (data.success) {
-                  console.log(data);
+                  // console.log(data);
                   document.getElementById('voucher-message').innerHTML = `Welcome, ${data.return_data.client_name}!`;
                   document.querySelector('.voucher-check').classList.add('hidden');
                   document.querySelector('.voucher-clear').classList.remove('hidden');
+
+                  // refresh the page only if shouldReload is true
+                  if (shouldReload) {
+                      window.location.reload();
+                  }
                   
               } else {
                   document.querySelector('.voucher-check').classList.remove('hidden');
                   document.getElementById('voucher-message').textContent = data.message;
                   // Hide the clear button
                   document.querySelector('.voucher-clear').classList.add('hidden');
+
+                  Swal.fire({
+                    title: 'Voucher not found',
+                    text: "Please enter a valid voucher code.",
+                    icon: 'warning',
+                    confirmButtonText: 'OK'
+                  });
               }
           })
           .catch(error => {
@@ -225,9 +238,7 @@
           clearButton.addEventListener('click', clearVoucher);
       }
 
-      // Check voucher on page load if there's a value
-      // document.addEventListener('DOMContentLoaded', checkVoucherOnLoad);
-      checkVoucherOnLoad();
+      
 
       // Add event listener for the voucher button
       document.getElementById('submit-voucher-btn').addEventListener('click', function() {

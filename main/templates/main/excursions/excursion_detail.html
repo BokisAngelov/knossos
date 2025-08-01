@@ -284,9 +284,6 @@
                             </div>
                         </div> -->
                         
-                        <!-- <div id="voucher-welcome" class="pb-2 mt-2 text-sm text-gray-500 border-b border-gray-200">
-                            <p class="text-md">Pickup points and prices are based on your accommodation and pickup group.</p>
-                        </div> -->
                     </div>
                     <input type="hidden" name="availability_id" id="availability-id" value="">
                      
@@ -464,7 +461,7 @@
             position: "below",
             onChange: function(selectedDates, dateStr) {
                 const selectedDate = availableDates.find(item => item.date === dateStr);
-                availabilityIdInput.value = selectedDate ? selectedDate.id : '';
+                // availabilityIdInput.value = selectedDate ? selectedDate.id : '';
             }
         });
         datePickerInput.value = '';
@@ -490,7 +487,7 @@
         const bookingForm = document.getElementById('booking-form');
         const formErrors = document.getElementById('form-errors');
         const voucherCode = getCookie('voucher_code');
-        console.log('voucherCode: ' + voucherCode);
+        // console.log('voucherCode: ' + voucherCode);
         
         if (!notAvailability) {
             let picker = null;
@@ -634,6 +631,55 @@
             // });
 
 
+            function checkVoucher() {
+                const voucherInput = getCookie('voucher_code');
+                // console.log('voucherInput: ' + voucherInput);
+                if (voucherInput) {
+                    fetch('/check_voucher/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': getCookie('csrftoken')
+                        },
+                        body: JSON.stringify({
+                            voucher_code: voucherInput
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // console.log('data.return_data: ' + data.return_data);
+                            // console.log('data.message: ' + data.message);
+                            // console.log('data.success: ' + data.success);
+                            
+                            document.querySelector('#guest-name').value = data.return_data.client_name;
+                            document.querySelector('#guest-email').value = data.return_data.client_email;
+                            document.querySelector('.pickup-group').classList.add('hidden');
+                            document.querySelector('.group-' + data.return_data.pickup_group_id).classList.remove('hidden');
+
+                            if (data.return_data.pickup_group_id && data.return_data.pickup_point_id) {
+                                document.querySelector('select[name="pickup_group"]').value = data.return_data.pickup_group_id;
+                                updateDatePicker(data.return_data.pickup_group_id);
+                                updatePickupPoints(data.return_data.pickup_group_id);
+                                document.querySelector('#pickup-point').value = data.return_data.pickup_point_id;
+                                // document.querySelector('#voucher-message').textContent = "Pickup point is selected based on your accommodation.";
+                                document.querySelector('.pickup-group').classList.add('hidden');
+                                document.querySelector('.group-' + data.return_data.pickup_group_id).classList.remove('hidden');
+                            } 
+
+                        } else {
+                            console.log('data.message: ' + data.message);
+                            console.log('data.success: ' + data.success);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                    });
+                }
+            
+            }
+            checkVoucher();
+
             function initializeDatePicker(pickupGroupId) {
                 const availableDates = availableDatesByRegion[pickupGroupId] || [];
 
@@ -666,10 +712,11 @@
             const initialPickupGroup = document.querySelector('select[name="pickup_group"]').value;
             initializeDatePicker(initialPickupGroup);
 
-            // Update date picker when region changes
+            // Update date picker when pickup group changes
             document.querySelector('select[name="pickup_group"]').addEventListener('change', function(e) {
                 initializeDatePicker(e.target.value);
                 updatePriceAndPickupPoints();
+
             });
 
             // Calculate total price based on number of guests
@@ -809,7 +856,7 @@
                 });
             });
 
-            // Add form validation
+            // Booking form submission
             bookingForm.addEventListener('submit', function(e) {
                 e.preventDefault();
                 
@@ -832,7 +879,8 @@
                 const infants = parseInt(document.querySelector('input[name="infants"]').value) || 0;
                 const pickupGroupId = document.querySelector('select[name="pickup_group"]').value;
                 const availabilityId = document.querySelector(`input[name="${pickupGroupId}-pickup-group"]`).dataset.availabilityId;
-
+                const guestEmail = document.querySelector('#guest-email').value;
+                const guestName = document.querySelector('#guest-name').value;
                 // Validate form
                 let errors = [];
 
@@ -862,6 +910,30 @@
                         errorDiv.className = 'mt-1 text-sm text-red-600';
                         errorDiv.textContent = 'Please select at least one participant.';
                         adultsInput.parentNode.appendChild(errorDiv);
+                    }
+                }
+
+                if (!guestName) {
+                    errors.push({ field: 'guest-name', message: 'Please enter your name.' });
+                    const guestNameInput = document.querySelector('#guest-name');
+                    if (guestNameInput) {
+                        guestNameInput.classList.add('border-red-500');
+                        const errorDiv = document.createElement('p');
+                        errorDiv.className = 'mt-1 text-sm text-red-600';
+                        errorDiv.textContent = 'Please enter your name.';
+                        guestNameInput.parentNode.appendChild(errorDiv);
+                    }
+                }
+
+                if (!guestEmail) {
+                    errors.push({ field: 'guest-email', message: 'Please enter your email.' });
+                    const guestEmailInput = document.querySelector('#guest-email');
+                    if (guestEmailInput) {
+                        guestEmailInput.classList.add('border-red-500');
+                        const errorDiv = document.createElement('p');
+                        errorDiv.className = 'mt-1 text-sm text-red-600';
+                        errorDiv.textContent = 'Please enter your email.';
+                        guestEmailInput.parentNode.appendChild(errorDiv);
                     }
                 }
 
@@ -899,14 +971,15 @@
                         // Display server-side validation errors
                         if (data.errors) {
                             console.log('Validation errors:', data.errors);
+                            console.log('Error message:', data.message);
                             Object.keys(data.errors).forEach(field => {
                                 const input = document.querySelector(`[name="${field}"]`);
                                 if (input) {
                                     input.classList.add('border-red-500');
                                     const errorDiv = document.createElement('p');
                                     errorDiv.className = 'mt-1 text-sm text-red-600';
-                                    // errorDiv.textContent = data.errors[field][0];
-                                    errorDiv.textContent = data.errors;
+                                    errorDiv.textContent = data.errors[field][0];
+                                    // errorDiv.textContent = data.errors;
                                     input.parentNode.appendChild(errorDiv);
                                 }
                             });
