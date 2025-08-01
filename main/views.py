@@ -146,7 +146,7 @@ def retrive_voucher(request):
             else:
                 booking_data = get_reservation(voucher_code)
                 # print(booking_data)
-                reservation_response = create_reservation(booking_data)
+                reservation_instance, reservation_response = create_reservation(booking_data)
                 print('reservation_response: ' + str(reservation_response))
                 if reservation_response.get('success') is not False:
                     print('get success: ' + str(reservation_response.get('success')))
@@ -159,8 +159,8 @@ def retrive_voucher(request):
                         'return_data': return_data
                     })
                     response.set_cookie('voucher_code', booking_data.get("Id"), max_age=86400, secure=True, httponly=False, samesite='None')
-                    response.set_cookie('pickup_group', return_data.get('pickup_group'), max_age=86400, secure=True, httponly=False, samesite='None')
-                    response.set_cookie('pickup_point', return_data.get('pickup_point'), max_age=86400, secure=True, httponly=False, samesite='None')
+                    response.set_cookie('pickup_group', return_data.get('pickup_group_id'), max_age=86400, secure=True, httponly=False, samesite='None')
+                    response.set_cookie('pickup_point', return_data.get('pickup_point_id'), max_age=86400, secure=True, httponly=False, samesite='None')
 
 
                     return response
@@ -233,7 +233,7 @@ def create_reservation(booking_data):
 
             hotel_instance = Hotel.objects.get(id=hotel_id) if hotel_id else None
 
-            booking, created = Reservation.objects.get_or_create(
+            reservation_obj, created = Reservation.objects.get_or_create(
                 voucher_id=booking_id,
                 defaults={
                     'client_name': lead_name,
@@ -251,30 +251,33 @@ def create_reservation(booking_data):
             )
 
             if created:
-                print(f"Booking created: {booking}")
+                print(f"Booking created: {reservation_obj}")
             else:
-                print(f"Booking already exists: {booking}")
+                print(f"Booking already exists: {reservation_obj}")
 
-            
-
-            return {
+            response_data = {
                 'success': True,
-                'message': 'Reservation found.',
+                'message': 'Reservation found.' if not created else 'Reservation created successfully.',
                 'return_data': {
                     'client_name': lead_name,
                     'pickup_group': pickup_group_instance.name if pickup_group_instance else None,
                     'pickup_point': pickup_point_instance.name if pickup_point_instance else None,
+                    'pickup_group_id': pickup_group_instance.id if pickup_group_instance else None,
+                    'pickup_point_id': pickup_point_instance.id if pickup_point_instance else None,
+                    'client_email': lead_email,
                 },
                 'created': created
             }
+            
+            return reservation_obj, response_data
 
         except Exception as e:
-            return {
+            return None, {
                 'success': False,
                 'message': str(e)
             }
     else:
-        return {
+        return None, {
             'success': False,
             'message': 'Reservation not found.'
         }
@@ -609,6 +612,7 @@ def excursion_detail(request, pk):
         
     # Handle booking submission
     elif request.method == 'POST' and 'booking_submit' in request.POST:
+        # print(request.POST)
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             try:
                 booking_form = BookingForm(request.POST)
@@ -618,26 +622,38 @@ def excursion_detail(request, pk):
                         'success': False,
                         'errors': booking_form.errors
                     })
+                
+                booking = booking_form.save(commit=False)
+                
                 adults = int(request.POST.get('adults', 0))
                 children = int(request.POST.get('children', 0))
                 infants = int(request.POST.get('infants', 0))
                 total_price = int(request.POST.get('total_price', 0))
                 partial_price = int(request.POST.get('partial_price', 0))
                 voucher_id = request.POST.get('voucher_code', None)
+                # print('voucher_id: ' + str(voucher_id))
+                reservation_instance = None
                 if voucher_id:
-                    reservation_instance = Reservation.objects.get(voucher_id=voucher_id)
-                else:
-                    reservation_instance = None
+                    try:
+                        reservation_instance = Reservation.objects.get(voucher_id=voucher_id)
+                    except Reservation.DoesNotExist:
+                        prepare_data = get_reservation(voucher_id)
+                        # print(prepare_data)
+                        reservation_instance, reservation_response = create_reservation(prepare_data)
+                        print('reservation_instance: ' + str(reservation_instance))
+
                 guest_email = request.POST.get('guest_email', None)
                 guest_name = request.POST.get('guest_name', None)
 
                 user = request.user
-                if user:
-                    user_instance = user
-                else:
-                    user_instance = None
+                user_instance = user if user else None
 
-                booking = booking_form.save(commit=False)
+                if user.is_staff == True:
+                    booking.payment_status = 'completed'
+                else:
+                    booking.payment_status = 'pending'
+
+                
                 booking.excursion_availability = excursion_availability
                 booking.user = user_instance
                 booking.total_adults = adults
@@ -650,8 +666,10 @@ def excursion_detail(request, pk):
 
                 if partial_price > 0:
                     final_price = total_price - partial_price
+                    booking.partial_paid = partial_price
                 else:
                     final_price = total_price
+                    booking.partial_paid = 0
 
                 booking.total_price = final_price # price after discount or partial payment
 
@@ -687,7 +705,8 @@ def excursion_detail(request, pk):
             except Exception as e:
                 return JsonResponse({
                     'success': False,
-                    'message': str(e)
+                    'message': str(e),
+                    'errors': booking_form.errors
                 })
         # else:
         #     # Handle non-AJAX form submission

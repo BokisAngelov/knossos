@@ -45,6 +45,12 @@
                     <h4 class="text-sm font-medium text-gray-500 mb-1">Number of Guests</h4>
                     <p class="text-lg font-semibold text-gray-900">{{ booking.total_adults }} Adults | {{ booking.total_kids }} Kids | {{ booking.total_infants }} Infants</p>
                 </div>
+                {% if booking.partial_paid %}
+                <div class="bg-white rounded-lg shadow-sm p-4">
+                    <h4 class="text-sm font-medium text-gray-500 mb-1">Partial Payment</h4>
+                    <p class="text-lg font-semibold text-gray-900">€{{ booking.partial_paid }}</p>
+                </div>
+                {% endif %}
             </div>
         </div>
 

@@ -385,7 +385,12 @@
                         <input type="number" name="partial_payment" id="partial-payment" class="mt-1 block w-full pl-3 pr-2 py-2 text-base border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
                         <div class="hidden remaining-price-div">
                             <span class="text-sm font-medium text-gray-600">Remaining</span>
-                            <span class="text-base font-semibold text-gray-900">€<span id="remaining-price">0.00</span></div>
+                            <span class="text-base font-semibold text-gray-900">€<span id="remaining-price">0.00</span>
+                        </div>
+                        <div class="reservation-id-div">
+                            <label class="block text-md font-medium text-gray-700">Reservation ID</label>
+                            <input type="text" name="voucher_code" id="voucher_code" class="mt-1 block w-full pl-3 pr-2 py-2 text-base border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
+                        </div>
                     </div>
                     {% endif %}
 
@@ -881,6 +886,7 @@
                 const availabilityId = document.querySelector(`input[name="${pickupGroupId}-pickup-group"]`).dataset.availabilityId;
                 const guestEmail = document.querySelector('#guest-email').value;
                 const guestName = document.querySelector('#guest-name').value;
+                const voucherCode = document.querySelector('#voucher_code').value ? document.querySelector('#voucher_code').value : null;
                 // Validate form
                 let errors = [];
 
@@ -945,7 +951,7 @@
                 const formData = new FormData(bookingForm);
                 formData.append('selected_date', selectedDate);
                 formData.append('availability_id', availabilityId);
-                formData.append('voucher_code', voucherCode);
+                formData.append('voucher_code', voucherCode ? voucherCode : null);
 
                 // Submit form via AJAX
                 fetch(window.location.href, {
