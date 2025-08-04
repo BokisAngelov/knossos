@@ -5,12 +5,12 @@
 <h1>Test Models</h1>
 
 <h2>Bookings</h2>
-<table>
+<table class="table-auto w-full border-collapse border border-gray-300 rounded-lg shadow-md text-center p-3">
     <tr>
         <th>ID</th>
         <th>Client</th>
         <th>Excursion</th>
-        <th>Description</th>
+        <th>partial paid</th>
         <th>Price</th>
         <th>Status</th>
         <th>Created At</th>
@@ -20,8 +20,8 @@
         <tr>
             <td>{{ booking.id }}</td>
             <td>{{ booking.client.name }}</td>
-            <td>{{ booking.excursion.name }}</td>
-            <td>{{ booking.excursion.description }}</td>
+            <td>{{ booking.excursion_availability.excursion.title }}</td>
+            <td>{{ booking.partial_paid }}</td>
             <td>{{ booking.price }}</td>
             <td>{{ booking.payment_status }}</td>
             <td>{{ booking.created_at }}</td>
@@ -31,7 +31,7 @@
 </table>
 
 <h2>Reservations</h2>
-<table>
+<table class="table-auto w-full border-collapse border border-gray-300 rounded-lg shadow-md text-center p-3">
     <tr>
         <th>ID</th>
         <th>Client</th>
@@ -57,7 +57,7 @@
 </table>
 
 <h2>Availabilities</h2>
-<table>
+<table class="table-auto w-full border-collapse border border-gray-300 rounded-lg shadow-md text-center p-3">
     <tr>
         <th>ID</th>
         <th>Excursion</th>

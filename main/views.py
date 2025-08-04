@@ -641,7 +641,7 @@ def excursion_detail(request, pk):
                 children = int(request.POST.get('children', 0))
                 infants = int(request.POST.get('infants', 0))
                 total_price = int(request.POST.get('total_price', 0))
-                partial_price = int(request.POST.get('partial_price', 0))
+                partial_price = int(request.POST.get('partial_payment', 0))
                 voucher_id = request.POST.get('voucher_code', None)
                 # print('voucher_id: ' + str(voucher_id))
                 reservation_instance = None
@@ -936,7 +936,7 @@ def booking_delete(request, pk):
     #     messages.error(request, 'Booking not deleted.')
 
     return redirect('admin_dashboard', pk=request.user.profile.id)
-        
+
 
 @login_required 
 def booking_detail(request, pk):
@@ -946,15 +946,15 @@ def booking_detail(request, pk):
     print('request.user.is_staff: ' + str(request.user.is_staff))
     print('request.user.profile.role: ' + str(request.user.profile.role))
 
-    print('booking: ' + str(booking.user.profile.name))
-    print('booking price: ' + str(booking.price))
-    print('booking total price: ' + str(booking.total_price))
-    print('booking total adults: ' + str(booking.total_adults))
-    print('booking total kids: ' + str(booking.total_kids))
-    print('booking total infants: ' + str(booking.total_infants))
-    print('booking date: ' + str(booking.date))
-    print('booking pickup point: ' + str(booking.pickup_point))
-    print('booking voucher: ' + str(booking.voucher_id))
+    # print('booking: ' + str(booking.user.profile.name))
+    # print('booking price: ' + str(booking.price))
+    # print('booking total price: ' + str(booking.total_price))
+    # print('booking total adults: ' + str(booking.total_adults))
+    # print('booking total kids: ' + str(booking.total_kids))
+    # print('booking total infants: ' + str(booking.total_infants))
+    # print('booking date: ' + str(booking.date))
+    # print('booking pickup point: ' + str(booking.pickup_point))
+    # print('booking voucher: ' + str(booking.voucher_id))
 
     return render(request, 'main/bookings/booking_detail.html', {
         'booking': booking,
@@ -1553,6 +1553,26 @@ def bookings_list(request):
     bookings = Booking.objects.all()
     return render(request, 'main/bookings/bookings_list.html', {
         'bookings': bookings,
+    })
+
+@user_passes_test(is_staff)
+def booking_edit(request, pk):
+    booking = get_object_or_404(Booking, pk=pk)
+    form = BookingForm(instance=booking)
+    if request.method == 'POST':
+        form = BookingForm(request.POST, instance=booking)
+        if form.is_valid():
+            booking = form.save(commit=False)
+            # booking.save()
+            # booking.payment_status = 'completed'
+            booking.save()
+            messages.success(request, 'Booking updated successfully.')
+            return redirect('booking_detail', pk=pk)
+        else:
+            messages.error(request, 'Please correct the errors below.')
+    return render(request, 'main/bookings/booking_edit.html', {
+        'booking': booking,
+        'form': form,
     })
 
 @user_passes_test(is_staff)

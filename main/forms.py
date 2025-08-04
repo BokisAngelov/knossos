@@ -292,6 +292,7 @@ class BookingForm(forms.ModelForm):
             'total_price', 'partial_paid',
             'total_adults', 'total_kids', 'total_infants',
             'price', 'user', 'voucher_id', 'date', 'pickup_point',
+            'payment_status',
         ]
         widgets = {
             'pickup_point': forms.Select(attrs={'class': 'form-control'}),
@@ -302,21 +303,11 @@ class BookingForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         # Always remove group and payment_status
         self.fields.pop('group', None)
-        self.fields.pop('payment_status', None)
+        # self.fields.pop('payment_status', None)
         # partial_paid visible for representatives and admins only
-        if not user or not (user.is_staff or getattr(user.profile, 'role', None) == 'representative'):
-            self.fields.pop('partial_paid', None)
+        # if not user or not (user.is_staff or getattr(user.profile, 'role', None) == 'representative'):
+        #     self.fields['partial_paid'].widget.attrs['disabled'] = True
             
-        # Filter pickup points based on the selected pickup group
-        # if 'data' in kwargs and 'pickup_group' in kwargs['data']:
-        #     pickup_group_id = kwargs['data'].get('pickup_group')
-        #     if pickup_group_id:
-        #         self.fields['pickup_point'].queryset = PickupPoint.objects.filter(
-        #             pickup_group_id=pickup_group_id
-        #         ).order_by('name')
-        #     else:
-        #         self.fields['pickup_point'].queryset = PickupPoint.objects.none()
-
 class TransactionForm(forms.ModelForm):
     class Meta:
         model = Transaction

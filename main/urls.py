@@ -19,6 +19,7 @@ urlpatterns = [
     path('bookings/', views.bookings_list, name='bookings_list'),
     path('bookings/<int:pk>/', views.booking_detail, name='booking_detail'),
     path('bookings/<int:pk>/delete/', views.booking_delete, name='delete_booking'),
+    path('bookings/<int:pk>/edit/', views.booking_edit, name='booking_edit'),
 
     # Checkout URL
     path('checkout/<int:booking_pk>/', views.checkout, name='checkout'),

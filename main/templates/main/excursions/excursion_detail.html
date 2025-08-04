@@ -887,6 +887,7 @@
                 const guestEmail = document.querySelector('#guest-email').value;
                 const guestName = document.querySelector('#guest-name').value;
                 const voucherCode = document.querySelector('#voucher_code').value ? document.querySelector('#voucher_code').value : null;
+                const partialPayment = document.querySelector('#partial-payment').value;
                 // Validate form
                 let errors = [];
 
@@ -952,7 +953,8 @@
                 formData.append('selected_date', selectedDate);
                 formData.append('availability_id', availabilityId);
                 formData.append('voucher_code', voucherCode ? voucherCode : null);
-
+                formData.append('partial_payment', partialPayment);
+                
                 // Submit form via AJAX
                 fetch(window.location.href, {
                     method: 'POST',

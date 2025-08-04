@@ -1,0 +1,223 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<style>
+  .auth-input-field input, 
+  .auth-input-field select, 
+  .auth-input-field textarea {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    outline: none;
+  }
+  .auth-input-field input:focus, 
+  .auth-input-field select:focus, 
+  .auth-input-field textarea:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+  }
+  
+  .read-only-field {
+    background-color: #f9fafb;
+    color: #6b7280;
+    cursor: not-allowed;
+  }
+  
+  .read-only-field input,
+  .read-only-field select,
+  .read-only-field textarea {
+    background-color: #f9fafb;
+    color: #6b7280;
+    cursor: not-allowed;
+  }
+  
+  .field-label {
+    font-weight: 600;
+    color: #374151;
+  }
+  
+  .field-value {
+    color: #6b7280;
+    padding: 0.5rem 0;
+  }
+</style>
+
+<div class="flex justify-center items-center">
+  <div class="w-full max-w-4xl p-6">
+    <a href="{% url 'booking_detail' booking.id %}" class="inline-flex items-left text-gray-600 hover:text-gray-900">
+      <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+      </svg>
+      Back to Booking Details
+    </a>
+  </div>
+</div>
+
+<div class="flex justify-center items-center min-h-[80vh]">
+  <div class="bg-white rounded-lg shadow-md w-full max-w-4xl p-6">
+    <div class="text-center mb-6">
+      <h1 class="text-2xl font-bold text-gray-800">Edit Booking #{{ booking.id }}</h1>
+      <p class="text-sm text-gray-500 mt-2">Update booking information for {{ booking.guest_name }} at {{ booking.excursion_availability.excursion.title }}</p>
+    </div>
+
+    {% if messages %}
+    <div class="mb-6">
+      {% for message in messages %}
+        <div class="p-4 mb-4 rounded-md {% if message.tags == 'error' %}bg-red-50 text-red-700{% else %}bg-green-50 text-green-700{% endif %}">
+          {{ message }}
+        </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if form.non_field_errors %}
+    <div class="error-message">
+        {% for error in form.non_field_errors %}
+            <p class="text-red-600">{{ error }}</p>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <form method="post" class="space-y-6" id="booking-form" action="{% url 'booking_edit' booking.id %}">
+      {% csrf_token %}
+
+      <!-- Guest Information (Editable) -->
+      <div class="p-4 rounded-lg">
+        <h3 class="text-lg font-semibold text-gray-800 mb-4">Guest Information</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="space-y-1">
+            <label for="{{ form.guest_name.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.guest_name.label }}</label>
+            <div class="w-full auth-input-field">{{ form.guest_name }}</div>
+            {% if form.guest_name.errors %}<div class="text-red-500 text-xs mt-1">{{ form.guest_name.errors }}</div>{% endif %}
+          </div>
+          <div class="space-y-1">
+            <label for="{{ form.guest_email.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.guest_email.label }}</label>
+            <div class="w-full auth-input-field">{{ form.guest_email }}</div>
+            {% if form.guest_email.errors %}<div class="text-red-500 text-xs mt-1">{{ form.guest_email.errors }}</div>{% endif %}
+          </div>
+        </div>
+      </div>
+      <!-- Payment Information -->
+      <div class="p-4 rounded-lg">
+        <h3 class="text-lg font-semibold text-gray-800 mb-4">Payment Information</h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="space-y-1">
+            <label for="{{ form.total_price.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.total_price.label }}</label>
+            <div class="w-full auth-input-field">{{ form.total_price }}</div>
+            {% if form.total_price.errors %}<div class="text-red-500 text-xs mt-1">{{ form.total_price.errors }}</div>{% endif %}
+          </div>
+          <div class="space-y-1">
+            <label for="{{ form.partial_paid.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.partial_paid.label }}</label>
+            <div class="w-full auth-input-field">{{ form.partial_paid }}</div>
+            {% if form.partial_paid.errors %}<div class="text-red-500 text-xs mt-1">{{ form.partial_paid.errors }}</div>{% endif %}
+          </div>
+          <div class="space-y-1">
+            <label for="{{ form.payment_status.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.payment_status.label }}</label>
+            <div class="w-full auth-input-field">{{ form.payment_status }}</div>
+            {% if form.payment_status.errors %}<div class="text-red-500 text-xs mt-1">{{ form.payment_status.errors }}</div>{% endif %}
+          </div>
+        </div>
+      </div>
+
+
+      <div class="mt-6 flex gap-4">
+        <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+          Update Booking
+        </button>
+        <a href="{% url 'booking_detail' booking.id %}" 
+           class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 px-4 rounded-md text-center focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2">
+          Cancel
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  //  get csrf token for ajax requests
+  function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    const csrftoken = getCookie('csrftoken');
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Form submission handling
+    const form = document.getElementById('booking-form');
+    
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // Get form data
+        const formData = new FormData(form);
+        
+        // Get CSRF token
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        
+        // Submit form using fetch
+        fetch(form.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': csrfToken
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                Swal.fire({
+                    title: 'Success!',
+                    text: data.message || 'Booking updated successfully.',
+                    icon: 'success',
+                    confirmButtonColor: '#3085d6'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        window.location.href = data.redirect_url;
+                    }
+                });
+            } else {
+                // Show error message with detailed errors
+                let errorMessage = data.message;
+                if (data.errors && data.errors.length > 0) {
+                    errorMessage += '\n\n' + data.errors.join('\n');
+                }
+                
+                Swal.fire({
+                    title: 'Error!',
+                    text: errorMessage,
+                    icon: 'error',
+                    confirmButtonColor: '#3085d6'
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            Swal.fire({
+                title: 'Error!',
+                text: 'An error occurred while updating the booking. Please check the form for errors and try again.',
+                icon: 'error',
+                confirmButtonColor: '#3085d6'
+            });
+        });
+    });
+});
+</script>
+{% endblock %}
