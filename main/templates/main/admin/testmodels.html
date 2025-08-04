@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h1>Test Models</h1>
+
+<h2>Bookings</h2>
+<table>
+    <tr>
+        <th>ID</th>
+        <th>Client</th>
+        <th>Excursion</th>
+        <th>Description</th>
+        <th>Price</th>
+        <th>Status</th>
+        <th>Created At</th>
+        <th>Voucher ID</th>
+    </tr>
+    {% for booking in bookings %}
+        <tr>
+            <td>{{ booking.id }}</td>
+            <td>{{ booking.client.name }}</td>
+            <td>{{ booking.excursion.name }}</td>
+            <td>{{ booking.excursion.description }}</td>
+            <td>{{ booking.price }}</td>
+            <td>{{ booking.payment_status }}</td>
+            <td>{{ booking.created_at }}</td>
+            <td>{{ booking.voucher_id }}</td>
+        </tr>
+    {% endfor %}
+</table>
+
+<h2>Reservations</h2>
+<table>
+    <tr>
+        <th>ID</th>
+        <th>Client</th>
+        <th>Excursion</th>
+        <th>Description</th>
+        <th>Price</th>
+        <th>Status</th>
+        <th>Created At</th>
+        <th>Voucher ID</th>
+    </tr>
+{% for reservation in reservations %}
+    <tr>
+        <td>{{ reservation.id }}</td>
+        <td>{{ reservation.client.name }}</td>
+        <td>{{ reservation.excursion.name }}</td>
+        <td>{{ reservation.excursion.description }}</td>
+        <td>{{ reservation.price }}</td>
+        <td>{{ reservation.status }}</td>
+        <td>{{ reservation.created_at }}</td>
+        <td>{{ reservation.voucher_id }}</td>
+    </tr>
+{% endfor %}
+</table>
+
+<h2>Availabilities</h2>
+<table>
+    <tr>
+        <th>ID</th>
+        <th>Excursion</th>
+        <th>Start Time</th>
+        <th>End Time</th>
+        <th>Max Guests</th>
+        <th>Booked Guests</th>
+        <th>Status</th>
+        <th>Created At</th>
+    </tr>
+{% for availability in availabilities %}
+    <tr>    
+        <td>{{ availability.id }}</td>
+        <td>{{ availability.excursion.name }}</td>
+        <td>{{ availability.start_time }}</td>
+        <td>{{ availability.end_time }}</td>
+        <td>{{ availability.max_guests }}</td>
+        <td>{{ availability.booked_guests }}</td>
+        <td>{{ availability.status }}</td>
+        <td>{{ availability.created_at }}</td>
+    </tr>
+{% endfor %}
+</table>
+
+{% endblock %}

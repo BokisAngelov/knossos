@@ -268,6 +268,22 @@
               <li><a href="{% url 'admin_reservations' %}" class="text-blue-600 hover:text-blue-800">Manage Reservations</a></li>
             </ul>
           </div>
+
+          <!-- Bookings -->
+          <div class="bg-gray-50 p-5 rounded-lg border border-gray-200">
+            <div class="flex items-center mb-4">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4" />
+              </svg>
+              <h3 class="text-lg font-medium text-gray-900">Bookings</h3>
+            </div>
+            <ul class="space-y-2">
+              <li><a href="{% url 'bookings_list' %}" class="text-blue-600 hover:text-blue-800">Manage Bookings</a></li>
+            </ul>
+          </div>
+
         </div>
       </div>
     </div>
@@ -335,7 +351,7 @@
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <a href="{% url 'booking_detail' pk=booking.id %}" class="text-blue-600 hover:text-blue-900">View</a>
-                  <a id="delete-booking-btn" data-booking-id="{{ booking.id }}" href="#" class="text-red-600 hover:text-red-900">Delete</a> 
+                  <a class="delete-booking-btn" data-booking-id="{{ booking.id }}" href="#" class="text-red-600 hover:text-red-900">Delete</a> 
                 </td>
               </tr>
             {% endfor %}
@@ -538,51 +554,72 @@
       });
   });
 
-  delete_btn = document.getElementById('delete-booking-btn');
-  if (delete_btn) {
-    delete_btn.addEventListener('click', function(e) {
-    e.preventDefault();
-    const bookingId = this.getAttribute('data-booking-id');
-    console.log(bookingId);
+  // Handle delete booking buttons
+  const deleteButtons = document.querySelectorAll('.delete-booking-btn');
 
-    Swal.fire({
-      title: 'Are you sure?',
-      text: 'You want to delete this booking?',
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#3085d6',
-      cancelButtonColor: '#d33',
-      confirmButtonText: 'Yes, delete it!'
-    }).then((result) => {
-      if (result.isConfirmed) {
-        fetch(`/bookings/${bookingId}/delete/`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': csrftoken
-          }
-        })
-          .then(response => response.json())
-          .then(data => {
-            console.log(data);
-            if (data.success) {
+  deleteButtons.forEach(function(deleteBtn) {
+    deleteBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      const bookingId = this.getAttribute('data-booking-id');
+      console.log(bookingId);
+
+      if (!bookingId) {
+        console.error('No booking ID found');
+        return;
+      }
+
+      Swal.fire({
+        title: 'Are you sure?',
+        text: 'You want to delete this booking?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'Yes, delete it!'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          // Construct the URL using the booking ID
+          const deleteUrl = `/bookings/${bookingId}/delete/`;
+          
+          fetch(deleteUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': csrftoken
+            }
+          })
+            .then(response => response.json())
+            .then(data => {
+              console.log(data);
+              if (data.success) {
+                Swal.fire({
+                  title: 'Success',
+                  text: data.message,
+                  icon: 'success'
+                }).then(() => {
+                  // Reload the page to reflect the changes
+                  window.location.reload();
+                });
+              } else {
+                Swal.fire({
+                  title: 'Error',
+                  text: data.message || 'Booking not deleted.',
+                  icon: 'error'
+                });
+              }
+            })
+            .catch(error => {
+              console.error('Error:', error);
               Swal.fire({
-                title: 'Success',
-                text: data.message,
-                icon: 'success'
-              });
-            } else {
-              Swal.fire({
-                title: 'Cancelled',
-                text: 'Booking not deleted.',
+                title: 'Error',
+                text: 'An error occurred while deleting the booking.',
                 icon: 'error'
               });
-            }
-          });
-      }
+            });
+        }
       });
     });
-  }
+  });
 
 
 

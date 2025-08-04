@@ -1,0 +1,277 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <!-- Header Section -->
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">Bookings</h1>
+            <p class="text-sm text-gray-500">Manage your bookings</p>
+        </div>
+        <button type="button" id="add-booking-btn" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            Add Booking
+        </button>
+    </div>
+
+    <!-- Search and Filter Section -->
+    <div class="bg-white rounded-lg shadow-md p-4 mb-6">
+        <form method="get" class="flex flex-wrap gap-4">
+            <div class="flex-1 min-w-[200px]">
+                <label for="search" class="sr-only">Search</label>
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                    </div>
+                    <input type="text" name="search" id="search" value="{{ request.GET.search }}" 
+                           class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                           placeholder="Search bookings...">
+                </div>
+            </div>
+            <div class="flex gap-4">
+                <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    Search
+                </button>
+                <a href="{% url 'bookings_list' %}" class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    Clear
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Bookings Table -->
+    <div class="bg-white rounded-lg shadow-md overflow-hidden">
+        {% if bookings %}
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Guest Name</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Excursion</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for booking in bookings %}
+                        <tr data-id="{{ booking.id }}">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="editable-id">#{{ booking.id }}</span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="editable-guest-name">{{ booking.guest_name }}</span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="editable-excursion">{{ booking.excursion_availability.excursion.title }}</span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="editable-date">{{ booking.date }}</span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="editable-status">{{ booking.payment_status|title }}</span>
+                                <select class="edit-input hidden w-full border rounded px-2 py-1">
+                                    <option value="pending" {% if booking.payment_status == 'pending' %}selected{% endif %}>Pending</option>
+                                    <option value="completed" {% if booking.payment_status == 'completed' %}selected{% endif %}>Completed</option>
+                                    <option value="cancelled" {% if booking.payment_status == 'cancelled' %}selected{% endif %}>Cancelled</option>
+                                </select>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="editable-amount">${{ booking.total_price }}</span>
+                                <input type="number" step="0.01" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ booking.total_price }}">
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                <button type="button" class="edit-btn text-blue-600 hover:text-blue-800 mr-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                    </svg>
+                                </button>
+                                <button type="button" class="delete-btn text-red-600 hover:text-red-800 mr-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                </button>
+                                <button type="button" class="save-btn hidden text-green-600 hover:text-green-800">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                </button>
+                                <button type="button" class="cancel-btn hidden text-gray-600 hover:text-gray-800">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-12">
+                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <h3 class="mt-2 text-sm font-medium text-gray-900">No bookings found</h3>
+                <p class="mt-1 text-sm text-gray-500">Get started by adding a new booking.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Add Booking
+        const addBookingBtn = document.getElementById('add-booking-btn');
+        function showAddBookingModal() {
+            Swal.fire({
+                title: 'Add Booking',
+                html: `
+                    <input id="swal-guest-name" class="swal2-input" placeholder="Guest Name" required>
+                    <select id="swal-excursion" class="swal2-input" style="width: 100%; margin: 10px auto; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 0.375rem; background-color: white;" required>
+                        <option value="">Select Excursion</option>
+                        {% for excursion in excursions %}
+                            <option value="{{ excursion.id }}">{{ excursion.title }}</option>
+                        {% endfor %}
+                    </select>
+                    <input id="swal-date" type="date" class="swal2-input" required>
+                    <select id="swal-payment-status" class="swal2-input" style="width: 100%; margin: 10px auto; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 0.375rem; background-color: white;" required>
+                        <option value="pending">Pending</option>
+                        <option value="completed">Completed</option>
+                        <option value="cancelled">Cancelled</option>
+                    </select>
+                    <input id="swal-total-price" type="number" step="0.01" class="swal2-input" placeholder="Total Price" required>
+                `,
+                focusConfirm: false,
+                showCancelButton: true,
+                confirmButtonText: 'Add Booking',
+                preConfirm: () => {
+                    const guestName = document.getElementById('swal-guest-name').value;
+                    const excursion = document.getElementById('swal-excursion').value;
+                    const date = document.getElementById('swal-date').value;
+                    const paymentStatus = document.getElementById('swal-payment-status').value;
+                    const totalPrice = document.getElementById('swal-total-price').value;
+
+                    if (!guestName || !excursion || !date || !paymentStatus || !totalPrice) {
+                        Swal.showValidationMessage('Please fill in all fields');
+                        return false;
+                    }
+                    return { guestName, excursion, date, paymentStatus, totalPrice };
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const form = document.getElementById('add-booking-form');
+                    document.getElementById('add-booking-guest-name').value = result.value.guestName;
+                    document.getElementById('add-booking-excursion-id').value = result.value.excursion;
+                    document.getElementById('add-booking-date').value = result.value.date;
+                    document.getElementById('add-booking-payment-status').value = result.value.paymentStatus;
+                    document.getElementById('add-booking-total-price').value = result.value.totalPrice;
+                    form.submit();
+                }
+            });
+        }
+        if (addBookingBtn) {
+            addBookingBtn.addEventListener('click', showAddBookingModal);
+        }
+
+        // Setup table editing
+        const table = document.querySelector('table');
+        if (table) {
+            // Edit buttons
+            table.querySelectorAll('.edit-btn').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const row = this.closest('tr');
+                    const spans = row.querySelectorAll('.editable-guest-name, .editable-date, .editable-status, .editable-amount');
+                    const inputs = row.querySelectorAll('.edit-input');
+                    spans.forEach(span => span.classList.add('hidden'));
+                    inputs.forEach(input => input.classList.remove('hidden'));
+                    inputs[0].focus();
+                    row.querySelectorAll('.edit-btn, .delete-btn').forEach(el => el.classList.add('hidden'));
+                    row.querySelectorAll('.save-btn, .cancel-btn').forEach(el => el.classList.remove('hidden'));
+                });
+            });
+
+            // Save buttons
+            table.querySelectorAll('.save-btn').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const row = this.closest('tr');
+                    const itemId = row.dataset.id;
+                    const inputs = row.querySelectorAll('.edit-input');
+                    
+                    document.getElementById('edit-booking-id').value = itemId;
+                    document.getElementById('edit-booking-guest-name').value = inputs[0].value.trim();
+                    document.getElementById('edit-booking-date').value = inputs[1].value;
+                    document.getElementById('edit-booking-payment-status').value = inputs[2].value;
+                    document.getElementById('edit-booking-total-price').value = inputs[3].value;
+                    document.getElementById('edit-booking-form').submit();
+                });
+            });
+
+            // Cancel buttons
+            table.querySelectorAll('.cancel-btn').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const row = this.closest('tr');
+                    const spans = row.querySelectorAll('.editable-guest-name, .editable-date, .editable-status, .editable-amount');
+                    const inputs = row.querySelectorAll('.edit-input');
+                    
+                    // Reset inputs to original values
+                    inputs.forEach((input, index) => {
+                        if (input.tagName === 'SELECT') {
+                            const originalValue = spans[index].textContent.trim();
+                            for (let i = 0; i < input.options.length; i++) {
+                                if (input.options[i].text === originalValue) {
+                                    input.selectedIndex = i;
+                                    break;
+                                }
+                            }
+                        } else {
+                            input.value = spans[index].textContent.replace('$', '');
+                        }
+                    });
+                    
+                    spans.forEach(span => span.classList.remove('hidden'));
+                    inputs.forEach(input => input.classList.add('hidden'));
+                    row.querySelectorAll('.edit-btn, .delete-btn').forEach(el => el.classList.remove('hidden'));
+                    row.querySelectorAll('.save-btn, .cancel-btn').forEach(el => el.classList.add('hidden'));
+                });
+            });
+
+            // Delete buttons
+            table.querySelectorAll('.delete-btn').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const row = this.closest('tr');
+                    const itemId = row.dataset.id;
+                    const guestName = row.querySelector('.editable-guest-name').textContent;
+                    const excursion = row.querySelector('.editable-excursion').textContent;
+                    Swal.fire({
+                        title: 'Are you sure?',
+                        text: `Do you want to delete booking for ${guestName} at ${excursion}?`,
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#d33',
+                        cancelButtonColor: '#3085d6',
+                        confirmButtonText: 'Yes, delete it!'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            document.getElementById('delete-booking-id').value = itemId;
+                            document.getElementById('delete-booking-form').submit();
+                        }
+                    });
+                });
+            });
+        }
+    });
+</script>
+{% endblock %}

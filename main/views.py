@@ -32,6 +32,18 @@ from .cyber_api import get_groups, get_hotels, get_pickup_points, get_excursions
 def is_staff(user):
     return user.is_staff
 
+def testmodels(request):
+    bookings = Booking.objects.all()
+    reservations = Reservation.objects.all()
+    availabilities = ExcursionAvailability.objects.all()
+
+    # bookings.delete()
+    return render(request, 'main/admin/testmodels.html', {
+        'bookings': bookings,
+        'reservations': reservations,
+        'availabilities': availabilities,
+    })
+
 def homepage(request):
     excursions = Excursion.objects.all().filter(status='active').distinct()
     return render(request, 'main/home.html', {
@@ -1536,6 +1548,12 @@ def admin_reservations(request):
         messages.error(request, f'Error fetching reservations: {str(e)}')
         return redirect('admin_reservations')
 
+@user_passes_test(is_staff)
+def bookings_list(request):
+    bookings = Booking.objects.all()
+    return render(request, 'main/bookings/bookings_list.html', {
+        'bookings': bookings,
+    })
 
 @user_passes_test(is_staff)
 def manage_reservations(request):

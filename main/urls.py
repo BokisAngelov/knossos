@@ -5,6 +5,8 @@ urlpatterns = [
 
     path('', views.homepage, name='homepage'),
 
+    path('testmodels/', views.testmodels, name='testmodels'),
+
     # Excursion URLs
     path('excursions/', views.excursion_list, name='excursion_list'),
     path('excursions/add/', views.excursion_create, name='excursion_create'),
@@ -14,6 +16,7 @@ urlpatterns = [
 
     # Booking URLs
     # path('availability/<int:availability_pk>/book/', views.booking_create, name='booking_create'),
+    path('bookings/', views.bookings_list, name='bookings_list'),
     path('bookings/<int:pk>/', views.booking_detail, name='booking_detail'),
     path('bookings/<int:pk>/delete/', views.booking_delete, name='delete_booking'),
 

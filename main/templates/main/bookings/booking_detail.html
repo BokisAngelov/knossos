@@ -4,7 +4,7 @@
 {% block content %}
 <div class="container mx-auto px-4 py-8">
     <!-- Header Section -->
-    <div class="flex justify-between items-center mb-6">
+    <div class="flex justify-between items-center mb-2">
         <div>
             <a href="{% url 'excursion_detail' booking.excursion_availability.excursion.id %}" class="inline-flex items-center text-gray-600 hover:text-gray-900">
                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -22,9 +22,18 @@
                 {{ booking.payment_status.capitalize }}
             </span>
         </div>
+        {% if user.is_staff %}
+            <a href="#" class="inline-flex float-right items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                Edit Booking
+            </a>
+        {% endif %}
 
     </div>
 
+    
     <!-- Main Content -->
     <div class="bg-white shadow overflow-hidden sm:rounded-lg">
         <!-- Booking Information -->
@@ -34,7 +43,7 @@
         <div class="border-t border-gray-200">
             <div class="grid grid-cols-4 gap-4 p-6">
                 <div class="bg-white rounded-lg shadow-sm p-4">
-                    <h4 class="text-sm font-medium text-gray-500 mb-1">Booking Date</h4>
+                    <h4 class="text-sm font-medium text-gray-500 mb-1">Booked on</h4>
                     <p class="text-lg font-semibold text-gray-900">{{ booking.created_at|date:"F d, Y" }}</p>
                 </div>
                 <div class="bg-white rounded-lg shadow-sm p-4">
@@ -42,15 +51,18 @@
                     <p class="text-lg font-semibold text-gray-900">€{{ booking.total_price }}</p>
                 </div>
                 <div class="bg-white rounded-lg shadow-sm p-4">
+                    <h4 class="text-sm font-medium text-gray-500 mb-1">Partial Payment</h4>
+                    <p class="text-lg font-semibold text-gray-900">€{% if booking.partial_paid %}{{ booking.partial_paid }}{% else %}0.00{% endif %}</p>
+                </div>
+                <div class="bg-white rounded-lg shadow-sm p-4">
                     <h4 class="text-sm font-medium text-gray-500 mb-1">Number of Guests</h4>
                     <p class="text-lg font-semibold text-gray-900">{{ booking.total_adults }} Adults | {{ booking.total_kids }} Kids | {{ booking.total_infants }} Infants</p>
                 </div>
-                {% if booking.partial_paid %}
                 <div class="bg-white rounded-lg shadow-sm p-4">
-                    <h4 class="text-sm font-medium text-gray-500 mb-1">Partial Payment</h4>
-                    <p class="text-lg font-semibold text-gray-900">€{{ booking.partial_paid }}</p>
+                    <h4 class="text-sm font-medium text-gray-500 mb-1">Booking Date</h4>
+                    <p class="text-lg font-semibold text-gray-900">{{ booking.date|date:"F d, Y" }}</p>
                 </div>
-                {% endif %}
+                
             </div>
         </div>
 
@@ -66,13 +78,10 @@
                         {{ booking.excursion_availability.excursion.title }}
                     </a>
                 </div>
+                
                 <div class="bg-white rounded-lg shadow-sm p-4">
-                    <h4 class="text-sm font-medium text-gray-500 mb-1">Date</h4>
-                    <p class="text-lg font-semibold text-gray-900">{{ booking.date|date:"F d, Y" }}</p>
-                </div>
-                <div class="bg-white rounded-lg shadow-sm p-4">
-                    <h4 class="text-sm font-medium text-gray-500 mb-1">Region</h4>
-                    <p class="text-lg font-semibold text-gray-900">{{ booking.excursion_availability.region }}</p>
+                    <h4 class="text-sm font-medium text-gray-500 mb-1">Time</h4>
+                    <p class="text-lg font-semibold text-gray-900">{{ booking.excursion_availability.start_time|time:"H:i" }} - {{ booking.excursion_availability.end_time|time:"H:i" }}</p>
                 </div>
                 <div class="bg-white rounded-lg shadow-sm p-4">
                     <h4 class="text-sm font-medium text-gray-500 mb-1">Pickup Point</h4>
@@ -95,6 +104,12 @@
                     <h4 class="text-sm font-medium text-gray-500 mb-1">Contact Email</h4>
                     <p class="text-lg font-semibold text-gray-900">{{ booking.guest_email }}</p>
                 </div>
+                {% if booking.voucher_id %}
+                <div class="bg-white rounded-lg shadow-sm p-4">
+                    <h4 class="text-sm font-medium text-gray-500 mb-1">Reservation</h4>
+                    <p class="text-lg font-semibold text-gray-900"><a href="{% url 'admin_reservations' %}" class="text-blue-600 hover:text-blue-800">{{ booking.voucher_id }}</a></p>
+                </div>
+                {% endif %}
             </div>
         </div>
     </div>
