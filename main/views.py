@@ -36,12 +36,13 @@ def testmodels(request):
     bookings = Booking.objects.all()
     reservations = Reservation.objects.all()
     availabilities = ExcursionAvailability.objects.all()
-
+    availability_days = AvailabilityDays.objects.all()
     # bookings.delete()
     return render(request, 'main/admin/testmodels.html', {
         'bookings': bookings,
         'reservations': reservations,
         'availabilities': availabilities,
+        'availability_days': availability_days,
     })
 
 def homepage(request):
@@ -577,6 +578,7 @@ def excursion_detail(request, pk):
             'pickup_points': pickup_points,
             # 'voucher_code': voucher_code,
             # 'return_data': return_data,
+            'remaining_seats': 0,
         })
 
 
@@ -637,11 +639,12 @@ def excursion_detail(request, pk):
                 
                 booking = booking_form.save(commit=False)
                 
-                adults = int(request.POST.get('adults', 0))
-                children = int(request.POST.get('children', 0))
-                infants = int(request.POST.get('infants', 0))
-                total_price = int(request.POST.get('total_price', 0))
-                partial_price = int(request.POST.get('partial_payment', 0))
+                # Handle empty strings by converting them to 0 before int conversion
+                adults = int(request.POST.get('adults', '0') or '0')
+                children = int(request.POST.get('children', '0') or '0')
+                infants = int(request.POST.get('infants', '0') or '0')
+                total_price = int(request.POST.get('total_price', '0') or '0')
+                partial_price = int(request.POST.get('partial_payment', '0') or '0')
                 voucher_id = request.POST.get('voucher_code', None)
                 # print('voucher_id: ' + str(voucher_id))
                 reservation_instance = None
@@ -663,8 +666,7 @@ def excursion_detail(request, pk):
                 if user.is_staff == True:
                     booking.payment_status = 'completed'
                 else:
-                    booking.payment_status = 'pending'
-
+                    booking.payment_status = 'pending'               
                 
                 booking.excursion_availability = excursion_availability
                 booking.user = user_instance
@@ -694,11 +696,7 @@ def excursion_detail(request, pk):
                         'message': 'Please select a date.'
                     })
                 
-                # Validate at least one participant
-                adults = int(request.POST.get('adults', 0))
-                children = int(request.POST.get('children', 0))
-                infants = int(request.POST.get('infants', 0))
-                
+                # Validate at least one participant                
                 if adults + children + infants == 0:
                     return JsonResponse({
                         'success': False,
@@ -708,6 +706,19 @@ def excursion_detail(request, pk):
                 booking.date = selected_date
                 booking.availability_id = availability_id
                 booking.save()
+
+                # Check if the availability has enough guests
+                total_guests = adults + children + infants
+                availability_guests = availability.max_guests
+
+                if total_guests > availability_guests:
+                    return JsonResponse({
+                        'success': False,
+                        'message': 'The availability has not enough guests.'
+                    })
+                else:
+                    availability.booked_guests += total_guests
+                    availability.save()
 
                 return JsonResponse({
                     'success': True,
@@ -767,6 +778,11 @@ def excursion_detail(request, pk):
     # if excursion_availability:
     #     pickup_points = PickupPoint.objects.filter(pickup_group__in=excursion_availability.pickup_groups.all()).order_by('priority')
 
+    # Calculate remaining seats for the first availability
+    remaining_seats = 0
+    if excursion_availability:
+        remaining_seats = excursion_availability.max_guests - excursion_availability.booked_guests
+
     return render(request, 'main/excursions/excursion_detail.html', {
         'excursion': excursion,
         'feedback_form': feedback_form,
@@ -778,6 +794,7 @@ def excursion_detail(request, pk):
         # 'voucher_code': voucher_code,
         # 'return_data': return_data,
         'pickup_group_map': pickup_group_map,
+        'remaining_seats': remaining_seats,
     })
 
 @user_passes_test(is_staff)
@@ -1694,23 +1711,23 @@ def availability_form(request, pk=None):
         elif form.is_valid():
             try:
                 # First validate weekday capacities from form data
-                max_guests = int(request.POST.get('max_guests', 0))
+                # max_guests = int(request.POST.get('max_guests', 0))
                 selected_weekday_ids = request.POST.getlist('weekdays')
                 pickup_group_ids = pickup_groups
 
                 # Validate capacities before saving
-                for weekday_id in selected_weekday_ids:
-                    capacity_name = f'weekdays_capacity_{weekday_id}'
-                    capacity = request.POST.get(capacity_name)
-                    if capacity:
-                        try:
-                            capacity = int(capacity)
-                            if capacity > max_guests:
-                                raise ValueError(f"Capacity for {DayOfWeek.objects.get(id=weekday_id).get_code_display()} cannot be greater than the maximum number of guests.")
-                        except ValueError as e:
-                            if str(e).startswith("Capacity for"):
-                                raise e
-                            raise ValueError(f"Invalid capacity value for {DayOfWeek.objects.get(id=weekday_id).get_code_display()}")
+                # for weekday_id in selected_weekday_ids:
+                #     capacity_name = f'weekdays_capacity_{weekday_id}'
+                #     capacity = request.POST.get(capacity_name)
+                #     if capacity:
+                #         try:
+                #             capacity = int(capacity)
+                #             if capacity > max_guests:
+                #                 raise ValueError(f"Capacity for {DayOfWeek.objects.get(id=weekday_id).get_code_display()} cannot be greater than the maximum number of guests.")
+                #         except ValueError as e:
+                #             if str(e).startswith("Capacity for"):
+                #                 raise e
+                #             raise ValueError(f"Invalid capacity value for {DayOfWeek.objects.get(id=weekday_id).get_code_display()}")
 
                 
                 availability = form.save(commit=False)
@@ -1730,17 +1747,17 @@ def availability_form(request, pk=None):
                 availability.pickup_groups.set(pickup_group_ids)
                 
                 # Update weekday capacities
-                for weekday_id in selected_weekday_ids:
-                    capacity_name = f'weekdays_capacity_{weekday_id}'
-                    capacity = request.POST.get(capacity_name)
-                    if capacity:
-                        try:
-                            capacity = int(capacity)
-                            if capacity == 0:
-                                capacity = max_guests
-                            DayOfWeek.objects.filter(id=weekday_id).update(capacity=capacity)
-                        except ValueError:
-                            pass  
+                # for weekday_id in selected_weekday_ids:
+                #     capacity_name = f'weekdays_capacity_{weekday_id}'
+                #     capacity = request.POST.get(capacity_name)
+                #     if capacity:
+                #         try:
+                #             capacity = int(capacity)
+                #             if capacity == 0:
+                #                 capacity = max_guests
+                #             DayOfWeek.objects.filter(id=weekday_id).update(capacity=capacity)
+                #         except ValueError:
+                #             pass  
                 
                 if excursion.status != 'active':
                     excursion.status = 'active'
@@ -1769,7 +1786,8 @@ def availability_form(request, pk=None):
                     if current_date.weekday() in weekday_numbers:
                         AvailabilityDays.objects.create(
                             excursion_availability=availability,
-                            date_day=current_date
+                            date_day=current_date,
+                            capacity=availability.max_guests
                         )
                     current_date += timedelta(days=1)
 

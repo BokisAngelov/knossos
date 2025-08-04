@@ -243,6 +243,7 @@
                 {% if not excursion.availabilities.exists %}
                     <p class="text-gray-500 text-center py-4 not-availability">The excursion is currently not available.</p>
                 {% else %}
+                
                 <!-- Availability selection -->
                 <form method="post" class="space-y-4" id="booking-form">
                     {% csrf_token %}
@@ -318,6 +319,7 @@
                     <div>
                         <label class="block text-md font-medium text-gray-700">Date</label>
                         <input type="text" id="date-picker" class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 {% if form.date.errors %}border-red-500{% endif %}" placeholder="Select a date">
+                        <!-- <span id="remaining-seats" class="text-sm text-gray-500">Remaining seats: <span id="remaining-seats-count">{{ remaining_seats }}</span></span> -->
                         
                         {% if form.date.errors %}
                         <p class="mt-1 text-sm text-red-600">{{ form.date.errors.0 }}</p>
@@ -954,7 +956,6 @@
                 formData.append('availability_id', availabilityId);
                 formData.append('voucher_code', voucherCode ? voucherCode : null);
                 formData.append('partial_payment', partialPayment);
-                
                 // Submit form via AJAX
                 fetch(window.location.href, {
                     method: 'POST',

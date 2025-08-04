@@ -81,14 +81,14 @@ class WeekdayCapacityWidget(forms.CheckboxSelectMultiple):
         for weekday in weekdays:
             checkbox_name = name
             checkbox_id = f'id_{name}_{weekday.id}'
-            capacity_name = f'{name}_capacity_{weekday.id}'
-            capacity_id = f'id_{capacity_name}'
+            # capacity_name = f'{name}_capacity_{weekday.id}'
+            # capacity_id = f'id_{capacity_name}'
             
             is_checked = str(weekday.id) in [str(v) for v in value]
-            if self.form_data and capacity_name in self.form_data:
-                capacity_value = self.form_data.get(capacity_name)
-            else:
-                capacity_value = weekday.capacity if is_checked else 0
+            # if self.form_data and capacity_name in self.form_data:
+            #     capacity_value = self.form_data.get(capacity_name)
+            # else:
+            #     capacity_value = weekday.capacity if is_checked else 0
             
             # Each row: checkbox, label, capacity input
             weekday_html = f'''
@@ -98,18 +98,10 @@ class WeekdayCapacityWidget(forms.CheckboxSelectMultiple):
                         id="{checkbox_id}" 
                         value="{weekday.id}" 
                         {"checked" if is_checked else ""} 
-                        onchange="updateWeekdayCapacity(this, '{capacity_id}')" 
+                        
                         class="w-4 h-4">
                     <label for="{checkbox_id}" class="min-w-[120px] px-3 py-1 bg-gray-100 rounded text-center font-medium">{weekday.get_code_display()}</label>
-                    <input type="number" 
-                        name="{capacity_name}" 
-                        id="{capacity_id}" 
-                        value="{capacity_value}" 
-                        min="0" 
-                        class="w-16 px-2 py-1 border rounded text-center {"bg-gray-50" if not is_checked else ""}" 
-                        {"disabled" if not is_checked else ""} 
-                        data-weekday-id="{weekday.id}"
-                        placeholder="0">
+                    
                 </div>
             '''
             output.append(weekday_html)
@@ -118,17 +110,7 @@ class WeekdayCapacityWidget(forms.CheckboxSelectMultiple):
         
         script = '''
             <script>
-                function updateWeekdayCapacity(checkbox, capacityId) {
-                    const capacityInput = document.getElementById(capacityId);
-                    if (checkbox.checked) {
-                        capacityInput.disabled = false;
-                        capacityInput.classList.remove('bg-gray-50');
-                    } else {
-                        capacityInput.disabled = true;
-                        capacityInput.value = "0";
-                        capacityInput.classList.add('bg-gray-50');
-                    }
-                }
+                
             </script>
         '''
         
@@ -236,7 +218,7 @@ class ExcursionAvailabilityForm(forms.ModelForm):
                 'pattern': '[0-9]{2}:[0-9]{2}'
             }),
             'end_time': forms.TimeInput(attrs={
-                'type': 'time',
+                'type': 'time', 
                 'class': 'form-control',    
                 'inputmode': 'numeric',
                 'pattern': '[0-9]{2}:[0-9]{2}'

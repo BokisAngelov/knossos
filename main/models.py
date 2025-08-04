@@ -97,7 +97,7 @@ class DayOfWeek(models.Model):
         (SUN, 'Sunday'),
     ]
     code = models.CharField(max_length=3, choices=WEEKDAY_CHOICES, unique=True)
-    capacity = models.PositiveIntegerField(default=0)
+    # capacity = models.PositiveIntegerField(default=0)
 
     def __str__(self):
         return dict(self.WEEKDAY_CHOICES)[self.code]
@@ -211,6 +211,7 @@ class AvailabilityDays(models.Model):
     # excursion = models.ForeignKey(Excursion, on_delete=models.CASCADE, related_name='availability_days')
     excursion_availability = models.ForeignKey(ExcursionAvailability, on_delete=models.CASCADE, related_name='availability_days', null=True)
     date_day = models.DateField()
+    capacity = models.PositiveIntegerField(default=0)
 
     def __str__(self):
         return f"{self.excursion_availability.excursion.title} - {self.date_day}"

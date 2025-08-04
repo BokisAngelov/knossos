@@ -127,10 +127,10 @@
             <div class="grid grid-cols-4 gap-4 p-6">
                 {% for weekday in availability.weekdays.all %}
                 <div class="bg-white rounded-lg shadow-sm p-4">
-                    <h4 class="text-sm font-medium text-gray-500 mb-1">{{ weekday.get_code_display }}</h4>
+                    <!-- <h4 class="text-sm font-medium text-gray-500 mb-1"></h4> -->
                     <div class="flex items-center justify-between">
                         <span class="text-lg font-semibold text-gray-900">
-                            {{ weekday.capacity }} guests
+                            {{ weekday.get_code_display }}
                         </span>
                     </div>
                 </div>

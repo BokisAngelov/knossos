@@ -66,20 +66,73 @@
         <th>Max Guests</th>
         <th>Booked Guests</th>
         <th>Status</th>
-        <th>Created At</th>
+        <th>Weekdays</th>
     </tr>
 {% for availability in availabilities %}
     <tr>    
         <td>{{ availability.id }}</td>
-        <td>{{ availability.excursion.name }}</td>
+        <td>{{ availability.excursion.title }}</td>
         <td>{{ availability.start_time }}</td>
         <td>{{ availability.end_time }}</td>
         <td>{{ availability.max_guests }}</td>
         <td>{{ availability.booked_guests }}</td>
         <td>{{ availability.status }}</td>
-        <td>{{ availability.created_at }}</td>
+        <td>
+            {% for weekday in availability.weekdays.all %}
+                {{ weekday.code }}
+            {% endfor %}
+        </td>
     </tr>
 {% endfor %}
 </table>
 
+<h2>Availability Days</h2>
+<table class="table-auto w-full border-collapse border border-gray-300 rounded-lg shadow-md text-center p-3">
+    <tr>
+        <th>ID</th>
+        <th>Excursion availability</th>
+        <th>Date day</th>   
+        <th>Capacity</th>
+    </tr>
+{% for availability_day in availability_days %}
+    <tr>
+        <td>{{ availability_day.id }}</td>
+        <td>{{ availability_day.excursion_availability.id }}</td>
+        <td>{{ availability_day.date_day }}</td>
+        <td>{{ availability_day.capacity }}</td>
+    </tr>
+{% endfor %}
+</table>
+
+<h2>Daysoftheweek</h2>
+<table class="table-auto w-full border-collapse border border-gray-300 rounded-lg shadow-md text-center p-3">
+    <tr>
+        <th>ID</th>
+        <th>Code</th>
+        <th>Capacity</th>
+    </tr>
+{% for day in daysoftheweek %}
+    <tr>
+        <td>{{ day.id }}</td>
+        <td>{{ day.code }}</td>
+        <td>{{ day.capacity }}</td>
+        </tr>
+{% endfor %}
+</table>
+
+<h2>Pickup Group Availabilities</h2>
+<table class="table-auto w-full border-collapse border border-gray-300 rounded-lg shadow-md text-center p-3">
+    <tr>
+        <th>ID</th>
+        <th>Excursion</th>
+        <th>Pickup Group</th>
+    </tr>
+{% for pickup_group_availability in pickup_group_availabilities %}
+    <tr>
+        <td>{{ pickup_group_availability.id }}</td>
+        <td>{{ pickup_group_availability.excursion_availability.excursion.title }}</td>
+        <td>{{ pickup_group_availability.pickup_group.name }}</td>
+    </tr>
+{% endfor %}
+</table>
 {% endblock %}
