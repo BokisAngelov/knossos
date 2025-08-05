@@ -1394,15 +1394,35 @@ def manage_reps(request):
 @user_passes_test(is_staff)
 def clients_list(request):
     clients = UserProfile.objects.filter(role='client')
-        # Handle search
+    
+    # Handle search
     search_query = request.GET.get('search', '').strip()
     if search_query:
         clients = clients.filter(
-            Q(name__icontains=search_query)
+            Q(name__icontains=search_query) |
+            Q(email__icontains=search_query) |
+            Q(phone__icontains=search_query)
         )
+    
+    # Handle sorting
+    sort_by = request.GET.get('sort', 'name')
+    sort_order = request.GET.get('order', 'asc')
+    
+    # Validate sort field
+    valid_sort_fields = ['name', 'email', 'phone', 'status', 'created_at']
+    if sort_by not in valid_sort_fields:
+        sort_by = 'name'
+    
+    # Apply sorting
+    if sort_order == 'desc':
+        sort_by = f'-{sort_by}'
+    
+    clients = clients.order_by(sort_by)
 
     return render(request, 'main/admin/clients.html', {
         'clients': clients,
+        'current_sort': request.GET.get('sort', 'name'),
+        'current_order': request.GET.get('order', 'asc'),
     })
 
 @user_passes_test(is_staff)
@@ -1451,6 +1471,16 @@ def manage_clients(request):
             client.delete()
             messages.success(request, 'Client deleted successfully.')
             return redirect('manage_clients')
+        
+        elif action_type == 'bulk_delete':
+            selected_ids = request.POST.getlist('selected_clients')
+            if selected_ids:
+                clients_to_delete = UserProfile.objects.filter(id__in=selected_ids, role='client')
+                count = clients_to_delete.count()
+                clients_to_delete.delete()
+                messages.success(request, f'{count} client(s) deleted successfully.')
+            return redirect('manage_clients')
+        
 
     return render(request, 'main/admin/clients.html', {
         'clients': UserProfile.objects.filter(role='client'),

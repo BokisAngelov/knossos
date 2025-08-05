@@ -45,6 +45,38 @@
         </form>
     </div>
 
+    <!-- Bulk Actions Section -->
+    <div id="bulk-actions" class="bg-white rounded-lg shadow-md p-4 mb-6 hidden">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-4">
+                <span id="selected-count" class="text-sm text-gray-700">0 clients selected</span>
+                <div class="flex space-x-2">
+                    <button type="button" id="bulk-activate-btn" class="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                        Activate
+                    </button>
+                    <button type="button" id="bulk-deactivate-btn" class="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-white bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 12H6" />
+                        </svg>
+                        Deactivate
+                    </button>
+                    <button type="button" id="bulk-delete-btn" class="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                        Delete
+                    </button>
+                </div>
+            </div>
+            <button type="button" id="select-all-btn" class="text-sm text-blue-600 hover:text-blue-800">
+                Select All
+            </button>
+        </div>
+    </div>
+
     <!-- Clients Table -->
     <div class="bg-white rounded-lg shadow-md overflow-hidden">
         {% if clients %}
@@ -53,16 +85,97 @@
                     <thead class="bg-gray-50">
                         <tr>
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Name
+                                <div class="flex items-center">
+                                    <input type="checkbox" id="select-all-checkbox" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                                </div>
                             </th>
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Email
+                                <a href="?{% if request.GET.search %}search={{ request.GET.search }}&{% endif %}sort=name&order={% if current_sort == 'name' and current_order == 'asc' %}desc{% else %}asc{% endif %}" class="group inline-flex items-center hover:text-gray-700">
+                                    Name
+                                    <span class="ml-2 flex-none rounded">
+                                        {% if current_sort == 'name' %}
+                                            {% if current_order == 'asc' %}
+                                                <svg class="h-5 w-5 text-gray-400 group-hover:text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fill-rule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clip-rule="evenodd" />
+                                                </svg>
+                                            {% else %}
+                                                <svg class="h-5 w-5 text-gray-400 group-hover:text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                                </svg>
+                                            {% endif %}
+                                        {% else %}
+                                            <svg class="h-5 w-5 text-gray-400 group-hover:text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                                <path fill-rule="evenodd" d="M10 3a1 1 0 01.707.293l3 3a1 1 0 01-1.414 1.414L10 5.414 7.707 7.707a1 1 0 01-1.414-1.414l3-3A1 1 0 0110 3zm-3.707 9.293a1 1 0 011.414 0L10 14.586l2.293-2.293a1 1 0 011.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                            </svg>
+                                        {% endif %}
+                                    </span>
+                                </a>
                             </th>
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Phone
+                                <a href="?{% if request.GET.search %}search={{ request.GET.search }}&{% endif %}sort=email&order={% if current_sort == 'email' and current_order == 'asc' %}desc{% else %}asc{% endif %}" class="group inline-flex items-center hover:text-gray-700">
+                                    Email
+                                    <span class="ml-2 flex-none rounded">
+                                        {% if current_sort == 'email' %}
+                                            {% if current_order == 'asc' %}
+                                                <svg class="h-5 w-5 text-gray-400 group-hover:text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fill-rule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clip-rule="evenodd" />
+                                                </svg>
+                                            {% else %}
+                                                <svg class="h-5 w-5 text-gray-400 group-hover:text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                                </svg>
+                                            {% endif %}
+                                        {% else %}
+                                            <svg class="h-5 w-5 text-gray-400 group-hover:text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                                <path fill-rule="evenodd" d="M10 3a1 1 0 01.707.293l3 3a1 1 0 01-1.414 1.414L10 5.414 7.707 7.707a1 1 0 01-1.414-1.414l3-3A1 1 0 0110 3zm-3.707 9.293a1 1 0 011.414 0L10 14.586l2.293-2.293a1 1 0 011.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                            </svg>
+                                        {% endif %}
+                                    </span>
+                                </a>
                             </th>
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Status
+                                <a href="?{% if request.GET.search %}search={{ request.GET.search }}&{% endif %}sort=phone&order={% if current_sort == 'phone' and current_order == 'asc' %}desc{% else %}asc{% endif %}" class="group inline-flex items-center hover:text-gray-700">
+                                    Phone
+                                    <span class="ml-2 flex-none rounded">
+                                        {% if current_sort == 'phone' %}
+                                            {% if current_order == 'asc' %}
+                                                <svg class="h-5 w-5 text-gray-400 group-hover:text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fill-rule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clip-rule="evenodd" />
+                                                </svg>
+                                            {% else %}
+                                                <svg class="h-5 w-5 text-gray-400 group-hover:text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                                </svg>
+                                            {% endif %}
+                                        {% else %}
+                                            <svg class="h-5 w-5 text-gray-400 group-hover:text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                                <path fill-rule="evenodd" d="M10 3a1 1 0 01.707.293l3 3a1 1 0 01-1.414 1.414L10 5.414 7.707 7.707a1 1 0 01-1.414-1.414l3-3A1 1 0 0110 3zm-3.707 9.293a1 1 0 011.414 0L10 14.586l2.293-2.293a1 1 0 011.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                            </svg>
+                                        {% endif %}
+                                    </span>
+                                </a>
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <a href="?{% if request.GET.search %}search={{ request.GET.search }}&{% endif %}sort=status&order={% if current_sort == 'status' and current_order == 'asc' %}desc{% else %}asc{% endif %}" class="group inline-flex items-center hover:text-gray-700">
+                                    Status
+                                    <span class="ml-2 flex-none rounded">
+                                        {% if current_sort == 'status' %}
+                                            {% if current_order == 'asc' %}
+                                                <svg class="h-5 w-5 text-gray-400 group-hover:text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fill-rule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clip-rule="evenodd" />
+                                                </svg>
+                                            {% else %}
+                                                <svg class="h-5 w-5 text-gray-400 group-hover:text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                                </svg>
+                                            {% endif %}
+                                        {% else %}
+                                            <svg class="h-5 w-5 text-gray-400 group-hover:text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                                <path fill-rule="evenodd" d="M10 3a1 1 0 01.707.293l3 3a1 1 0 01-1.414 1.414L10 5.414 7.707 7.707a1 1 0 01-1.414-1.414l3-3A1 1 0 0110 3zm-3.707 9.293a1 1 0 011.414 0L10 14.586l2.293-2.293a1 1 0 011.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                            </svg>
+                                        {% endif %}
+                                    </span>
+                                </a>
                             </th>
                             <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Actions
@@ -72,6 +185,11 @@
                     <tbody class="bg-white divide-y divide-gray-200">
                         {% for client in clients %}
                             <tr data-id="{{ client.id }}">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="flex items-center">
+                                        <input type="checkbox" name="selected_clients" value="{{ client.id }}" class="client-checkbox h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                                    </div>
+                                </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="flex items-center">
                                         <div class="ml-4">
@@ -235,6 +353,12 @@
     <input type="hidden" name="item_id" id="delete-client-id">
 </form>
 
+<form id="bulk-actions-form" action="{% url 'manage_clients' %}" method="post" class="hidden">
+    {% csrf_token %}
+    <input type="hidden" name="action_type" id="bulk-action-type">
+    <div id="bulk-selected-clients"></div>
+</form>
+
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         // Add Client
@@ -280,6 +404,137 @@
         }
         if (addClientBtnEmpty) {
             addClientBtnEmpty.addEventListener('click', showAddClientModal);
+        }
+
+        // Bulk Actions
+        const selectAllCheckbox = document.getElementById('select-all-checkbox');
+        const clientCheckboxes = document.querySelectorAll('.client-checkbox');
+        const bulkActionsDiv = document.getElementById('bulk-actions');
+        const selectedCountSpan = document.getElementById('selected-count');
+        const selectAllBtn = document.getElementById('select-all-btn');
+        const bulkActivateBtn = document.getElementById('bulk-activate-btn');
+        const bulkDeactivateBtn = document.getElementById('bulk-deactivate-btn');
+        const bulkDeleteBtn = document.getElementById('bulk-delete-btn');
+
+        function updateBulkActions() {
+            const checkedBoxes = document.querySelectorAll('.client-checkbox:checked');
+            const totalBoxes = document.querySelectorAll('.client-checkbox');
+            
+            if (checkedBoxes.length > 0) {
+                bulkActionsDiv.classList.remove('hidden');
+                selectedCountSpan.textContent = `${checkedBoxes.length} client(s) selected`;
+                
+                // Update select all checkbox
+                if (checkedBoxes.length === totalBoxes.length) {
+                    selectAllCheckbox.checked = true;
+                    selectAllCheckbox.indeterminate = false;
+                } else if (checkedBoxes.length > 0) {
+                    selectAllCheckbox.indeterminate = true;
+                } else {
+                    selectAllCheckbox.checked = false;
+                    selectAllCheckbox.indeterminate = false;
+                }
+            } else {
+                bulkActionsDiv.classList.add('hidden');
+                selectAllCheckbox.checked = false;
+                selectAllCheckbox.indeterminate = false;
+            }
+        }
+
+        function selectAll() {
+            const checkboxes = document.querySelectorAll('.client-checkbox');
+            const selectAllCheckbox = document.getElementById('select-all-checkbox');
+            
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = selectAllCheckbox.checked;
+            });
+            updateBulkActions();
+        }
+
+        function submitBulkAction(actionType) {
+            const checkedBoxes = document.querySelectorAll('.client-checkbox:checked');
+            if (checkedBoxes.length === 0) {
+                Swal.fire('No Selection', 'Please select at least one client.', 'warning');
+                return;
+            }
+
+            let confirmMessage = '';
+            let confirmIcon = 'warning';
+            
+            switch(actionType) {
+                case 'bulk_delete':
+                    confirmMessage = `Are you sure you want to delete ${checkedBoxes.length} client(s)?`;
+                    confirmIcon = 'warning';
+                    break;
+                case 'bulk_activate':
+                    confirmMessage = `Are you sure you want to activate ${checkedBoxes.length} client(s)?`;
+                    confirmIcon = 'question';
+                    break;
+                case 'bulk_deactivate':
+                    confirmMessage = `Are you sure you want to deactivate ${checkedBoxes.length} client(s)?`;
+                    confirmIcon = 'question';
+                    break;
+            }
+
+            Swal.fire({
+                title: 'Confirm Action',
+                text: confirmMessage,
+                icon: confirmIcon,
+                showCancelButton: true,
+                confirmButtonColor: actionType === 'bulk_delete' ? '#d33' : '#3085d6',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Yes, proceed!'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const form = document.getElementById('bulk-actions-form');
+                    const actionTypeInput = document.getElementById('bulk-action-type');
+                    const selectedClientsDiv = document.getElementById('bulk-selected-clients');
+                    
+                    // Clear previous inputs
+                    selectedClientsDiv.innerHTML = '';
+                    
+                    // Add selected client IDs
+                    checkedBoxes.forEach(checkbox => {
+                        const input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = 'selected_clients';
+                        input.value = checkbox.value;
+                        selectedClientsDiv.appendChild(input);
+                    });
+                    
+                    actionTypeInput.value = actionType;
+                    form.submit();
+                }
+            });
+        }
+
+        // Event listeners for bulk actions
+        if (selectAllCheckbox) {
+            selectAllCheckbox.addEventListener('change', selectAll);
+        }
+
+        if (selectAllBtn) {
+            selectAllBtn.addEventListener('click', function() {
+                const selectAllCheckbox = document.getElementById('select-all-checkbox');
+                selectAllCheckbox.checked = !selectAllCheckbox.checked;
+                selectAll();
+            });
+        }
+
+        clientCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', updateBulkActions);
+        });
+
+        if (bulkActivateBtn) {
+            bulkActivateBtn.addEventListener('click', () => submitBulkAction('bulk_activate'));
+        }
+
+        if (bulkDeactivateBtn) {
+            bulkDeactivateBtn.addEventListener('click', () => submitBulkAction('bulk_deactivate'));
+        }
+
+        if (bulkDeleteBtn) {
+            bulkDeleteBtn.addEventListener('click', () => submitBulkAction('bulk_delete'));
         }
 
         // Setup table editing
