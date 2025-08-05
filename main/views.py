@@ -460,75 +460,75 @@ def sync_providers(request):
             return JsonResponse({'success': False, 'message': f'Error syncing providers: {str(e)}'})
     return JsonResponse({'success': False, 'message': 'Invalid request method.'})
 
-def sync_excursion_availabilities(request):
-    if request.method == 'POST':
-        try:
-            # excursion_availabilities_cl = get_excursion_availabilities()
-            excursions = Excursion.objects.all()
-            availabilities = []
-            today = datetime.now().strftime("%Y-%m-%d")
-            excursion_availabilities_cl = get_excursion_availabilities(excursion_id=3909)
-            availability = excursion_availabilities_cl[0]['Availability']
-            if availability:
-                # print('availability: ' + str(availability[0]['Date']))
-                availabilities.append(availability)
-                # print('excursion id with availability: ' + str(excursion_id))
+# def sync_excursion_availabilities(request):
+#     if request.method == 'POST':
+#         try:
+#             # excursion_availabilities_cl = get_excursion_availabilities()
+#             excursions = Excursion.objects.all()
+#             availabilities = []
+#             today = datetime.now().strftime("%Y-%m-%d")
+#             excursion_availabilities_cl = get_excursion_availabilities(excursion_id=3909)
+#             availability = excursion_availabilities_cl[0]['Availability']
+#             if availability:
+#                 # print('availability: ' + str(availability[0]['Date']))
+#                 availabilities.append(availability)
+#                 # print('excursion id with availability: ' + str(excursion_id))
 
 
-            print('availabilities: ' + str(availabilities))
+#             print('availabilities: ' + str(availabilities))
 
-            for i, av in enumerate(availabilities):
-                av_date = av[i]['Date']
-                print('av_date: ' + str(av_date))
+#             for i, av in enumerate(availabilities):
+#                 av_date = av[i]['Date']
+#                 print('av_date: ' + str(av_date))
 
-            # for excursion in excursions:
-            #     excursion_id = excursion.id
-            #     excursion_availabilities_cl = get_excursion_availabilities(excursion_id)
-            #     availability = excursion_availabilities_cl[0]['Availability']
-            #     if availability:
-            #         # print('availability: ' + str(availability[0]['Date']))
-            #         availabilities.append(availability)
-            #         print('excursion id with availability: ' + str(excursion_id))
+#             # for excursion in excursions:
+#             #     excursion_id = excursion.id
+#             #     excursion_availabilities_cl = get_excursion_availabilities(excursion_id)
+#             #     availability = excursion_availabilities_cl[0]['Availability']
+#             #     if availability:
+#             #         # print('availability: ' + str(availability[0]['Date']))
+#             #         availabilities.append(availability)
+#             #         print('excursion id with availability: ' + str(excursion_id))
 
 
-            #     print('availabilities: ' + str(availabilities))
-                # for av in availabilities:
-                #     av_date = av[0]['Date']
-                #     # av_date = datetime.strptime(av_date_str, "%Y-%m-%d")
-                #     print('av_date: ' + str(av_date))
-                    # print('today: ' + str(today))
-                    # print('today: ' + str(today))
-                    # if av_date > today:
-                    #     print('av_date is in the future: ' + str(av_date))
+#             #     print('availabilities: ' + str(availabilities))
+#                 # for av in availabilities:
+#                 #     av_date = av[0]['Date']
+#                 #     # av_date = datetime.strptime(av_date_str, "%Y-%m-%d")
+#                 #     print('av_date: ' + str(av_date))
+#                     # print('today: ' + str(today))
+#                     # print('today: ' + str(today))
+#                     # if av_date > today:
+#                     #     print('av_date is in the future: ' + str(av_date))
 
-                # print('availability: ' + str(availability))
+#                 # print('availability: ' + str(availability))
                         
-            total_synced = 0
-            # for availability in excursion_availabilities_cl[0]['Availability']:
-            #     print('availability: ' + str(availability['Date']))
+#             total_synced = 0
+#             # for availability in excursion_availabilities_cl[0]['Availability']:
+#             #     print('availability: ' + str(availability['Date']))
 
-                # availability = excursion_availabilities['Data'][0]
-                # excursion_availability_id = excursion_availability['Id']
-                # excursion_id = excursion_availability['ExcursionId']
-                # excursion = Excursion.objects.get(id=excursion_id)
+#                 # availability = excursion_availabilities['Data'][0]
+#                 # excursion_availability_id = excursion_availability['Id']
+#                 # excursion_id = excursion_availability['ExcursionId']
+#                 # excursion = Excursion.objects.get(id=excursion_id)
 
-                # excursion_availability_entry, created = ExcursionAvailability.objects.get_or_create(
-                #     id=excursion_availability_id,
-                #     defaults={'excursion': excursion}
-                # )
-                # if created:
-                #     print('created excursion availability: ' + str(excursion_availability_entry))
-                #     total_synced += 1
+#                 # excursion_availability_entry, created = ExcursionAvailability.objects.get_or_create(
+#                 #     id=excursion_availability_id,
+#                 #     defaults={'excursion': excursion}
+#                 # )
+#                 # if created:
+#                 #     print('created excursion availability: ' + str(excursion_availability_entry))
+#                 #     total_synced += 1
 
-                # if total_synced > 0:
-                #     message = 'Sync successful! Total excursion availabilities synced: ' + str(total_synced)
-                # else:
-                #     message = 'Excursion availabilities are up to date.'
-            message = 'Hiiiii.'
-            return JsonResponse({'success': True, 'message': message})
-        except Exception as e:
-            return JsonResponse({'success': False, 'message': f'Error syncing excursion availabilities: {str(e)}'})
-    return JsonResponse({'success': False, 'message': 'Invalid request method.'})
+#                 # if total_synced > 0:
+#                 #     message = 'Sync successful! Total excursion availabilities synced: ' + str(total_synced)
+#                 # else:
+#                 #     message = 'Excursion availabilities are up to date.'
+#             message = 'Hiiiii.'
+#             return JsonResponse({'success': True, 'message': message})
+#         except Exception as e:
+#             return JsonResponse({'success': False, 'message': f'Error syncing excursion availabilities: {str(e)}'})
+#     return JsonResponse({'success': False, 'message': 'Invalid request method.'})
 
 # ----- Excursion Views -----
 def excursion_list(request):
@@ -663,10 +663,10 @@ def excursion_detail(request, pk):
                 user = request.user
                 user_instance = user if user else None
 
-                if user.is_staff == True:
-                    booking.payment_status = 'completed'
-                else:
-                    booking.payment_status = 'pending'               
+                # if user.is_staff == True:
+                #     booking.payment_status = 'completed'
+                # else:
+                #     booking.payment_status = 'pending'               
                 
                 booking.excursion_availability = excursion_availability
                 booking.user = user_instance
@@ -722,7 +722,7 @@ def excursion_detail(request, pk):
 
                 return JsonResponse({
                     'success': True,
-                    'redirect_url': reverse('booking_detail', kwargs={'pk': booking.pk})
+                    'redirect_url': reverse('checkout', kwargs={'booking_pk': booking.pk})
                 })
 
             except Exception as e:
@@ -942,8 +942,18 @@ def booking_delete(request, pk):
     # if request.method == 'POST':
     try:
         if request.method == 'POST':
-            booking.delete()
-            messages.success(request, 'Booking deleted.')
+            if booking:
+                booking.delete()
+                messages.success(request, 'Booking deleted.')
+                return JsonResponse({
+                    'success': True,
+                    'message': 'Booking deleted.'
+                })
+            else:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Booking not found.'
+                })
         else:
             messages.error(request, 'Booking not deleted.')
     except Exception as e:
@@ -952,16 +962,20 @@ def booking_delete(request, pk):
     # else:
     #     messages.error(request, 'Booking not deleted.')
 
-    return redirect('admin_dashboard', pk=request.user.profile.id)
+    return redirect('bookings_list')
 
 
-@login_required 
+# @login_required 
 def booking_detail(request, pk):
     
     booking = get_object_or_404(Booking, pk=pk)
 
     print('request.user.is_staff: ' + str(request.user.is_staff))
     print('request.user.profile.role: ' + str(request.user.profile.role))
+
+    booking.payment_status = 'completed'
+    booking.save()
+
 
     # print('booking: ' + str(booking.user.profile.name))
     # print('booking price: ' + str(booking.price))
@@ -981,18 +995,22 @@ def booking_detail(request, pk):
 # Guests and clients go through checkout; reps/admins redirected to detail
 def checkout(request, booking_pk):
     booking = get_object_or_404(Booking, pk=booking_pk)
+
     # Redirect reps/admins immediately to detail
-    if request.user.is_authenticated:
-        role = getattr(request.user.profile, 'role', None)
-        if request.user.is_staff or role == 'representative':
-            return redirect('booking_detail', booking_pk)
-    # Process payment (placeholder for Stripe integration)
+    # if request.user.is_authenticated:
+    #     role = getattr(request.user.profile, 'role', None)
+    #     if request.user.is_staff or role == 'representative':
+    #         return redirect('booking_detail', booking_pk)
+        
+
     if request.method == 'POST':
         # TODO: integrate Stripe payment here
-        booking.payment_status = 'completed'
+        # booking.payment_status = 'completed'
         booking.save()
-        messages.success(request, 'Payment successful.')
+        messages.success(request, 'Booking saved. Please proceed to payment.')
         return redirect('booking_detail', booking_pk)
+    
+
     return render(request, 'main/bookings/checkout.html', {
         'booking': booking,
     })

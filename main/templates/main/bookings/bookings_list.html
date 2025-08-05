@@ -76,7 +76,7 @@
                                 <span class="editable-date">{{ booking.date }}</span>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <span class="editable-status">{{ booking.payment_status|title }}</span>
+                                <span class="editable-status px-2 inline-flex text-xs leading-5 font-semibold rounded-full {% if booking.payment_status == 'pending' %}bg-yellow-100 text-yellow-800{% elif booking.payment_status == 'completed' %}bg-green-100 text-green-800{% else %}bg-red-100 text-red-800{% endif %}">{{ booking.payment_status|title }}</span>
                                 <select class="edit-input hidden w-full border rounded px-2 py-1">
                                     <option value="pending" {% if booking.payment_status == 'pending' %}selected{% endif %}>Pending</option>
                                     <option value="completed" {% if booking.payment_status == 'completed' %}selected{% endif %}>Completed</option>
@@ -84,14 +84,19 @@
                                 </select>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <span class="editable-amount">${{ booking.total_price }}</span>
-                                <input type="number" step="0.01" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ booking.total_price }}">
+                                <span class="editable-amount">€{{ booking.price }}</span>
+                                <input type="number" step="0.01" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ booking.price }}">
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <a href="{% url 'booking_detail' booking.id %}" class="text-blue-600 hover:text-blue-800">
                                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                    </svg>
+                                </a>
+                                <a data-booking-id="{{ booking.id }}" href="#" id="delete-booking-btn" class="text-red-600 hover:text-red-800">
+                                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                     </svg>
                                 </a>
                             </td>
@@ -112,5 +117,91 @@
         {% endif %}
     </div>
 </div>
+
+<script>
+
+function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+  const csrftoken = getCookie('csrftoken');
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const deleteBookingBtn = document.querySelectorAll('#delete-booking-btn');
+
+        deleteBookingBtn.forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                const bookingId = this.getAttribute('data-booking-id');
+                const name = document.getElementById('editable-guest-name');
+
+                Swal.fire({
+                    title: 'Are you sure?',
+                    text: `Do you want to delete booking for \"${name}\"?`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#3085d6',
+                    confirmButtonText: 'Yes, delete it!'
+                }).then((result) => {   
+
+                    console.log(result);
+                    
+                    if (result.isConfirmed) {
+                        console.log('confirmed');
+                        const deleteUrl = `/bookings/${bookingId}/delete/`;
+            
+                        fetch(deleteUrl, {
+                            method: 'POST',
+                            headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': csrftoken
+                            }
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            console.log('data 1st then');
+                            console.log(data);
+                            if (data.success) {
+                                Swal.fire({
+                                    title: 'Success',
+                                    text: data.message,
+                                    icon: 'success'
+                                }).then(() => {
+                                // Reload the page to reflect the changes
+                                    window.location.reload();
+                                });
+                            } else {
+                                Swal.fire({
+                                    title: 'Error',
+                                    text: data.message || 'Booking not deleted.',
+                                    icon: 'error'
+                                });
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            Swal.fire({
+                                title: 'Error',
+                                text: 'An error occurred while deleting the booking.',
+                                icon: 'error'
+                            });
+                        });
+                    }
+                });
+            });
+        });
+    });
+</script>
 
 {% endblock %}

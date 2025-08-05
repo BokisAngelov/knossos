@@ -290,7 +290,7 @@ class Booking(models.Model):
     total_adults = models.PositiveIntegerField(null=True, blank=True)
     total_kids = models.PositiveIntegerField(null=True, blank=True)
     total_infants = models.PositiveIntegerField(null=True, blank=True)
-    payment_status = models.CharField(max_length=10, choices=PAYMENT_STATUS_CHOICES, null=True, blank=True)
+    payment_status = models.CharField(max_length=10, choices=PAYMENT_STATUS_CHOICES, null=True, blank=True, default='pending')
     price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     
