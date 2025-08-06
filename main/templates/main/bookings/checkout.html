@@ -36,7 +36,22 @@
                             <h4 class="text-sm font-medium text-gray-500 mb-1">Number of Guests</h4>
                             <p class="text-lg font-semibold text-gray-900">{{ booking.total_adults }} Adults | {{ booking.total_kids }} Kids | {{ booking.total_infants }} Infants</p>
                         </div>
+                        <div class="bg-gray-50 rounded-lg p-4">
+                            <h4 class="text-sm font-medium text-gray-500 mb-1">Contact Name</h4>
+                            <p class="text-lg font-semibold text-gray-900">{{ booking.guest_name }}</p>
+                        </div>
+                        <div class="bg-gray-50 rounded-lg p-4">
+                            <h4 class="text-sm font-medium text-gray-500 mb-1">Contact Email</h4>
+                            <p class="text-lg font-semibold text-gray-900">{{ booking.guest_email }}</p>
+                        </div>
+                        {% if booking.voucher_id %}
+                        <div class="bg-gray-50 rounded-lg p-4">
+                            <h4 class="text-sm font-medium text-gray-500 mb-1">Reservation</h4>
+                            <p class="text-lg font-semibold text-gray-900">{{ booking.voucher_id }}</p>
+                        </div>
+                        {% endif %}
                     </div>
+                        
                 </div>
             </div>
 
@@ -68,32 +83,6 @@
                     </div>
                 </div>
             </div>
-
-            <!-- Guest Information -->
-            <div class="bg-white shadow overflow-hidden sm:rounded-lg">
-                <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
-                    <h3 class="text-lg leading-6 font-medium text-gray-900">Guest Information</h3>
-                </div>
-                <div class="border-t border-gray-200">
-                    <div class="grid grid-cols-2 gap-4 p-6">
-                        <div class="bg-gray-50 rounded-lg p-4">
-                            <h4 class="text-sm font-medium text-gray-500 mb-1">Contact Name</h4>
-                            <p class="text-lg font-semibold text-gray-900">{{ booking.guest_name }}</p>
-                        </div>
-                        <div class="bg-gray-50 rounded-lg p-4">
-                            <h4 class="text-sm font-medium text-gray-500 mb-1">Contact Email</h4>
-                            <p class="text-lg font-semibold text-gray-900">{{ booking.guest_email }}</p>
-                        </div>
-                        {% if booking.voucher_id %}
-                        <div class="bg-gray-50 rounded-lg p-4">
-                            <h4 class="text-sm font-medium text-gray-500 mb-1">Reservation</h4>
-                            <p class="text-lg font-semibold text-gray-900">{{ booking.voucher_id }}</p>
-                        </div>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-        </div>
 
         <!-- Right Column - Payment Information -->
         <div class="space-y-6">
@@ -228,10 +217,6 @@
         window.location.href = "{% url 'booking_detail' booking.pk %}";
     }
 
-    function cancelBooking() {
-        console.log('cancelBooking');
-        window.location.href = "{% url 'excursion_detail' booking.excursion_availability.excursion.id %}";
-    }
 
     document.addEventListener('DOMContentLoaded', function() {
         // Placeholder for Stripe integration

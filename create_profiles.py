@@ -16,6 +16,15 @@ from django.contrib.auth import get_user_model
 # excursion = Excursion.objects.all().delete()
 # print('excursions deleted')
 
+days = [
+    'MON',
+    'TUE',
+    'WED',
+    'THU',
+    'FRI',
+    'SAT',
+    'SUN',
+]
 
 res = Reservation.objects.all()
 print(res)
@@ -73,11 +82,12 @@ for r in res:
 #     'SUN',
 # ]
 
-# # (new loop for DayOfWeek)
-# for (code, _) in DayOfWeek.WEEKDAY_CHOICES:
-#     DayOfWeek.objects.get_or_create(code=code, defaults={'capacity': 0})
+# (new loop for DayOfWeek)
+for (code, _) in DayOfWeek.WEEKDAY_CHOICES:
+    day, created = DayOfWeek.objects.get_or_create(code=code)
+    print('day: ' + str(day) + ' created: ' + str(created))
 
-# print("All weekdays (DayOfWeek) created (or updated) (with default capacity 0).")
+print("All weekdays (DayOfWeek) created (or updated).")
 
 # AvailabilityDays.objects.all().delete()
 

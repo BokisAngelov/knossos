@@ -971,22 +971,67 @@ def booking_detail(request, pk):
     
     booking = get_object_or_404(Booking, pk=pk)
 
-    print('request.user.is_staff: ' + str(request.user.is_staff))
-    print('request.user.profile.role: ' + str(request.user.profile.role))
+    if request.method == 'POST':
+        # Handle both form data and JSON data
+        if request.headers.get('Content-Type') == 'application/json':
+            try:
+                data = json.loads(request.body)
+                action_type = data.get('action_type')
+            except json.JSONDecodeError:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'Invalid JSON data'
+                })
+        else:
+            action_type = request.POST.get('action_type')
+        
+        try:
+            if action_type == 'complete_payment':
+                booking.payment_status = 'completed'
+                booking.save()
+                messages.success(request, 'Booking completed.')
 
-    booking.payment_status = 'completed'
-    booking.save()
+                return JsonResponse({
+                    'status': 'success',
+                    'message': 'Booking completed successfully.',
+                    'redirect_url': reverse('booking_detail', kwargs={'pk': pk})
+                })
 
+            elif action_type == 'cancel_payment':
+                booking.payment_status = 'cancelled'
+                booking.save()
+                messages.success(request, 'Booking cancelled.')
+                return JsonResponse({
+                    'status': 'success',
+                    'message': 'Booking cancelled successfully.',
+                    'redirect_url': reverse('booking_detail', kwargs={'pk': pk})
+                })
 
-    # print('booking: ' + str(booking.user.profile.name))
-    # print('booking price: ' + str(booking.price))
-    # print('booking total price: ' + str(booking.total_price))
-    # print('booking total adults: ' + str(booking.total_adults))
-    # print('booking total kids: ' + str(booking.total_kids))
-    # print('booking total infants: ' + str(booking.total_infants))
-    # print('booking date: ' + str(booking.date))
-    # print('booking pickup point: ' + str(booking.pickup_point))
-    # print('booking voucher: ' + str(booking.voucher_id))
+            elif action_type == 'delete_booking':
+                booking.delete()
+                messages.success(request, 'Booking deleted.')
+                return JsonResponse({
+                    'status': 'success',
+                    'message': 'Booking deleted successfully.',
+                    'redirect_url': reverse('bookings_list')
+                })
+            elif action_type == 'pending_payment':
+                booking.payment_status = 'pending'
+                booking.save()
+                messages.success(request, 'Booking set to pending.')
+                return JsonResponse({
+                    'status': 'success',
+                    'message': 'Booking set to pending successfully.',
+                    'redirect_url': reverse('booking_detail', kwargs={'pk': pk})
+                })
+        
+        except Exception as e:
+            error_message = f'Error updating booking: {str(e)}'
+            messages.error(request, error_message)
+            return JsonResponse({
+                'status': 'error',
+                'message': error_message
+            })
 
     return render(request, 'main/bookings/booking_detail.html', {
         'booking': booking,
