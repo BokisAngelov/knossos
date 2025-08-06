@@ -1654,9 +1654,9 @@ def manage_reservations(request):
                 booking_data = get_reservation(int(reservation_id))
                 print('booking_data from manage reservations: ' + str(booking_data))
                 if booking_data.get('ErrorMessage') is None:
-                    reservation_response = create_reservation(booking_data)
-                    print('reservation_response from manage reservations: ' + str(reservation_response))
-                    if reservation_response.get('message') == "Reservation found.":
+                    reservation_obj, response_data = create_reservation(booking_data)
+                    print('reservation_response from manage reservations: ' + str((reservation_obj, response_data)))
+                    if response_data and response_data.get('message') == "Reservation found.":
                         messages.error(request, f'Reservation {reservation_id} already exists.')
                         return redirect('admin_reservations')
                     else:
