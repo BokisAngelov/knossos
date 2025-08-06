@@ -389,6 +389,15 @@
                             <span class="text-sm font-medium text-gray-600">Remaining</span>
                             <span class="text-base font-semibold text-gray-900">€<span id="remaining-price">0.00</span>
                         </div>
+                        <div class="flex flex-col gap-2 hidden" id="partial-paid-method-div">
+                            <label class="block text-md font-medium text-gray-700">Payment Method</label>
+                            <select name="partial_paid_method" id="partial-paid-method" class="mt-1 block w-full pl-3 pr-2 py-2 text-base border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md {% if form.partial_paid_method.errors %}border-red-500{% endif %}">
+                                <option value="" selected>Select a payment method</option>
+                                <option value="cash">Cash</option>
+                                <option value="card">Card</option>
+                            </select>
+                        </div>
+                        
                         <div class="reservation-id-div">
                             <label class="block text-md font-medium text-gray-700">Reservation ID</label>
                             <input type="text" name="voucher_code" id="voucher_code" class="mt-1 block w-full pl-3 pr-2 py-2 text-base border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
@@ -832,15 +841,19 @@
             document.querySelector('#partial-payment').addEventListener('change', function(e) {
                 e.preventDefault();
                 const partialPayment = document.querySelector('#partial-payment').value;
+                // const partialPaidMethod = document.querySelector('#partial-paid-method').value;
                 const total = document.querySelector('#total-price').textContent;
 
                 if (partialPayment <= 0) {
                     document.querySelector('.remaining-price-div').classList.add('hidden');
+                    document.querySelector('#partial-paid-method-div').classList.add('hidden');
                     return;
                 } else {
                     const remaining = total - partialPayment;
                     document.querySelector('.remaining-price-div').classList.remove('hidden');
                     document.querySelector('#remaining-price').textContent = remaining.toFixed(2);
+                    document.querySelector('#partial-paid-method-div').classList.remove('hidden');
+                    // document.querySelector('#partial-paid-method').value = partialPaidMethod;
                 }
             });
 
@@ -890,6 +903,7 @@
                 const guestName = document.querySelector('#guest-name').value;
                 const voucherCode = document.querySelector('#voucher_code').value ? document.querySelector('#voucher_code').value : null;
                 const partialPayment = document.querySelector('#partial-payment').value;
+                const partialPaidMethod = document.querySelector('#partial-paid-method').value;
                 // Validate form
                 let errors = [];
 
@@ -946,6 +960,18 @@
                     }
                 }
 
+                if (partialPayment > 0 && !partialPaidMethod) {
+                    errors.push({ field: 'partial-paid-method', message: 'Please select a payment method.' });
+                    const partialPaidMethodInput = document.querySelector('#partial-paid-method');
+                    if (partialPaidMethodInput) {
+                        partialPaidMethodInput.classList.add('border-red-500');
+                        const errorDiv = document.createElement('p');
+                        errorDiv.className = 'mt-1 text-sm text-red-600';
+                        errorDiv.textContent = 'Please select a payment method.';
+                        partialPaidMethodInput.parentNode.appendChild(errorDiv);
+                    }
+                }
+
                 if (errors.length > 0) {
                     return;
                 }
@@ -956,6 +982,7 @@
                 formData.append('availability_id', availabilityId);
                 formData.append('voucher_code', voucherCode ? voucherCode : null);
                 formData.append('partial_payment', partialPayment);
+                formData.append('partial_paid_method', partialPaidMethod);
                 // Submit form via AJAX
                 fetch(window.location.href, {
                     method: 'POST',

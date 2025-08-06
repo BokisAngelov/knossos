@@ -646,6 +646,7 @@ def excursion_detail(request, pk):
                 total_price = int(request.POST.get('total_price', '0') or '0')
                 partial_price = int(request.POST.get('partial_payment', '0') or '0')
                 voucher_id = request.POST.get('voucher_code', None)
+                partial_paid_method = request.POST.get('partial_paid_method', None)
                 # print('voucher_id: ' + str(voucher_id))
                 reservation_instance = None
                 if voucher_id:
@@ -677,7 +678,7 @@ def excursion_detail(request, pk):
                 booking.guest_email = guest_email
                 booking.guest_name = guest_name
                 booking.price = total_price # price before discount or partial payment
-
+                booking.partial_paid_method = partial_paid_method
                 if partial_price > 0:
                     final_price = total_price - partial_price
                     booking.partial_paid = partial_price

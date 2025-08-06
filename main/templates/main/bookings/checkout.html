@@ -6,7 +6,12 @@
     <!-- Header Section -->
     <div class="flex justify-between items-center mb-6">
         <div>
-            
+            <a href="{% url 'excursion_detail' booking.excursion_availability.excursion.id %}" class="inline-flex items-center text-gray-600 hover:text-gray-900">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                Back to Excursion
+            </a>
             <h1 class="text-2xl font-bold text-gray-900">Checkout</h1>
             <p class="text-sm text-gray-500">Complete your payment to confirm your booking</p>
         </div>
@@ -104,8 +109,8 @@
                             <span class="text-lg font-semibold text-gray-900">€{{ booking.price }}</span>
                         </div>
                         <div class="flex justify-between items-center">
-                            <span class="text-gray-600">Partial Payment:</span>
-                            <span class="text-lg font-semibold text-gray-900">€{% if booking.partial_paid %}{{ booking.partial_paid }}{% else %}0.00{% endif %}</span>
+                            <span class="text-gray-600">Partial Payment: </span>
+                            <span class="text-lg font-semibold text-gray-900">€{% if booking.partial_paid %}{{ booking.partial_paid }}{% else %}0.00{% endif %} ({{ booking.partial_paid_method|title }})</span>
                         </div>
                         <div class="flex justify-between items-center">
                             <span class="text-gray-600">Discount:</span>
@@ -141,6 +146,7 @@
                             </div>
                             
                             <!-- Stripe Elements Placeholder -->
+                             {% if not user.is_staff %}
                             <div class="border border-gray-300 rounded-md p-4 bg-gray-50">
                                 <div class="space-y-4">
                                     <div>
@@ -165,6 +171,7 @@
                                     </div>
                                 </div>
                             </div>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
@@ -223,7 +230,7 @@
 
     function cancelBooking() {
         console.log('cancelBooking');
-        window.location.href = "{% url 'bookings_list' %}";
+        window.location.href = "{% url 'excursion_detail' booking.excursion_availability.excursion.id %}";
     }
 
     document.addEventListener('DOMContentLoaded', function() {

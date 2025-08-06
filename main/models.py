@@ -278,6 +278,10 @@ class Booking(models.Model):
         ('completed', 'Completed'),
         ('cancelled', 'Cancelled'),
     ]
+    PAYMENT_METHOD_CHOICES = [
+        ('cash', 'Cash'),
+        ('card', 'Card'),
+    ]
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='bookings')
     voucher_id = models.ForeignKey(Reservation, on_delete=models.SET_NULL, null=True, blank=True, related_name='bookings')
     excursion_availability = models.ForeignKey(ExcursionAvailability, on_delete=models.SET_NULL, null=True, blank=True, related_name='bookings')
@@ -287,6 +291,7 @@ class Booking(models.Model):
     guest_email = models.EmailField(null=True, blank=True)
     total_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     partial_paid = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    partial_paid_method = models.CharField(max_length=255, null=True, blank=True, choices=PAYMENT_METHOD_CHOICES)
     total_adults = models.PositiveIntegerField(null=True, blank=True)
     total_kids = models.PositiveIntegerField(null=True, blank=True)
     total_infants = models.PositiveIntegerField(null=True, blank=True)

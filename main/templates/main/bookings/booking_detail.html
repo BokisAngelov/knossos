@@ -46,29 +46,6 @@
                     <h4 class="text-sm font-medium text-gray-500 mb-1">Partial Payment</h4>
                     <p class="text-lg font-semibold text-gray-900">€{% if booking.partial_paid %}{{ booking.partial_paid }}{% else %}0.00{% endif %}</p>
                 </div>
-                <div class="bg-white rounded-lg shadow-sm p-4 relative">
-                    <h4 class="text-sm font-medium text-gray-500 mb-1">Amount Due</h4>
-                    <p class="text-lg font-semibold text-gray-900">€{% if booking.total_price %}{{ booking.total_price }}{% else %}0.00{% endif %}</p>
-                    <div class="flex items-center top-2 right-2 absolute text-sm">
-                        {% if booking.payment_status == 'completed' %}
-                         <svg class="w-5 h-5 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                        </svg>
-                        <span class="text-green-500">Paid</span>
-                        {% elif booking.payment_status == 'pending' %}
-                        <svg class="w-5 h-5 mr-2 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                        <span class="text-yellow-500">Pending</span>
-                        {% else %}
-                        <svg class="w-5 h-5 mr-2 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                        <span class="text-red-500">Cancelled</span>
-                        {% endif %}
-                    </div>
-                    
-                </div>
                 <div class="bg-white rounded-lg shadow-sm p-4">
                     <h4 class="text-sm font-medium text-gray-500 mb-1">Number of Guests</h4>
                     <p class="text-lg font-semibold text-gray-900">{{ booking.total_adults }} Adults | {{ booking.total_kids }} Kids | {{ booking.total_infants }} Infants</p>
