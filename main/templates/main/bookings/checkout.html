@@ -99,7 +99,7 @@
                         </div>
                         <div class="flex justify-between items-center">
                             <span class="text-gray-600">Partial Payment: </span>
-                            <span class="text-lg font-semibold text-gray-900">€{% if booking.partial_paid %}{{ booking.partial_paid }}{% else %}0.00{% endif %} ({{ booking.partial_paid_method|title }})</span>
+                            <span class="text-lg font-semibold text-gray-900">€{% if booking.partial_paid %}{{ booking.partial_paid }} ({{ booking.partial_paid_method|title }}){% else %}0.00{% endif %} </span>
                         </div>
                         <div class="flex justify-between items-center">
                             <span class="text-gray-600">Discount:</span>
@@ -222,7 +222,14 @@
 <script>
     function completeBooking() {
         console.log('completeBooking');
-        window.location.href = "{% url 'booking_detail' booking.pk %}";
+        booking_pk = "{{ booking.pk }}";
+        completionURL = "/bookings/" + booking_pk + "?payment_status=completed";
+        window.location.href = completionURL;
+    }
+
+    function cancelBooking() {
+        console.log('cancelBooking');
+        window.location.href = "{% url 'excursion_detail' booking.excursion_availability.excursion.id %}";
     }
 
 
