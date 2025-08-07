@@ -19,7 +19,7 @@ from .models import (
 from .forms import (
     ExcursionForm, ExcursionImageFormSet,
     ExcursionAvailabilityForm, BookingForm, FeedbackForm, UserProfileForm,
-    GroupForm
+    GroupForm, SignupForm
 )
 from django.core.validators import validate_email, RegexValidator
 from django.core.exceptions import ValidationError
@@ -609,7 +609,7 @@ def excursion_detail(request, pk):
         
     # Handle booking submission
     elif request.method == 'POST' and 'booking_submit' in request.POST:
-        # print(request.POST)
+        
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             try:
                 booking_form = BookingForm(request.POST)
@@ -639,7 +639,7 @@ def excursion_detail(request, pk):
                         prepare_data = get_reservation(voucher_id)
                         # print(prepare_data)
                         reservation_instance, reservation_response = create_reservation(prepare_data)
-                        print('reservation_instance: ' + str(reservation_instance))
+                        # print('reservation_instance: ' + str(reservation_instance))
 
                 guest_email = request.POST.get('guest_email', None)
                 guest_name = request.POST.get('guest_name', None)
@@ -710,6 +710,7 @@ def excursion_detail(request, pk):
                     'message': str(e),
                     'errors': booking_form.errors
                 })
+        
 
     # Calculate remaining seats for the first availability
     remaining_seats = 0
@@ -869,6 +870,108 @@ def excursion_delete(request, pk):
     })
 
 # Booking detail: only authenticated users (clients/reps/admins)
+@login_required
+def booking_submit(request, excursion_availability_pk):
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        try:
+            booking_form = BookingForm(request.POST)
+            
+            if not booking_form.is_valid():
+                return JsonResponse({
+                    'success': False,
+                    'errors': booking_form.errors
+                })
+            
+            booking = booking_form.save(commit=False)
+            
+            # Handle empty strings by converting them to 0 before int conversion
+            adults = int(request.POST.get('adults', '0') or '0')
+            children = int(request.POST.get('children', '0') or '0')
+            infants = int(request.POST.get('infants', '0') or '0')
+            total_price = int(request.POST.get('total_price', '0') or '0')
+            partial_price = int(request.POST.get('partial_payment', '0') or '0')
+            voucher_id = request.POST.get('voucher_code', None)
+            partial_paid_method = request.POST.get('partial_paid_method', None)
+            # print('voucher_id: ' + str(voucher_id))
+            reservation_instance = None
+            if voucher_id:
+                try:
+                    reservation_instance = Reservation.objects.get(voucher_id=voucher_id)
+                except Reservation.DoesNotExist:
+                    prepare_data = get_reservation(voucher_id)
+                    # print(prepare_data)
+                    reservation_instance, reservation_response = create_reservation(prepare_data)
+                    print('reservation_instance: ' + str(reservation_instance))
+
+            guest_email = request.POST.get('guest_email', None)
+            guest_name = request.POST.get('guest_name', None)
+
+            user = request.user
+            user_instance = user if user else None              
+            
+            booking.excursion_availability = excursion_availability
+            booking.user = user_instance
+            booking.total_adults = adults
+            booking.total_kids = children
+            booking.total_infants = infants
+            booking.voucher_id = reservation_instance
+            booking.guest_email = guest_email
+            booking.guest_name = guest_name
+            booking.price = total_price # price before discount or partial payment
+            booking.partial_paid_method = partial_paid_method
+            if partial_price > 0:
+                final_price = total_price - partial_price
+                booking.partial_paid = partial_price
+            else:
+                final_price = total_price
+                booking.partial_paid = 0
+
+            booking.total_price = final_price # price after discount or partial payment
+
+            selected_date = request.POST.get('selected_date')
+            availability_id = request.POST.get('availability_id')
+            
+            if not selected_date or not availability_id:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Please select a date.'
+                })
+            
+            # Validate at least one participant                
+            if adults + children + infants == 0:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Please select at least one participant.'
+                })
+
+            booking.date = selected_date
+            booking.availability_id = availability_id
+            booking.save()
+
+            # Check if the availability has enough guests
+            total_guests = adults + children + infants
+            availability_guests = availability.max_guests
+
+            if total_guests > availability_guests:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'The availability has not enough guests.'
+                })
+            else:
+                availability.booked_guests += total_guests
+                availability.save()
+
+            return JsonResponse({
+                'success': True,
+                'redirect_url': reverse('checkout', kwargs={'booking_pk': booking.pk})
+            })
+
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'message': str(e),
+                'errors': booking_form.errors
+            })
 @user_passes_test(is_staff)
 def booking_delete(request, pk):
     booking = get_object_or_404(Booking, pk=pk)
@@ -913,7 +1016,6 @@ def booking_detail(request, pk):
             return redirect('booking_detail', pk)
         except Exception as e:
             messages.error(request, f'Error updating booking: {str(e)}')
-
     if request.method == 'POST':
         # Handle both form data and JSON data
         if request.headers.get('Content-Type') == 'application/json':
@@ -1001,16 +1103,22 @@ def checkout(request, booking_pk):
 # ----- Auth Views -----
 def signup(request):
     if request.method == 'POST':
-        form = UserCreationForm(request.POST)
+        form = SignupForm(request.POST)
         if form.is_valid():
             user = form.save()
             # Create associated profile with default client role
-            UserProfile.objects.create(user=user, role='client')
+            UserProfile.objects.create(
+                user=user, 
+                role='client',
+                name=form.cleaned_data['name'],
+                email=form.cleaned_data['username'],  # username is email
+                phone=form.cleaned_data.get('phone', '')
+            )
             login(request, user)
             messages.success(request, 'Account created successfully. Please verify your email to continue.')
             return redirect('excursion_list')
     else:
-        form = UserCreationForm()
+        form = SignupForm()
     return render(request, 'main/accounts/signup.html', {'form': form})
 
 def login_view(request):
@@ -1031,42 +1139,36 @@ def logout_view(request):
 @login_required
 def profile(request, pk):
     user = get_object_or_404(User, pk=pk)
-    bookings = Booking.objects.filter(user=user)
-    user_profile = user.profile
-    
+    bookings = Booking.objects.filter(user=user).order_by('-created_at')
+    profile = UserProfile.objects.get(user=user)
+
     # Only allow users to view their own profile unless they're staff
-    if request.user.id != user_profile.id and not request.user.is_staff:
+    if request.user.id != user.id and not request.user.is_staff:
         messages.error(request, "You don't have permission to view this profile.")
-        return redirect('profile', pk=request.user.profile.id)
-    
-    if request.method == 'POST':
-        form = UserProfileForm(request.POST, instance=user_profile)
-        if form.is_valid():
-            form.save()
-            messages.success(request, 'Profile updated.')
-            return redirect('profile', pk=pk)
-    else:
-        form = UserProfileForm(instance=user_profile)
+        return redirect('homepage')
     
     return render(request, 'main/accounts/profile.html', {
-        'form': form,
         'bookings': bookings,
-        'user_profile': user_profile,
-    }
-    )    
+        'user_profile': profile,
+    })    
 
 def profile_edit(request, pk):
-    profile = get_object_or_404(UserProfile, pk=pk)
+    # Get the user first, then their profile
+    user = get_object_or_404(User, pk=pk)
+    profile = get_object_or_404(UserProfile, user=user)
+    form = UserProfileForm(request.POST, instance=profile)
     if request.method == 'POST':
-        form = UserProfileForm(request.POST, instance=profile)
-        if form.is_valid():
-            form.save()
-            messages.success(request, 'Profile updated.')
-            return redirect('profile', pk=pk)
-    else:
-        form = UserProfileForm(instance=profile)
-    return render(request, 'main/accounts/profile_edit.html', {
+        try:
+            if form.is_valid():
+                form.save()
+                messages.success(request, 'Profile updated.')
+                return redirect('profile', pk=pk)
+        except Exception as e:
+            messages.error(request, f'Error updating profile: {str(e)}')
+    
+    return render(request, 'main/accounts/edit_profile.html', {
         'form': form,
+        'user_profile': profile,
     })
 
 # @login_required
@@ -1096,7 +1198,7 @@ def admin_dashboard(request, pk):
         'clients_count': clients_count,
         'total_revenue': total_revenue,
         'recent_bookings': recent_bookings,
-        'booking_count': Booking.objects.count(),
+        'booking_count': Booking.objects.filter(payment_status='completed').count(),
         'user': User.objects.get(profile__id=pk),
         'total_excursions_count': total_excursions_count,
     }
@@ -1394,8 +1496,7 @@ def manage_reps(request):
 
 @user_passes_test(is_staff)
 def clients_list(request):
-    clients = UserProfile.objects.filter(role='client')
-    
+    clients = UserProfile.objects.filter(role='client')    
     # Handle search
     search_query = request.GET.get('search', '').strip()
     if search_query:
@@ -1420,6 +1521,7 @@ def clients_list(request):
     
     clients = clients.order_by(sort_by)
 
+
     return render(request, 'main/admin/clients.html', {
         'clients': clients,
         'current_sort': request.GET.get('sort', 'name'),
@@ -1431,28 +1533,34 @@ def manage_clients(request):
     if request.method == 'POST':
         action_type = request.POST.get('action_type')
         item_id = request.POST.get('item_id')
-        
+
         if action_type == 'add_client':
             name = request.POST.get('name', '').strip()
             email = request.POST.get('email', '').strip()
             phone = request.POST.get('phone', '').strip()
+            password = request.POST.get('password', '').strip()
             
-            if name and email:
+            if name and email and password:
                 # Create User first
                 user = User.objects.create_user(
                     username=email,
                     email=email,
+                    password=password,
                 )
-                # Create UserProfile
-                UserProfile.objects.create(
-                    user=user,
-                    name=name,
-                    email=email,
-                    phone=phone,
-                    role='client'
-                )
-                messages.success(request, 'Client created successfully.')
-                return redirect('manage_clients')
+                if user:
+                    # Create UserProfile
+                    UserProfile.objects.create(
+                        user=user,
+                        name=name,
+                        email=email,
+                        phone=phone,
+                        role='client'
+                    )
+                    messages.success(request, 'Client created successfully.')
+                    return redirect('clients_list')
+                else:
+                    messages.error(request, 'Error creating user.')
+                    return redirect('clients_list')
             
         elif action_type == 'edit_client':
             client = get_object_or_404(UserProfile, pk=item_id)
@@ -1468,10 +1576,10 @@ def manage_clients(request):
                 messages.success(request, 'Client updated successfully.')
     
         elif action_type == 'delete_client':
-            client = get_object_or_404(UserProfile, pk=item_id)
-            client.delete()
+            user = get_object_or_404(User, pk=item_id)
+            user.delete()
             messages.success(request, 'Client deleted successfully.')
-            return redirect('manage_clients')
+            return redirect('clients_list')
         
         elif action_type == 'bulk_delete':
             selected_ids = request.POST.getlist('selected_clients')
@@ -1480,7 +1588,7 @@ def manage_clients(request):
                 count = clients_to_delete.count()
                 clients_to_delete.delete()
                 messages.success(request, f'{count} client(s) deleted successfully.')
-            return redirect('manage_clients')
+            return redirect('clients_list')
         
 
     return render(request, 'main/admin/clients.html', {

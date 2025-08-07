@@ -317,7 +317,7 @@
                   <div class="text-sm font-medium text-gray-900">{{ booking.excursion_availability.excursion.title }}</div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="text-sm text-gray-500">{{ booking.date }}</div>
+                  <div class="text-sm text-gray-500">{{ booking.created_at|date:"d/m/Y" }}</div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
                   <div class="text-sm text-gray-500">{{ booking.guest_name }}</div>

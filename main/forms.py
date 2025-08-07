@@ -5,6 +5,7 @@ from django.core.exceptions import ValidationError
 import datetime
 from django.utils.html import format_html, mark_safe
 from django.utils.dateparse import parse_time
+from django.contrib.auth.forms import UserCreationForm
 
 from .models import (
     Category, Tag, Excursion, ExcursionImage, Feedback,
@@ -297,10 +298,45 @@ class TransactionForm(forms.ModelForm):
         fields = ['payment_method', 'amount']
 
 # ----- User & Staff Forms -----
+class SignupForm(UserCreationForm):
+    name = forms.CharField(max_length=255, required=True)
+    email = forms.EmailField(required=True)
+    phone = forms.CharField(max_length=50, required=False)
+    
+    class Meta:
+        model = User
+        fields = ('username', 'name', 'email', 'phone', 'password1', 'password2')
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Set email as username field
+        self.fields['username'] = forms.CharField(
+            label='Email',
+            max_length=254,
+            widget=forms.EmailInput(attrs={'autofocus': True})
+        )
+        # Make email field hidden since we're using it as username
+        self.fields['email'].widget = forms.HiddenInput()
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        email = cleaned_data.get('username')  # username is actually email
+        if email:
+            cleaned_data['email'] = email
+        return cleaned_data
+    
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        user.username = self.cleaned_data['username']  # This is the email
+        user.email = self.cleaned_data['username']  # Set email to same as username
+        if commit:
+            user.save()
+        return user
+
 class UserProfileForm(forms.ModelForm):
     class Meta:
         model = UserProfile
-        fields = ['name', 'email', 'phone',]
+        fields = ['name', 'email', 'phone']
 
 # ----- Lookup Forms -----
 class CategoryForm(forms.ModelForm):

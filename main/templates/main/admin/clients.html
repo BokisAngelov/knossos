@@ -184,7 +184,7 @@
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
                         {% for client in clients %}
-                            <tr data-id="{{ client.id }}">
+                            <tr data-id="{{ client.user.id }}">
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="flex items-center">
                                         <input type="checkbox" name="selected_clients" value="{{ client.id }}" class="client-checkbox h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
@@ -192,9 +192,9 @@
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="flex items-center">
-                                        <div class="ml-4">
+                                        <div class="">
                                             <div class="text-sm font-medium text-gray-900">
-                                                <span class="editable-name"><a href="{% url 'profile' pk=client.id %}">{{ client.name }}</a></span>
+                                                <span class="editable-name">{{ client.name|title }}</span>
                                                 <input type="text" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ client.name }}">
                                             </div>
                                         </div>
@@ -214,17 +214,23 @@
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                                        {% if client.is_active %}bg-green-100 text-green-800{% else %}bg-red-100 text-red-800{% endif %}">
+                                        {% if client.status == 'active' %}bg-green-100 text-green-800{% else %}bg-red-100 text-red-800{% endif %}">
                                         {{ client.status|title }}
                                     </span>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                    <button type="button" class="view-btn text-blue-600 hover:text-blue-800 mr-2" data-id="{{ client.user.id }}">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                        </svg>
+                                    </button>
                                     <button type="button" class="edit-btn text-blue-600 hover:text-blue-800 mr-2">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                                         </svg>
                                     </button>
-                                    <button type="button" class="delete-btn text-red-600 hover:text-red-800 mr-2">
+                                    <button type="button" class="delete-btn text-red-600 hover:text-red-800">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                         </svg>
@@ -336,6 +342,7 @@
     <input type="hidden" name="name" id="add-client-name">
     <input type="hidden" name="email" id="add-client-email">
     <input type="hidden" name="phone" id="add-client-phone">
+    <input type="hidden" name="password" id="add-client-password">
 </form>
 
 <form id="edit-client-form" action="{% url 'manage_clients' %}" method="post" class="hidden">
@@ -361,6 +368,18 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+
+        // View Client
+        const viewClientBtn = document.querySelectorAll('.view-btn');
+        viewClientBtn.forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                const clientID = this.dataset.id;
+                window.location.href = `/profile/${clientID}`;
+            });
+        });
+
+
         // Add Client
         const addClientBtn = document.getElementById('add-client-btn');
         const addClientBtnEmpty = document.getElementById('add-client-btn-empty');
@@ -372,6 +391,7 @@
                     <input id="swal-name" class="swal2-input" placeholder="Full Name">
                     <input id="swal-email" class="swal2-input" placeholder="Email">
                     <input id="swal-phone" class="swal2-input" placeholder="Phone Number">
+                    <input id="swal-password" class="swal2-input" placeholder="Password">
                 `,
                 focusConfirm: false,
                 showCancelButton: true,
@@ -380,13 +400,14 @@
                     const name = document.getElementById('swal-name').value;
                     const email = document.getElementById('swal-email').value;
                     const phone = document.getElementById('swal-phone').value;
-                    
-                    if (!name || !email || !phone) {
+                    const password = document.getElementById('swal-password').value;
+
+                    if (!name || !email || !phone || !password) {
                         Swal.showValidationMessage('Please fill in all fields');
                         return false;
                     }
                     
-                    return { name, email, phone };
+                    return { name, email, phone, password };
                 }
             }).then((result) => {
                 if (result.isConfirmed) {
@@ -394,7 +415,8 @@
                     document.getElementById('add-client-name').value = result.value.name;
                     document.getElementById('add-client-email').value = result.value.email;
                     document.getElementById('add-client-phone').value = result.value.phone;
-                    form.submit();
+                    document.getElementById('add-client-password').value = result.value.password;
+                    form.submit();  
                 }
             });
         }

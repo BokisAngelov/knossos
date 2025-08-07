@@ -3,6 +3,15 @@
 
 {% block content %}
 <div class="container mx-auto py-8 px-4">
+
+  {% if user.is_staff %}
+    <a href="{% url 'admin_dashboard' user.id %}" class="mb-4 inline-flex items-center text-gray-600 hover:text-gray-900">
+      <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+      </svg>
+      Back to Dashboard
+  </a>
+  {% endif %}
   <!-- Profile Header -->
   <div class="bg-white rounded-lg shadow-md p-6 mb-8">
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center">
@@ -20,6 +29,7 @@
         </svg>
         Edit Profile
       </a>
+      {% endif %}
     </div>
   </div>
 
@@ -86,7 +96,6 @@
       </div>
     {% endif %}
   </div>
-  {% endif %}
 </div>
 {% endblock %}
 

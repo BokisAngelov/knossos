@@ -3,9 +3,6 @@
 
 {% block content %}
 <div class="container mx-auto px-4 py-8">
-    <!-- Hidden div for regions data -->
-    <div id="regions-data" data-regions='{{ regions_json|safe }}' style="display: none;"></div>
-
     <!-- Header Section -->
     <div class="flex justify-between items-center mb-6">
         <div>
@@ -139,51 +136,35 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Get regions data from the hidden div and handle potential parsing errors
-        let regionsData = [];
-        try {
-            const regionsElement = document.getElementById('regions-data');
-            if (regionsElement && regionsElement.dataset.regions) {
-                regionsData = JSON.parse(regionsElement.dataset.regions);
-            }
-        } catch (e) {
-            console.error('Error parsing regions data:', e);
-        }
         
         // Add Pickup Group
         const addGroupBtn = document.getElementById('add-group-btn');
         function showAddGroupModal() {
-            let regionOptions = '';
-            if (Array.isArray(regionsData)) {
-                regionsData.forEach(region => {
-                    regionOptions += `<option value="${region.id}">${region.name}</option>`;
-                });
-            }
             
             Swal.fire({
                 title: 'Add Pickup Group',
                 html: `
                     <input id="swal-name" class="swal2-input" placeholder="Group Name" required>
-                    <select id="swal-region" class="swal2-input" style="width: 100%; margin: 10px auto; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 0.375rem; background-color: white;" required>${regionOptions}</select>
+                    <input id="swal-code" class="swal2-input" placeholder="Group Code" required>
                 `,
                 focusConfirm: false,
                 showCancelButton: true,
                 confirmButtonText: 'Add Group',
                 preConfirm: () => {
                     const name = document.getElementById('swal-name').value;
-                    const region = document.getElementById('swal-region').value;
+                    const code = document.getElementById('swal-code').value;
 
-                    if (!name || !region) {
+                    if (!name || !code) {
                         Swal.showValidationMessage('Please fill in all fields');
                         return false;
                     }
-                    return { name, region };
+                    return { name, code };
                 }
             }).then((result) => {
                 if (result.isConfirmed) {
                     const form = document.getElementById('add-group-form');
                     document.getElementById('add-group-name').value = result.value.name;
-                    document.getElementById('add-group-region').value = result.value.region;
+                    document.getElementById('add-group-code').value = result.value.code;
                     form.submit();
                 }
             });
@@ -220,7 +201,7 @@
                     
                     document.getElementById('edit-group-id').value = itemId;
                     document.getElementById('edit-group-name').value = inputs[0].value.trim();
-                    document.getElementById('edit-group-code').value = inputs[1].value;
+                    document.getElementById('edit-group-code').value = inputs[1].value.trim();
                     document.getElementById('edit-group-form').submit();
                 });
             });
@@ -233,18 +214,7 @@
                     const spans = row.querySelectorAll('.editable-name, .editable-code');
                     const inputs = row.querySelectorAll('.edit-input');
                     inputs.forEach((input, index) => {
-                        if (input.tagName === 'SELECT') {
-                            // Reset select to original value
-                            const regionName = spans[1].textContent.trim();
-                            for (let i = 0; i < input.options.length; i++) {
-                                if (input.options[i].text === regionName) {
-                                    input.selectedIndex = i;
-                                    break;
-                                }
-                            }
-                        } else {
-                            input.value = spans[index].textContent;
-                        }
+                        input.value = spans[index].textContent.trim();
                     });
                     spans.forEach(span => span.classList.remove('hidden'));
                     inputs.forEach(input => input.classList.add('hidden'));
