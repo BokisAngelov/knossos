@@ -329,6 +329,7 @@
 
                         <label class="block text-md font-medium text-gray-700">Guest Email</label>
                         <input type="email" name="guest_email" id="guest-email" class="mt-1 block w-full pl-3 pr-2 py-2 text-base border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md {% if form.guest_email.errors %}border-red-500{% endif %}">
+                        <span  id="guest-email-disabled" class="hidden text-sm text-gray-500">Your email is automatically filled in based on your profile. You cannot change it.</span>
                         {% if form.guest_email.errors %}
                         <p class="mt-1 text-sm text-red-600">{{ form.guest_email.errors.0 }}</p>
                         {% endif %}
@@ -512,8 +513,8 @@
                     console.log('User profile data:', data.user_profile);
                     document.querySelector('#guest-name').value = data.user_profile.name;
                     document.querySelector('#guest-email').value = data.user_profile.email;
-                    document.querySelector('#guest-email').attributes.disabled = true;
-
+                    document.querySelector('#guest-email').disabled = true;
+                    document.querySelector('#guest-email-disabled').classList.remove('hidden');
                 })
                 .catch(error => {
                     console.error('Error:', error);
