@@ -2,6 +2,26 @@
 {% load static %}
 
 {% block content %}
+<style>
+    .sortable-header {
+        transition: color 0.2s ease-in-out;
+    }
+    .sortable-header:hover {
+        color: #374151;
+    }
+    .sort-indicator {
+        transition: opacity 0.2s ease-in-out;
+    }
+    .sort-indicator.active {
+        opacity: 1;
+    }
+    .sort-indicator.inactive {
+        opacity: 0;
+    }
+    .sort-indicator:hover {
+        opacity: 1;
+    }
+</style>
 <div class="container mx-auto px-4 py-8">
     <!-- Header Section -->
     <div class="flex justify-between items-center mb-6">
@@ -9,12 +29,6 @@
             <h1 class="text-2xl font-bold text-gray-900">Bookings</h1>
             <p class="text-sm text-gray-500">Manage your bookings</p>
         </div>
-        <button type="button" id="add-booking-btn" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-            </svg>
-            Add Booking
-        </button>
     </div>
 
     <!-- Search and Filter Section -->
@@ -28,7 +42,7 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                         </svg>
                     </div>
-                    <input type="text" name="search" id="search" value="{{ request.GET.search }}" 
+                    <input type="text" name="search" id="search" value="{{ search_query }}" 
                            class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                            placeholder="Search bookings...">
                 </div>
@@ -41,7 +55,33 @@
                     Clear
                 </a>
             </div>
+            <!-- Hidden inputs to preserve sorting -->
+            {% if current_sort_by %}
+                <input type="hidden" name="sort_by" value="{{ current_sort_by }}">
+            {% endif %}
+            {% if current_sort_order %}
+                <input type="hidden" name="sort_order" value="{{ current_sort_order }}">
+            {% endif %}
         </form>
+    </div>
+    <!-- Bulk Actions Section -->
+    <div id="bulk-actions" class="bg-white rounded-lg shadow-md p-4 mb-6 hidden">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-4">
+                <span id="selected-count" class="text-sm text-gray-700">0 bookings selected</span>
+                <div class="flex space-x-2">
+                    <button type="button" id="bulk-delete-btn" class="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                        Delete Selected
+                    </button>
+                </div>
+            </div>
+            <button type="button" id="select-all-btn" class="text-sm text-blue-600 hover:text-blue-800">
+                Select All
+            </button>
+        </div>
     </div>
 
     <!-- Bookings Table -->
@@ -51,18 +91,110 @@
                 <table class="min-w-full divide-y divide-gray-200 text-sm">
                     <thead class="bg-gray-50">
                         <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <input type="checkbox" id="select-all-checkbox" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                            </th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <a href="?sort_by=created_at&sort_order={% if current_sort_by == 'created_at' and current_sort_order == 'desc' %}asc{% else %}desc{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}" class="sortable-header group inline-flex items-center hover:text-gray-700">
+                                    Date
+                                    <span class="ml-2 flex-none rounded text-gray-400 sort-indicator {% if current_sort_by == 'created_at' %}active{% else %}inactive{% endif %} group-hover:visible group-focus:visible">
+                                        {% if current_sort_by == 'created_at' %}
+                                            {% if current_sort_order == 'desc' %}
+                                                <svg class="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                                </svg>
+                                            {% else %}
+                                                <svg class="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fill-rule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clip-rule="evenodd" />
+                                                </svg>
+                                            {% endif %}
+                                        {% else %}
+                                            <svg class="h-5 w-5 text-gray-400 opacity-0 group-hover:opacity-100" viewBox="0 0 20 20" fill="currentColor">
+                                                <path fill-rule="evenodd" d="M10 3a1 1 0 01.707.293l3 3a1 1 0 01-1.414 1.414L10 5.414 7.707 7.707a1 1 0 01-1.414-1.414l3-3A1 1 0 0110 3zm-3.707 9.293a1 1 0 011.414 0L10 14.586l2.293-2.293a1 1 0 011.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                            </svg>
+                                        {% endif %}
+                                    </span>
+                                </a>
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <a href="?sort_by=guest_name&sort_order={% if current_sort_by == 'guest_name' and current_sort_order == 'desc' %}asc{% else %}desc{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}" class="sortable-header group inline-flex items-center hover:text-gray-700">
+                                    Client
+                                    <span class="ml-2 flex-none rounded text-gray-400 sort-indicator {% if current_sort_by == 'guest_name' %}active{% else %}inactive{% endif %} group-hover:visible group-focus:visible">
+                                        {% if current_sort_by == 'guest_name' %}
+                                            {% if current_sort_order == 'desc' %}
+                                                <svg class="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                                </svg>
+                                            {% else %}
+                                                <svg class="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fill-rule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clip-rule="evenodd" />
+                                                </svg>
+                                            {% endif %}
+                                        {% else %}
+                                            <svg class="h-5 w-5 text-gray-400 opacity-0 group-hover:opacity-100" viewBox="0 0 20 20" fill="currentColor">
+                                                <path fill-rule="evenodd" d="M10 3a1 1 0 01.707.293l3 3a1 1 0 01-1.414 1.414L10 5.414 7.707 7.707a1 1 0 01-1.414-1.414l3-3A1 1 0 0110 3zm-3.707 9.293a1 1 0 011.414 0L10 14.586l2.293-2.293a1 1 0 011.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                            </svg>
+                                        {% endif %}
+                                    </span>
+                                </a>
+                            </th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Excursion</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <a href="?sort_by=price&sort_order={% if current_sort_by == 'price' and current_sort_order == 'desc' %}asc{% else %}desc{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}" class="sortable-header group inline-flex items-center hover:text-gray-700">
+                                    Amount
+                                    <span class="ml-2 flex-none rounded text-gray-400 sort-indicator {% if current_sort_by == 'price' %}active{% else %}inactive{% endif %} group-hover:visible group-focus:visible">
+                                        {% if current_sort_by == 'price' %}
+                                            {% if current_sort_order == 'desc' %}
+                                                <svg class="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                                </svg>
+                                            {% else %}
+                                                <svg class="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fill-rule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clip-rule="evenodd" />
+                                                </svg>
+                                            {% endif %}
+                                        {% else %}
+                                            <svg class="h-5 w-5 text-gray-400 opacity-0 group-hover:opacity-100" viewBox="0 0 20 20" fill="currentColor">
+                                                <path fill-rule="evenodd" d="M10 3a1 1 0 01.707.293l3 3a1 1 0 01-1.414 1.414L10 5.414 7.707 7.707a1 1 0 01-1.414-1.414l3-3A1 1 0 0110 3zm-3.707 9.293a1 1 0 011.414 0L10 14.586l2.293-2.293a1 1 0 011.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                            </svg>
+                                        {% endif %}
+                                    </span>
+                                </a>
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <a href="?sort_by=payment_status&sort_order={% if current_sort_by == 'payment_status' and current_sort_order == 'desc' %}asc{% else %}desc{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}" class="sortable-header group inline-flex items-center hover:text-gray-700">
+                                    Status
+                                    <span class="ml-2 flex-none rounded text-gray-400 sort-indicator {% if current_sort_by == 'payment_status' %}active{% else %}inactive{% endif %} group-hover:visible group-focus:visible">
+                                        {% if current_sort_by == 'payment_status' %}
+                                            {% if current_sort_order == 'desc' %}
+                                                <svg class="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                                </svg>
+                                            {% else %}
+                                                <svg class="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fill-rule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clip-rule="evenodd" />
+                                                </svg>
+                                            {% endif %}
+                                        {% else %}
+                                            <svg class="h-5 w-5 text-gray-400 opacity-0 group-hover:opacity-100" viewBox="0 0 20 20" fill="currentColor">
+                                                <path fill-rule="evenodd" d="M10 3a1 1 0 01.707.293l3 3a1 1 0 01-1.414 1.414L10 5.414 7.707 7.707a1 1 0 01-1.414-1.414l3-3A1 1 0 0110 3zm-3.707 9.293a1 1 0 011.414 0L10 14.586l2.293-2.293a1 1 0 011.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                            </svg>
+                                        {% endif %}
+                                    </span>
+                                </a>
+                            </th>
                             <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
                         {% for booking in bookings %}
                         <tr data-id="{{ booking.id }}">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex items-center">
+                                    <input type="checkbox" name="selected_bookings" value="{{ booking.id }}" class="booking-checkbox h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                                </div>
+                            </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <span class="editable-id text-sm text-gray-500">#{{ booking.id }}</span>
                             </td>
@@ -100,7 +232,6 @@
                                     </svg>
                                 </a>
                             </td>
-                        
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -118,90 +249,210 @@
     </div>
 </div>
 
-<script>
+<!-- Hidden forms for bulk actions -->
+<form id="bulk-actions-form" action="{% url 'bookings_list' %}" method="post" class="hidden">
+    {% csrf_token %}
+    <input type="hidden" name="action_type" id="bulk-action-type">
+    <div id="bulk-selected-bookings"></div>
+</form>
 
+<script>
 function getCookie(name) {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== '') {
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
-                }
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
             }
         }
-        return cookieValue;
     }
-  const csrftoken = getCookie('csrftoken');
+    return cookieValue;
+}
 
-    document.addEventListener('DOMContentLoaded', function() {
-        const deleteBookingBtn = document.querySelectorAll('#delete-booking-btn');
+const csrftoken = getCookie('csrftoken');
 
-        deleteBookingBtn.forEach(btn => {
-            btn.addEventListener('click', function(e) {
-                e.preventDefault();
-                const bookingId = this.getAttribute('data-booking-id');
-                const name = document.getElementById('editable-guest-name');
+document.addEventListener('DOMContentLoaded', function() {
+    // Bulk Actions
+    const selectAllCheckbox = document.getElementById('select-all-checkbox');
+    const bookingCheckboxes = document.querySelectorAll('.booking-checkbox');
+    const bulkActionsDiv = document.getElementById('bulk-actions');
+    const selectedCountSpan = document.getElementById('selected-count');
+    const selectAllBtn = document.getElementById('select-all-btn');
+    const bulkDeleteBtn = document.getElementById('bulk-delete-btn');
 
-                Swal.fire({
-                    title: 'Are you sure?',
-                    text: `Do you want to delete booking for \"${name}\"?`,
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonColor: '#d33',
-                    cancelButtonColor: '#3085d6',
-                    confirmButtonText: 'Yes, delete it!'
-                }).then((result) => {   
-
-                    console.log(result);
-                    
-                    if (result.isConfirmed) {
-                        console.log('confirmed');
-                        const deleteUrl = `/bookings/${bookingId}/delete/`;
+    function updateBulkActions() {
+        const checkedBoxes = document.querySelectorAll('.booking-checkbox:checked');
+        const totalBoxes = document.querySelectorAll('.booking-checkbox');
+        
+        if (checkedBoxes.length > 0) {
+            bulkActionsDiv.classList.remove('hidden');
+            selectedCountSpan.textContent = `${checkedBoxes.length} booking(s) selected`;
             
-                        fetch(deleteUrl, {
-                            method: 'POST',
-                            headers: {
-                            'Content-Type': 'application/json',
+            // Update select all checkbox
+            if (checkedBoxes.length === totalBoxes.length) {
+                selectAllCheckbox.checked = true;
+                selectAllCheckbox.indeterminate = false;
+            } else if (checkedBoxes.length > 0) {
+                selectAllCheckbox.indeterminate = true;
+            } else {
+                selectAllCheckbox.checked = false;
+                selectAllCheckbox.indeterminate = false;
+            }
+        } else {
+            bulkActionsDiv.classList.add('hidden');
+            selectAllCheckbox.checked = false;
+            selectAllCheckbox.indeterminate = false;
+        }
+    }
+
+    function selectAll() {
+        const checkboxes = document.querySelectorAll('.booking-checkbox');
+        const selectAllCheckbox = document.getElementById('select-all-checkbox');
+        
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = selectAllCheckbox.checked;
+        });
+        updateBulkActions();
+    }
+
+    function submitBulkAction(actionType) {
+        const checkedBoxes = document.querySelectorAll('.booking-checkbox:checked');
+        if (checkedBoxes.length === 0) {
+            Swal.fire('No Selection', 'Please select at least one booking.', 'warning');
+            return;
+        }
+
+        let confirmMessage = '';
+        let confirmIcon = 'warning';
+        
+        switch(actionType) {
+            case 'bulk_delete':
+                confirmMessage = `Are you sure you want to delete ${checkedBoxes.length} booking(s)?`;
+                confirmIcon = 'warning';
+                break;
+        }
+
+        Swal.fire({
+            title: 'Confirm Action',
+            text: confirmMessage,
+            icon: confirmIcon,
+            showCancelButton: true,
+            confirmButtonColor: actionType === 'bulk_delete' ? '#d33' : '#3085d6',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Yes, proceed!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const form = document.getElementById('bulk-actions-form');
+                const actionTypeInput = document.getElementById('bulk-action-type');
+                const selectedBookingsDiv = document.getElementById('bulk-selected-bookings');
+                
+                // Clear previous inputs
+                selectedBookingsDiv.innerHTML = '';
+                
+                // Add selected booking IDs
+                checkedBoxes.forEach(checkbox => {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'selected_bookings';
+                    input.value = checkbox.value;
+                    selectedBookingsDiv.appendChild(input);
+                });
+                
+                actionTypeInput.value = actionType;
+                form.submit();
+            }
+        });
+    }
+
+    // Event listeners for bulk actions
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', selectAll);
+    }
+
+    if (selectAllBtn) {
+        selectAllBtn.addEventListener('click', function() {
+            const selectAllCheckbox = document.getElementById('select-all-checkbox');
+            selectAllCheckbox.checked = !selectAllCheckbox.checked;
+            selectAll();
+        });
+    }
+
+    bookingCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', updateBulkActions);
+    });
+
+    if (bulkDeleteBtn) {
+        bulkDeleteBtn.addEventListener('click', () => submitBulkAction('bulk_delete'));
+    }
+
+    // Individual delete functionality
+    const deleteBookingBtn = document.querySelectorAll('#delete-booking-btn');
+
+    deleteBookingBtn.forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const bookingId = this.getAttribute('data-booking-id');
+            const row = this.closest('tr');
+            const guestName = row.querySelector('.editable-guest-name').textContent;
+
+            Swal.fire({
+                title: 'Are you sure?',
+                text: `Do you want to delete booking for "${guestName}"?`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Yes, delete it!'
+            }).then((result) => {   
+                if (result.isConfirmed) {
+                    const deleteUrl = `/bookings/${bookingId}/delete/`;
+        
+                    fetch(deleteUrl, {
+                        method: 'POST',
+                        headers: {
                             'X-CSRFToken': csrftoken
-                            }
-                        })
-                        .then(response => response.json())
-                        .then(data => {
-                            console.log('data 1st then');
-                            console.log(data);
-                            if (data.success) {
-                                Swal.fire({
-                                    title: 'Success',
-                                    text: data.message,
-                                    icon: 'success'
-                                }).then(() => {
+                        }
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.success) {
+                            Swal.fire({
+                                title: 'Success',
+                                text: data.message,
+                                icon: 'success'
+                            }).then(() => {
                                 // Reload the page to reflect the changes
-                                    window.location.reload();
-                                });
-                            } else {
-                                Swal.fire({
-                                    title: 'Error',
-                                    text: data.message || 'Booking not deleted.',
-                                    icon: 'error'
-                                });
-                            }
-                        })
-                        .catch(error => {
-                            console.error('Error:', error);
+                                window.location.reload();
+                            });
+                        } else {
                             Swal.fire({
                                 title: 'Error',
-                                text: 'An error occurred while deleting the booking.',
+                                text: data.message || 'Booking not deleted.',
                                 icon: 'error'
                             });
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        Swal.fire({
+                            title: 'Error',
+                            text: 'An error occurred while deleting the booking.',
+                            icon: 'error'
                         });
-                    }
-                });
+                    });
+                }
             });
         });
     });
+});
 </script>
 
 {% endblock %}

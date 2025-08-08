@@ -880,44 +880,7 @@ def excursion_delete(request, pk):
         messages.error(request, 'Excursion not deleted.')
         return redirect('excursion_list')
     
-
 # ----- Booking Views -----
-# def booking_create(request, availability_pk):
-    availability = get_object_or_404(ExcursionAvailability, pk=availability_pk)
-    if request.method == 'POST':
-        form = BookingForm(request.POST, user=request.user if request.user.is_authenticated else None)
-        if form.is_valid():
-            booking = form.save(commit=False)
-            # booking.user = request.user if request.user.is_authenticated else None
-            booking.excursion_availability = availability
-            
-            if request.user:
-                booking.user = request.user
-                role = getattr(request.user.profile, 'role', None)
-
-                if request.user.is_staff == True:
-                    booking.payment_status = 'completed'
-                elif role == 'representative':
-                    booking.payment_status = 'pending'
-                else:
-                    booking.user = None
-                    booking.payment_status = 'pending'
-
-
-            booking.save()
-            messages.success(request, 'Booking created.')
-            # Redirect logic: reps/admin skip checkout
-            if request.user.is_authenticated and (request.user.is_staff or getattr(request.user.profile, 'role', None) == 'representative'):
-                return redirect('booking_detail', booking.pk)
-            # Guests/clients go to checkout
-            return redirect('checkout', booking.pk)
-    else:
-        form = BookingForm(user=request.user if request.user.is_authenticated else None)
-    return render(request, 'main/bookings/booking_form.html', {
-        'form': form,
-        'availability': availability,
-    })
-
 # Booking detail: only authenticated users (clients/reps/admins)
 @login_required
 def booking_delete(request, pk):
@@ -1684,8 +1647,70 @@ def admin_reservations(request):
 
 @user_passes_test(is_staff)
 def bookings_list(request):
+    if request.method == 'POST':
+        action_type = request.POST.get('action_type')
+        
+        if action_type == 'bulk_delete':
+            selected_ids = request.POST.getlist('selected_bookings')
+            if selected_ids:
+                bookings_to_delete = Booking.objects.filter(id__in=selected_ids)
+                count = bookings_to_delete.count()
+                bookings_to_delete.delete()
+                messages.success(request, f'{count} booking(s) deleted successfully.')
+            return redirect('bookings_list')
+    
+    # Get sorting parameters
+    sort_by = request.GET.get('sort_by', 'created_at')
+    sort_order = request.GET.get('sort_order', 'desc')
+    search_query = request.GET.get('search', '')
+    
+    # Validate sort_by parameter
+    valid_sort_fields = ['created_at', 'payment_status', 'price', 'guest_name', 'date']
+    if sort_by not in valid_sort_fields:
+        sort_by = 'created_at'
+    
+    # Validate sort_order parameter
+    if sort_order not in ['asc', 'desc']:
+        sort_order = 'desc'
+    
+    # Apply sorting
+    if sort_order == 'desc':
+        sort_field = f'-{sort_by}'
+    else:
+        sort_field = sort_by
+    
+    # Start with all bookings
     bookings = Booking.objects.all()
+    
+    # Apply search filter if search query is provided
+    if search_query:
+        bookings = bookings.filter(
+            Q(guest_name__icontains=search_query) |
+            Q(guest_email__icontains=search_query) |
+            Q(id__icontains=search_query) |
+            Q(payment_status__icontains=search_query) |
+            Q(excursion_availability__excursion__title__icontains=search_query)
+        )
+    
+    # Apply sorting
+    bookings = bookings.order_by(sort_field)
+    
     return render(request, 'main/bookings/bookings_list.html', {
+        'bookings': bookings,
+        'current_sort_by': sort_by,
+        'current_sort_order': sort_order,
+        'search_query': search_query,
+    })
+
+def filter_bookings(request):
+    status = request.GET.get('status')
+
+    bookings = Booking.objects.all().order_by('-created_at')
+
+    if status:
+        bookings = bookings.filter(payment_status=status)
+    
+    return render(request, 'main/filters/filter_bookings.html', {
         'bookings': bookings,
     })
 
@@ -2415,3 +2440,4 @@ def manage_pickup_groups(request):
     return render(request, 'main/admin/pickup_groups_list.html', {
         'pickup_groups': PickupGroup.objects.all(),
     })
+
