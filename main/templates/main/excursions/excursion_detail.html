@@ -256,10 +256,7 @@
                             <input type="hidden" name="{{ pickup_group.id }}-pickup-group" value="{{ pickup_group.name }}" data-availability-id="{{ availability.id }}">
                         {% endfor %}
                     {% endfor %}
-
                     <input type="hidden" name="availability_id" id="availability-id" value="">
-                    <input type="hidden" name="user_role" id="user-role" value="{{ user.profile.role }}">
-
                     <div class="flex flex-col gap-2 pickup-group-div" >
                         <label class="block text-md font-medium text-gray-700">Pickup Group</label>
                         <select name="pickup_group" id="pickup-group" class="mt-1 block w-full pl-3 pr-2 py-2 text-base border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md {% if form.pickup_group.errors %}border-red-500{% endif %}">
@@ -355,7 +352,7 @@
                         <ul class="list-disc list-inside text-sm text-red-600"></ul>
                     </div>
 
-                    {% if user.is_staff %}
+                    {% if user.is_staff or user.profile.role == 'representative' %}
                     <div class="flex flex-col gap-2">   
                         <label class="block text-md font-medium text-gray-700">Partial Payment</label>
                         <input type="number" name="partial_payment" id="partial-payment" class="mt-1 block w-full pl-3 pr-2 py-2 text-base border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
@@ -400,7 +397,6 @@
 {% block extra_js %}
 <script>
 
-    //  get csrf token for ajax requests
     function getCookie(name) {
         let cookieValue = null;
         if (document.cookie && document.cookie !== '') {
@@ -423,6 +419,9 @@
     const pickupGroupSelect = document.getElementById('pickup-group');
     const pickupPointSelect = document.getElementById('pickup-point');
     const datePickerInput = document.getElementById('date-picker');
+    
+    const userRole = getCookie('user_role');
+    const userId = getCookie('user_id');
     // const availabilityIdInput = document.getElementById('availability-id');
 
     // console.log(availabilityIdInput);
@@ -478,23 +477,48 @@
         updatePickupPoints(groupId);
     });
 
-    // On page load, initialize for the default group
+
     document.addEventListener('DOMContentLoaded', function() {
+
         const initialGroupId = pickupGroupSelect.value;
         updateDatePicker(initialGroupId);
         updatePickupPoints(initialGroupId);
-    });
 
-    document.addEventListener('DOMContentLoaded', function() {
         const notAvailability = document.querySelector('.not-availability');
         const bookingForm = document.getElementById('booking-form');
         const formErrors = document.getElementById('form-errors');
         const voucherCode = getCookie('voucher_code');
-        const userRole = document.getElementById('user-role').value;
+        
         // console.log('voucherCode: ' + voucherCode);
         
         if (!notAvailability) {
             let picker = null;
+
+            if (userRole == 'client') {
+                console.log('userRole: ' + userRole);
+                console.log('userId: ' + userId);
+                fetch('/get_user_details/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrftoken
+                    }
+                    // body: JSON.stringify({
+                    //     user_id: userId
+                    // })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    console.log('User profile data:', data.user_profile);
+                    document.querySelector('#guest-name').value = data.user_profile.name;
+                    document.querySelector('#guest-email').value = data.user_profile.email;
+                    document.querySelector('#guest-email').attributes.disabled = true;
+
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+            }
             
 
             function checkVoucher() {
@@ -592,7 +616,6 @@
 
             });
 
-            // Calculate total price based on number of guests
             function calculateTotal() {
                 const pickupGroup = document.querySelector('select[name="pickup_group"]').value;
                 const adults = parseInt(document.querySelector('input[name="adults"]').value) || 0;
@@ -600,8 +623,8 @@
                 const infants = parseInt(document.querySelector('input[name="infants"]').value) || 0;
                 const availabilityId = document.querySelector(`input[name="${pickupGroup}-pickup-group"]`).dataset.availabilityId;
 
-                console.log('calculateTotal availabilityId: ' + availabilityId);
-                console.log(availabilityId);
+                // console.log('calculateTotal availabilityId: ' + availabilityId);
+                // console.log(availabilityId);
 
                 const adultPrice = document.querySelector(`input[name="${availabilityId}-adult-price"]`).value;
                 const childPrice = document.querySelector(`input[name="${availabilityId}-child-price"]`).value;
@@ -622,10 +645,10 @@
                 const infants = parseInt(document.querySelector('input[name="infants"]').value) || 0;
                 const availabilityId = document.querySelector(`input[name="${pickupGroupId}-pickup-group"]`).dataset.availabilityId;
 
-                console.log('updatePriceAndPickupPoints availabilityId: ' + availabilityId);
+                // console.log('updatePriceAndPickupPoints availabilityId: ' + availabilityId);
 
                 const pickupGroupName = document.querySelector(`input[name="${pickupGroupId}-pickup-group"]`).value;
-                console.log(pickupGroupName);
+                // console.log(pickupGroupName);
                 document.querySelector('.pickup-region').textContent = pickupGroupName;
                 document.querySelectorAll('.pickup-group').forEach(group => {
                     group.classList.add('hidden');
@@ -772,9 +795,12 @@
                 const availabilityId = document.querySelector(`input[name="${pickupGroupId}-pickup-group"]`).dataset.availabilityId;
                 const guestEmail = document.querySelector('#guest-email').value;
                 const guestName = document.querySelector('#guest-name').value;
-                const voucherCode = document.querySelector('#voucher_code').value ? document.querySelector('#voucher_code').value : null;
-                const partialPayment = document.querySelector('#partial-payment').value;
-                const partialPaidMethod = document.querySelector('#partial-paid-method').value;
+                const voucherInput = document.querySelector('#voucher_code');
+                const voucherCode = voucherInput && voucherInput.value ? voucherInput.value : "";
+                const partialPaymentInput = document.querySelector('#partial-payment');
+                const partialPayment = partialPaymentInput && partialPaymentInput.value ? partialPaymentInput.value : "";
+                const partialPaidMethodInput = document.querySelector('#partial-paid-method');
+                const partialPaidMethod = partialPaidMethodInput && partialPaidMethodInput.value ? partialPaidMethodInput.value : '';
                 // Validate form
                 let errors = [];
 
@@ -831,15 +857,18 @@
                     }
                 }
 
-                if (partialPayment > 0 && !partialPaidMethod) {
-                    errors.push({ field: 'partial-paid-method', message: 'Please select a payment method.' });
-                    const partialPaidMethodInput = document.querySelector('#partial-paid-method');
-                    if (partialPaidMethodInput) {
-                        partialPaidMethodInput.classList.add('border-red-500');
-                        const errorDiv = document.createElement('p');
-                        errorDiv.className = 'mt-1 text-sm text-red-600';
-                        errorDiv.textContent = 'Please select a payment method.';
-                        partialPaidMethodInput.parentNode.appendChild(errorDiv);
+                if (userRole == 'admin') {
+                    
+                    if (partialPayment && partialPayment > 0 && !partialPaidMethod) {
+                        errors.push({ field: 'partial-paid-method', message: 'Please select a payment method.' });
+                        const partialPaidMethodInput = document.querySelector('#partial-paid-method');
+                        if (partialPaidMethodInput) {
+                            partialPaidMethodInput.classList.add('border-red-500');
+                            const errorDiv = document.createElement('p');
+                            errorDiv.className = 'mt-1 text-sm text-red-600';
+                            errorDiv.textContent = 'Please select a payment method.';
+                                partialPaidMethodInput.parentNode.appendChild(errorDiv);
+                            }
                     }
                 }
 
@@ -855,9 +884,9 @@
                 const formData = new FormData(bookingForm);
                 formData.append('selected_date', selectedDate);
                 formData.append('availability_id', availabilityId);
-                formData.append('voucher_code', voucherCode ? voucherCode : null);
-                formData.append('partial_payment', partialPayment);
-                formData.append('partial_paid_method', partialPaidMethod);
+                formData.append('voucher_code', voucherCode ? voucherCode : "");
+                formData.append('partial_payment', partialPayment ? partialPayment : "");
+                formData.append('partial_paid_method', partialPaidMethod ? partialPaidMethod : "");
                 // Submit form via AJAX
                 fetch(window.location.href, {
                     method: 'POST',

@@ -328,6 +328,9 @@
                   {% elif booking.payment_status == 'pending' %}bg-yellow-100 text-yellow-800
                   {% else %}bg-red-100 text-red-800{% endif %}">
                     {{ booking.payment_status|title }}
+                    {% if booking.deleteByUser %}
+                      (by client)
+                    {% endif %}
                   </span>
                 </td> 
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -550,7 +553,7 @@
   });
 
   // Handle delete booking buttons
-  const deleteButtons = document.querySelectorAll('.delete-booking-btn');
+  const deleteButtons = document.querySelectorAll('#delete-booking-btn');
 
   deleteButtons.forEach(function(deleteBtn) {
     deleteBtn.addEventListener('click', function(e) {

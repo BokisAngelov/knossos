@@ -99,7 +99,6 @@ def check_voucher(request):
     else:
         return JsonResponse({'success': False, 'message': 'Invalid request method.'})
     
-
 def retrive_voucher(request):
     if request.method == 'POST':
         try:
@@ -550,7 +549,7 @@ def excursion_detail(request, pk):
 
     if not excursion_availability:
         feedback_form = FeedbackForm()
-        booking_form = BookingForm()
+        booking_form = BookingForm(user=request.user)
 
         return render(request, 'main/excursions/excursion_detail.html', {
             'excursion': excursion,
@@ -612,7 +611,7 @@ def excursion_detail(request, pk):
         
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             try:
-                booking_form = BookingForm(request.POST)
+                booking_form = BookingForm(request.POST, user=request.user)
                 
                 if not booking_form.is_valid():
                     return JsonResponse({
@@ -629,7 +628,14 @@ def excursion_detail(request, pk):
                 total_price = int(request.POST.get('total_price', '0') or '0')
                 partial_price = int(request.POST.get('partial_payment', '0') or '0')
                 voucher_id = request.POST.get('voucher_code', None)
-                partial_paid_method = request.POST.get('partial_paid_method', None)
+                
+                # Only get partial_paid_method for staff and representatives
+                partial_paid_method = ''
+                if request.user and (request.user.is_staff or getattr(request.user.profile, 'role', None) == 'representative'):
+                    partial_paid_method = request.POST.get('partial_paid_method', '')
+                    if partial_paid_method is None:
+                        partial_paid_method = ''
+                
                 # print('voucher_id: ' + str(voucher_id))
                 reservation_instance = None
                 if voucher_id:
@@ -659,10 +665,10 @@ def excursion_detail(request, pk):
                 booking.partial_paid_method = partial_paid_method
                 if partial_price > 0:
                     final_price = total_price - partial_price
-                    booking.partial_paid = partial_price
+                    booking.partial_paid = partial_price if partial_price else None
                 else:
                     final_price = total_price
-                    booking.partial_paid = 0
+                    booking.partial_paid = 0 if partial_price else None
 
                 booking.total_price = final_price # price after discount or partial payment
 
@@ -730,6 +736,49 @@ def excursion_detail(request, pk):
         'pickup_group_map': pickup_group_map,
         'remaining_seats': remaining_seats,
     })
+
+def get_user_details_cookies(request):
+    
+    # user_id = request.POST.get('user_id')
+
+    user_id = manage_cookies(request, 'user_id', None, 'get')
+    # print('user_id: ' + str(user_id))
+    try:
+        user = User.objects.get(id=user_id)
+        if user:
+            user_profile = UserProfile.objects.get(user=user)
+            # print('user_profile: ' + str(user_profile))
+            profile_data = {
+                'name': user_profile.name,
+                'email': user_profile.email,
+            }
+            return JsonResponse({
+                'success': True,
+                'user_profile': profile_data
+            })
+        else:
+            return JsonResponse({
+                'success': False,
+                'user_profile': None
+            })
+    except User.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'error': 'User not found',
+            'user_profile': None
+        })
+    except UserProfile.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'error': 'User profile not found',
+            'user_profile': None
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e),
+            'user_profile': None
+        })
 
 @user_passes_test(is_staff)
 def excursion_create(request):
@@ -870,18 +919,33 @@ def excursion_delete(request, pk):
     })
 
 # Booking detail: only authenticated users (clients/reps/admins)
-@user_passes_test(is_staff)
+@login_required
 def booking_delete(request, pk):
     booking = get_object_or_404(Booking, pk=pk)
-    # if request.method == 'POST':
+    
+    # Check if user is staff or if the booking belongs to the user
+    if not (request.user.is_staff or booking.user == request.user):
+        return JsonResponse({
+            'success': False,
+            'message': 'You do not have permission to delete this booking.'
+        })
+    
     try:
         if request.method == 'POST':
             if booking:
-                booking.delete()
+
+                if request.user.is_staff:
+                    booking.deleteByUser = False
+                    booking.delete()
+                else:
+                    booking.deleteByUser = True
+                    booking.payment_status = 'cancelled'
+                    booking.save()
+                
                 messages.success(request, 'Booking deleted.')
                 return JsonResponse({
                     'success': True,
-                    'message': 'Booking deleted.'
+                    'message': 'Booking deleted successfully.'
                 })
             else:
                 return JsonResponse({
@@ -889,17 +953,17 @@ def booking_delete(request, pk):
                     'message': 'Booking not found.'
                 })
         else:
-            messages.error(request, 'Booking not deleted.')
+            return JsonResponse({
+                'success': False,
+                'message': 'Invalid request method.'
+            })
     except Exception as e:
-        messages.error(request, f'Error deleting booking: {str(e)}')
-        
-    # else:
-    #     messages.error(request, 'Booking not deleted.')
+        return JsonResponse({
+            'success': False,
+            'message': f'Error deleting booking: {str(e)}'
+        })
 
-    return redirect('bookings_list')
-
-
-# @login_required 
+@login_required
 def booking_detail(request, pk):
     
     booking = get_object_or_404(Booking, pk=pk)
@@ -1025,19 +1089,25 @@ def login_view(request):
         if form.is_valid():
             user = form.get_user()
             login(request, user)
-            return redirect('excursion_list')
+            response = redirect('excursion_list')
+            response.set_cookie('user_id', user.id)
+            response.set_cookie('user_role', user.profile.role)
+            return response
     else:
         form = AuthenticationForm()
     return render(request, 'main/accounts/login.html', {'form': form})
 
 def logout_view(request):
     logout(request)
-    return redirect('excursion_list')
+    response = redirect('excursion_list')
+    response.delete_cookie('user_id')
+    response.delete_cookie('user_role')
+    return response
 
 @login_required
 def profile(request, pk):
     user = get_object_or_404(User, pk=pk)
-    bookings = Booking.objects.filter(user=user).order_by('-created_at')
+    bookings = Booking.objects.filter(user=user, deleteByUser=False).order_by('-created_at')
     profile = UserProfile.objects.get(user=user)
 
     # Only allow users to view their own profile unless they're staff
@@ -1622,9 +1692,9 @@ def bookings_list(request):
 @user_passes_test(is_staff)
 def booking_edit(request, pk):
     booking = get_object_or_404(Booking, pk=pk)
-    form = BookingForm(instance=booking)
+    form = BookingForm(instance=booking, user=request.user)
     if request.method == 'POST':
-        form = BookingForm(request.POST, instance=booking)
+        form = BookingForm(request.POST, instance=booking, user=request.user)
         if form.is_valid():
             booking = form.save(commit=False)
             # booking.save()
@@ -1704,7 +1774,6 @@ def manage_reservations(request):
         'reservations': Reservation.objects.filter(status='active'),
     })
 
-@user_passes_test(is_staff)
 def check_excursion_pickup_groups(request):
 
     if request.method == 'POST':

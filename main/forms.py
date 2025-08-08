@@ -279,7 +279,7 @@ class BookingForm(forms.ModelForm):
         ]
         widgets = {
             'pickup_point': forms.Select(attrs={'class': 'form-control'}),
-            'partial_paid_method': forms.Select(choices=Booking.PAYMENT_METHOD_CHOICES),
+            'partial_paid_method': forms.Select(choices=[('', 'Select a payment method')] + list(Booking.PAYMENT_METHOD_CHOICES)),
         }
 
     def __init__(self, *args, **kwargs):
@@ -287,11 +287,42 @@ class BookingForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         # Always remove group and payment_status
         self.fields.pop('group', None)
-        # self.fields.pop('payment_status', None)
-        # partial_paid visible for representatives and admins only
-        # if not user or not (user.is_staff or getattr(user.profile, 'role', None) == 'representative'):
-        #     self.fields['partial_paid'].widget.attrs['disabled'] = True
-            
+        
+        # Handle partial_paid_method field for clients (non-staff, non-representative)
+        if not user or not (user.is_staff or getattr(user.profile, 'role', None) == 'representative'):
+            if 'partial_paid_method' in self.fields:
+                # Make the field optional for clients and use hidden widget
+                self.fields['partial_paid_method'].required = False
+                self.fields['partial_paid_method'].widget = forms.HiddenInput()
+                self.fields['partial_paid_method'].initial = ''
+            if 'partial_paid' in self.fields:
+                self.fields['partial_paid'].required = False
+                self.fields['partial_paid'].widget.attrs['disabled'] = True
+
+    def clean(self):
+        cleaned_data = super().clean()
+        # Handle partial_paid_method field
+        if 'partial_paid_method' in self.fields:
+            # If the field is a hidden input (for clients), set it to empty string
+            if isinstance(self.fields['partial_paid_method'].widget, forms.HiddenInput):
+                cleaned_data['partial_paid_method'] = ''
+            # If the field is in the form but not in cleaned_data, set it to empty string
+            elif 'partial_paid_method' not in cleaned_data:
+                cleaned_data['partial_paid_method'] = ''
+            # If the field value is None, convert it to empty string
+            elif cleaned_data.get('partial_paid_method') is None:
+                cleaned_data['partial_paid_method'] = ''
+        return cleaned_data
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        # Handle partial_paid_method field if it's a hidden input
+        if 'partial_paid_method' in self.fields and isinstance(self.fields['partial_paid_method'].widget, forms.HiddenInput):
+            instance.partial_paid_method = ''
+        if commit:
+            instance.save()
+        return instance
+
 class TransactionForm(forms.ModelForm):
     class Meta:
         model = Transaction

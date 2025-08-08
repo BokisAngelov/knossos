@@ -291,13 +291,14 @@ class Booking(models.Model):
     guest_email = models.EmailField(null=True, blank=True)
     total_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     partial_paid = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    partial_paid_method = models.CharField(max_length=255, null=True, blank=True, choices=PAYMENT_METHOD_CHOICES)
+    partial_paid_method = models.CharField(blank=True, choices=PAYMENT_METHOD_CHOICES, default='', max_length=255, null=True)
     total_adults = models.PositiveIntegerField(null=True, blank=True)
     total_kids = models.PositiveIntegerField(null=True, blank=True)
     total_infants = models.PositiveIntegerField(null=True, blank=True)
     payment_status = models.CharField(max_length=10, choices=PAYMENT_STATUS_CHOICES, null=True, blank=True, default='pending')
     price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    deleteByUser = models.BooleanField(default=False)
     
 
     def __str__(self):

@@ -35,6 +35,7 @@
             <li><a href="{% url 'login' %}" class="text-gray-600 hover:text-gray-900">Login</a></li>
             <li><a href="{% url 'signup' %}" class="text-gray-600 hover:text-gray-900">Sign Up</a></li>
           {% endif %}
+          {% if user.profile.role == None %}
           <li class="flex items-center gap-2">
             <div class="flex items-center gap-2 voucher-check" {% if voucher_code %}hidden{% endif %}>
               <input type="text" 
@@ -58,6 +59,7 @@
                 </button>
             </div>
           </li>
+          {% endif %}
         </ul>
       </nav>
     </div>
@@ -238,21 +240,21 @@
           clearButton.addEventListener('click', clearVoucher);
       }
 
+      const voucherBtn = document.getElementById('submit-voucher-btn');
       
-
-      // Add event listener for the voucher button
-      document.getElementById('submit-voucher-btn').addEventListener('click', function() {
-          const voucherInput = document.getElementById('voucher');
-          const voucherCode = voucherInput.value.trim();
-          
-          if (voucherCode) {
-              console.log('Checking voucher:', voucherCode);
-              checkVoucher(voucherCode);
-          } else {
-              document.getElementById('voucher-message').textContent = 'Please enter a voucher code.';
-          }
-      });
-
+      if (voucherBtn) {
+        voucherBtn.addEventListener('click', function() {
+            const voucherInput = document.getElementById('voucher');
+            const voucherCode = voucherInput.value.trim();
+            
+            if (voucherCode) {
+                console.log('Checking voucher:', voucherCode);
+                checkVoucher(voucherCode);
+            } else {
+                document.getElementById('voucher-message').textContent = 'Please enter a voucher code.';
+            }
+        });
+      }
     });
   </script>
 </body>
