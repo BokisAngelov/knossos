@@ -870,108 +870,6 @@ def excursion_delete(request, pk):
     })
 
 # Booking detail: only authenticated users (clients/reps/admins)
-@login_required
-def booking_submit(request, excursion_availability_pk):
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        try:
-            booking_form = BookingForm(request.POST)
-            
-            if not booking_form.is_valid():
-                return JsonResponse({
-                    'success': False,
-                    'errors': booking_form.errors
-                })
-            
-            booking = booking_form.save(commit=False)
-            
-            # Handle empty strings by converting them to 0 before int conversion
-            adults = int(request.POST.get('adults', '0') or '0')
-            children = int(request.POST.get('children', '0') or '0')
-            infants = int(request.POST.get('infants', '0') or '0')
-            total_price = int(request.POST.get('total_price', '0') or '0')
-            partial_price = int(request.POST.get('partial_payment', '0') or '0')
-            voucher_id = request.POST.get('voucher_code', None)
-            partial_paid_method = request.POST.get('partial_paid_method', None)
-            # print('voucher_id: ' + str(voucher_id))
-            reservation_instance = None
-            if voucher_id:
-                try:
-                    reservation_instance = Reservation.objects.get(voucher_id=voucher_id)
-                except Reservation.DoesNotExist:
-                    prepare_data = get_reservation(voucher_id)
-                    # print(prepare_data)
-                    reservation_instance, reservation_response = create_reservation(prepare_data)
-                    print('reservation_instance: ' + str(reservation_instance))
-
-            guest_email = request.POST.get('guest_email', None)
-            guest_name = request.POST.get('guest_name', None)
-
-            user = request.user
-            user_instance = user if user else None              
-            
-            booking.excursion_availability = excursion_availability
-            booking.user = user_instance
-            booking.total_adults = adults
-            booking.total_kids = children
-            booking.total_infants = infants
-            booking.voucher_id = reservation_instance
-            booking.guest_email = guest_email
-            booking.guest_name = guest_name
-            booking.price = total_price # price before discount or partial payment
-            booking.partial_paid_method = partial_paid_method
-            if partial_price > 0:
-                final_price = total_price - partial_price
-                booking.partial_paid = partial_price
-            else:
-                final_price = total_price
-                booking.partial_paid = 0
-
-            booking.total_price = final_price # price after discount or partial payment
-
-            selected_date = request.POST.get('selected_date')
-            availability_id = request.POST.get('availability_id')
-            
-            if not selected_date or not availability_id:
-                return JsonResponse({
-                    'success': False,
-                    'message': 'Please select a date.'
-                })
-            
-            # Validate at least one participant                
-            if adults + children + infants == 0:
-                return JsonResponse({
-                    'success': False,
-                    'message': 'Please select at least one participant.'
-                })
-
-            booking.date = selected_date
-            booking.availability_id = availability_id
-            booking.save()
-
-            # Check if the availability has enough guests
-            total_guests = adults + children + infants
-            availability_guests = availability.max_guests
-
-            if total_guests > availability_guests:
-                return JsonResponse({
-                    'success': False,
-                    'message': 'The availability has not enough guests.'
-                })
-            else:
-                availability.booked_guests += total_guests
-                availability.save()
-
-            return JsonResponse({
-                'success': True,
-                'redirect_url': reverse('checkout', kwargs={'booking_pk': booking.pk})
-            })
-
-        except Exception as e:
-            return JsonResponse({
-                'success': False,
-                'message': str(e),
-                'errors': booking_form.errors
-            })
 @user_passes_test(is_staff)
 def booking_delete(request, pk):
     booking = get_object_or_404(Booking, pk=pk)
@@ -1179,8 +1077,11 @@ def admin_dashboard(request, pk):
     total_excursions_count = Excursion.objects.all().count()
     reps_count = User.objects.filter(profile__role='representative').exclude(is_staff=True).count()
     clients_count = User.objects.filter(profile__role='client').exclude(is_staff=True).count()
+    user = User.objects.get(profile__id=pk)
+    user_profile = UserProfile.objects.get(user=user)
+
     total_revenue = Booking.objects.filter(payment_status='completed').aggregate(
-        total=Sum('total_price')
+        total=Sum('price')
     )['total'] or 0
     
     # Recent bookings
@@ -1199,7 +1100,7 @@ def admin_dashboard(request, pk):
         'total_revenue': total_revenue,
         'recent_bookings': recent_bookings,
         'booking_count': Booking.objects.filter(payment_status='completed').count(),
-        'user': User.objects.get(profile__id=pk),
+        'user': user_profile,
         'total_excursions_count': total_excursions_count,
     }
     
@@ -1541,9 +1442,16 @@ def manage_clients(request):
             password = request.POST.get('password', '').strip()
             
             if name and email and password:
+                username = email.split('@')[0] 
+                base_username = username
+                counter = 1
+
+                while User.objects.filter(username=username).exists():
+                    username = f"{base_username}{counter}"
+                    counter += 1
                 # Create User first
                 user = User.objects.create_user(
-                    username=email,
+                    username=username,
                     email=email,
                     password=password,
                 )
@@ -2141,7 +2049,8 @@ def manage_staff(request):
             phone = request.POST.get('phone', '').strip()
             password = request.POST.get('password', '').strip()
 
-            if name and email:
+
+            if name and email and password:
                 username = email.split('@')[0] 
                 base_username = username
                 counter = 1
@@ -2171,14 +2080,15 @@ def manage_staff(request):
             name = request.POST.get('name', '').strip()
             email = request.POST.get('email', '').strip()
             phone = request.POST.get('phone', '').strip()
-            role = request.POST.get('role', '').strip()
-            # password = request.POST.get('password', '').strip()
+            # role = request.POST.get('role', '').strip()
+            password = request.POST.get('password', '').strip()
 
             if name:
                 staff.name = name
                 staff.email = email
                 staff.phone = phone
-                staff.role = role
+                staff.role = "admin"
+                staff.password = password
                 staff.save()
                 messages.success(request, 'Staff member updated successfully.')
                 return redirect('staff_list')

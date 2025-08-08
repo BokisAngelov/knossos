@@ -136,7 +136,7 @@
                             </div>
                             
                             <!-- Stripe Elements Placeholder -->
-                             {% comment %} {% if not user.is_staff %} {% endcomment %}
+                             {% if not user.is_staff %}
                             <div class="border border-gray-300 rounded-md p-4 bg-gray-50">
                                 <div class="space-y-4">
                                     <div>
@@ -161,7 +161,7 @@
                                     </div>
                                 </div>
                             </div>
-                            {% comment %} {% endif %} {% endcomment %}
+                            {% endif %}
                         </div>
                     </div>
                 </div>

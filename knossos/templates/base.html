@@ -26,7 +26,7 @@
           <li><a href="{% url 'excursion_list' %}" class="text-gray-600 hover:text-gray-900">Excursions</a></li>
           {% if user.is_authenticated %}
             {% if user.is_staff %}
-              <li><a href="{% url 'admin_dashboard' user.id %}" class="text-gray-600 hover:text-gray-900">Dashboard</a></li>
+              <li><a href="{% url 'admin_dashboard' user.profile.id %}" class="text-gray-600 hover:text-gray-900">Dashboard</a></li>
             {% else %}
               <li><a href="{% url 'profile' user.id %}" class="text-gray-600 hover:text-gray-900">Profile</a></li>
             {% endif %}

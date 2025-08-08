@@ -52,11 +52,11 @@
                     <thead class="bg-gray-50">
                         <tr>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Guest Name</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Excursion</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Excursion</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                             <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                         </tr>
                     </thead>
@@ -64,30 +64,30 @@
                         {% for booking in bookings %}
                         <tr data-id="{{ booking.id }}">
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <span class="editable-id">#{{ booking.id }}</span>
+                                <span class="editable-id text-sm text-gray-500">#{{ booking.id }}</span>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <span class="editable-guest-name">{{ booking.guest_name }}</span>
+                                <span class="editable-date text-sm text-gray-500">{{ booking.created_at|date:"d/m/Y" }}</span>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <span class="editable-excursion">{{ booking.excursion_availability.excursion.title }}</span>
+                                <span class="editable-guest-name text-sm text-gray-500">{{ booking.guest_name }}</span>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <span class="editable-date">{{ booking.date }}</span>
+                                <span class="editable-excursion text-sm text-gray-500">{{ booking.excursion_availability.excursion.title }}</span>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <span class="editable-status px-2 inline-flex text-xs leading-5 font-semibold rounded-full {% if booking.payment_status == 'pending' %}bg-yellow-100 text-yellow-800{% elif booking.payment_status == 'completed' %}bg-green-100 text-green-800{% else %}bg-red-100 text-red-800{% endif %}">{{ booking.payment_status|title }}</span>
+                                <span class="editable-amount text-sm text-gray-500">€{{ booking.price }}</span>
+                                <input type="number" step="0.01" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ booking.price }}">
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="editable-status px-2 inline-flex text-xs text-gray-500 leading-5 font-semibold rounded-full {% if booking.payment_status == 'pending' %}bg-yellow-100 text-yellow-800{% elif booking.payment_status == 'completed' %}bg-green-100 text-green-800{% else %}bg-red-100 text-red-800{% endif %}">{{ booking.payment_status|title }}</span>
                                 <select class="edit-input hidden w-full border rounded px-2 py-1">
                                     <option value="pending" {% if booking.payment_status == 'pending' %}selected{% endif %}>Pending</option>
                                     <option value="completed" {% if booking.payment_status == 'completed' %}selected{% endif %}>Completed</option>
                                     <option value="cancelled" {% if booking.payment_status == 'cancelled' %}selected{% endif %}>Cancelled</option>
                                 </select>
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <span class="editable-amount">€{{ booking.price }}</span>
-                                <input type="number" step="0.01" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ booking.price }}">
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
+                            <td class="px-6 py-4 whitespace-nowrap flex justify-end">
                                 <a href="{% url 'booking_detail' booking.id %}" class="text-blue-600 hover:text-blue-800">
                                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>

@@ -258,7 +258,8 @@
                     {% endfor %}
 
                     <input type="hidden" name="availability_id" id="availability-id" value="">
-                     
+                    <input type="hidden" name="user_role" id="user-role" value="{{ user.profile.role }}">
+
                     <div class="flex flex-col gap-2 pickup-group-div" >
                         <label class="block text-md font-medium text-gray-700">Pickup Group</label>
                         <select name="pickup_group" id="pickup-group" class="mt-1 block w-full pl-3 pr-2 py-2 text-base border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md {% if form.pickup_group.errors %}border-red-500{% endif %}">
@@ -321,7 +322,7 @@
                         </div>
                         
                     </div>
-                    {% if user.is_staff or user.userprofile.role == 'representative' %}
+                    {% comment %} {% if user.is_staff or user.userprofile.role == 'representative' %} {% endcomment %}
                     <div class="flex flex-col gap-2">
                         <label class="block text-md font-medium text-gray-700">Guest Name</label>
                         <input type="text" name="guest_name" id="guest-name" class="mt-1 block w-full pl-3 pr-2 py-2 text-base border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md {% if form.guest_name.errors %}border-red-500{% endif %}" value="{% if return_data.client_name is not None %}{{ return_data.client_name }}{% endif %}">
@@ -335,7 +336,7 @@
                         <p class="mt-1 text-sm text-red-600">{{ form.guest_email.errors.0 }}</p>
                         {% endif %}
 
-                    {% endif %}
+                    {% comment %} {% endif %} {% endcomment %}
 
                         <div class="mt-2">
                             <a href="#" id="clear-numbers" class="inline-flex justify-center items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">Clear</a>
@@ -378,8 +379,12 @@
                     </div>
                     {% endif %}
 
-                    <button type="submit" class="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:cursor-pointer hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                        Book Now
+                    <button type="submit" id="submit-button" class="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:cursor-pointer hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed">
+                        <svg id="loading-spinner" class="hidden animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span id="submit-text">Book Now</span>
                     </button>
                 </form>
                 {% endif %}
@@ -443,13 +448,22 @@
     // Helper: update date picker for selected group
     function updateDatePicker(groupId) {
         const availableDates = availableDatesByRegion[groupId] || [];
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Set to start of today
+        
+        // Filter out past dates
+        const futureAvailableDates = availableDates.filter(item => {
+            const itemDate = new Date(item.date);
+            return itemDate >= today;
+        });
+        
         if (picker) picker.destroy();
         picker = flatpickr(datePickerInput, {
-            enable: availableDates.map(item => item.date),
+            enable: futureAvailableDates.map(item => item.date),
             dateFormat: "Y-m-d",
             position: "below",
             onChange: function(selectedDates, dateStr) {
-                const selectedDate = availableDates.find(item => item.date === dateStr);
+                const selectedDate = futureAvailableDates.find(item => item.date === dateStr);
                 // availabilityIdInput.value = selectedDate ? selectedDate.id : '';
             }
         });
@@ -476,6 +490,7 @@
         const bookingForm = document.getElementById('booking-form');
         const formErrors = document.getElementById('form-errors');
         const voucherCode = getCookie('voucher_code');
+        const userRole = document.getElementById('user-role').value;
         // console.log('voucherCode: ' + voucherCode);
         
         if (!notAvailability) {
@@ -532,6 +547,14 @@
 
             function initializeDatePicker(pickupGroupId) {
                 const availableDates = availableDatesByRegion[pickupGroupId] || [];
+                const today = new Date();
+                today.setHours(0, 0, 0, 0); // Set to start of today
+                
+                // Filter out past dates
+                const futureAvailableDates = availableDates.filter(item => {
+                    const itemDate = new Date(item.date);
+                    return itemDate >= today;
+                });
 
                 // Clear existing picker if it exists
                 if (picker) {
@@ -540,11 +563,11 @@
 
                 // Initialize new picker
                 picker = flatpickr("#date-picker", {
-                    enable: availableDates.map(item => item.date),
+                    enable: futureAvailableDates.map(item => item.date),
                     dateFormat: "Y-m-d",
                     position: "below",
                     onChange: function(selectedDates, dateStr) {
-                        const selectedDate = availableDates.find(item => item.date === dateStr);
+                        const selectedDate = futureAvailableDates.find(item => item.date === dateStr);
                         if (selectedDate) {
                             document.getElementById("availability-id").value = selectedDate.id;
                         } else {
@@ -672,47 +695,61 @@
                 updatePriceAndPickupPoints();
             });
         
-            document.querySelector('#partial-payment').addEventListener('change', function(e) {
-                e.preventDefault();
-                const partialPayment = document.querySelector('#partial-payment').value;
-                // const partialPaidMethod = document.querySelector('#partial-paid-method').value;
-                const total = document.querySelector('#total-price').textContent;
+            // partialPayment = document.querySelector('#partial-payment').value;
+            if (userRole == 'admin') {
+                document.querySelector('#partial-payment').addEventListener('change', function(e) {
+                    e.preventDefault();
+                    const partialPayment = document.querySelector('#partial-payment').value;
+                    // const partialPaidMethod = document.querySelector('#partial-paid-method').value;
+                    const total = document.querySelector('#total-price').textContent;
 
-                if (partialPayment <= 0) {
-                    document.querySelector('.remaining-price-div').classList.add('hidden');
-                    document.querySelector('#partial-paid-method-div').classList.add('hidden');
-                    return;
-                } else {
-                    const remaining = total - partialPayment;
-                    document.querySelector('.remaining-price-div').classList.remove('hidden');
-                    document.querySelector('#remaining-price').textContent = remaining.toFixed(2);
-                    document.querySelector('#partial-paid-method-div').classList.remove('hidden');
-                    // document.querySelector('#partial-paid-method').value = partialPaidMethod;
-                }
-            });
-
-            // Delete excursion confirmation
-            document.getElementById('delete-excursion-btn').addEventListener('click', function(e) {
-                e.preventDefault();
-                const excursionTitle = document.querySelector('.excursion-title').textContent;
-                Swal.fire({
-                    title: 'Are you sure?',
-                    text: `Do you want to delete excursion "${excursionTitle}"?`,
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonColor: '#d33',
-                    cancelButtonColor: '#3085d6',
-                    confirmButtonText: 'Yes, delete it!'
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        document.getElementById('delete-ex-form').submit();
+                    if (partialPayment <= 0) {
+                        document.querySelector('.remaining-price-div').classList.add('hidden');
+                        document.querySelector('#partial-paid-method-div').classList.add('hidden');
+                        return;
+                    } else {
+                        const remaining = total - partialPayment;
+                        document.querySelector('.remaining-price-div').classList.remove('hidden');
+                        document.querySelector('#remaining-price').textContent = remaining.toFixed(2);
+                        document.querySelector('#partial-paid-method-div').classList.remove('hidden');
+                        // document.querySelector('#partial-paid-method').value = partialPaidMethod;
                     }
                 });
-            });
+
+                // Delete excursion confirmation
+                document.getElementById('delete-excursion-btn').addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const excursionTitle = document.querySelector('.excursion-title').textContent;
+                    Swal.fire({
+                        title: 'Are you sure?',
+                        text: `Do you want to delete excursion "${excursionTitle}"?`,
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#d33',
+                        cancelButtonColor: '#3085d6',
+                        confirmButtonText: 'Yes, delete it!'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            document.getElementById('delete-ex-form').submit();
+                        }
+                    });
+                });
+            }
+            
 
             // Booking form submission
             bookingForm.addEventListener('submit', function(e) {
                 e.preventDefault();
+                
+                // Get submit button and loading elements
+                const submitButton = document.getElementById('submit-button');
+                const loadingSpinner = document.getElementById('loading-spinner');
+                const submitText = document.getElementById('submit-text');
+                
+                // Show loading state
+                submitButton.disabled = true;
+                loadingSpinner.classList.remove('hidden');
+                submitText.textContent = 'Processing...';
                 
                 // Clear previous errors
                 if (formErrors) {
@@ -807,6 +844,10 @@
                 }
 
                 if (errors.length > 0) {
+                    // Hide loading state if validation fails
+                    submitButton.disabled = false;
+                    loadingSpinner.classList.add('hidden');
+                    submitText.textContent = 'Book Now';
                     return;
                 }
 
@@ -838,6 +879,11 @@
                         console.log('Redirecting to:', data.redirect_url);
                         window.location.href = data.redirect_url;
                     } else {
+                        // Hide loading state
+                        submitButton.disabled = false;
+                        loadingSpinner.classList.add('hidden');
+                        submitText.textContent = 'Book Now';
+                        
                         // Display server-side validation errors
                         if (data.errors) {
                             console.log('Validation errors:', data.errors);
@@ -869,6 +915,12 @@
                 })
                 .catch(error => {
                     console.error('Error:', error);
+                    
+                    // Hide loading state
+                    submitButton.disabled = false;
+                    loadingSpinner.classList.add('hidden');
+                    submitText.textContent = 'Book Now';
+                    
                     if (formErrors) {
                         formErrors.classList.remove('hidden');
                         const errorList = formErrors.querySelector('ul');
