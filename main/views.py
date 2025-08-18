@@ -1083,6 +1083,7 @@ def profile(request, pk):
         'user_profile': profile,
     })    
 
+@login_required
 def profile_edit(request, pk):
     # Get the user first, then their profile
     user = get_object_or_404(User, pk=pk)
@@ -1133,7 +1134,7 @@ def admin_dashboard(request, pk):
         'total_revenue': total_revenue,
         'recent_bookings': recent_bookings,
         'booking_count': Booking.objects.filter(payment_status='completed').count(),
-        'user': user_profile,
+        'user_profile': user_profile,
         'total_excursions_count': total_excursions_count,
     }
     
