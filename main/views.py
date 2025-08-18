@@ -3,6 +3,7 @@ from django.urls import reverse
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.contrib import messages
 from django.db import transaction
 from django.utils import timezone
@@ -1030,20 +1031,32 @@ def signup(request):
     if request.method == 'POST':
         form = SignupForm(request.POST)
         if form.is_valid():
-            user = form.save()
-            # Create associated profile with default client role
-            UserProfile.objects.create(
-                user=user, 
-                role='client',
-                name=form.cleaned_data['name'],
-                email=form.cleaned_data['username'],  # username is email
-                phone=form.cleaned_data.get('phone', '')
-            )
-            login(request, user)
-            messages.success(request, 'Account created successfully. Please verify your email to continue.')
-            return redirect('excursion_list')
+            try:
+                user = form.save()
+                if user:
+                    user_profile = UserProfile.objects.create(
+                        user=user,
+                        role='client',
+                        name=form.cleaned_data['name'],
+                        email=form.cleaned_data['username'],
+                        phone=form.cleaned_data.get('phone', '')
+                    )
+                    print(f'this is the user_profile: {user_profile}')
+                    login(request, user)
+                    messages.success(request, 'Account created successfully. Please verify your email to continue.')
+                    return redirect('excursion_list')
+                else:
+                    messages.error(request, 'Failed to create account.')
+                    return redirect('signup')
+            except Exception as e:
+                messages.error(request, f'Error creating account: {str(e)}')
+                return redirect('signup')
+        else:
+            messages.error(request, 'Please correct the errors below. ')
+            return render(request, 'main/accounts/signup.html', {'form': form})
     else:
         form = SignupForm()
+
     return render(request, 'main/accounts/signup.html', {'form': form})
 
 def login_view(request):
@@ -1051,11 +1064,21 @@ def login_view(request):
         form = AuthenticationForm(request, data=request.POST)
         if form.is_valid():
             user = form.get_user()
-            login(request, user)
-            response = redirect('excursion_list')
+            if user:
+                login(request, user)
+                if user.profile.role == 'admin':
+                    response = redirect('admin_dashboard', user.profile.id)
+                else:
+                    response = redirect('excursion_list')
+            else:
+                return redirect('login')
+            
             response.set_cookie('user_id', user.id)
             response.set_cookie('user_role', user.profile.role)
             return response
+        else:
+            messages.error(request, 'Invalid credentials, username and password do not match.')
+            return redirect('login')
     else:
         form = AuthenticationForm()
     return render(request, 'main/accounts/login.html', {'form': form})
@@ -1066,6 +1089,87 @@ def logout_view(request):
     response.delete_cookie('user_id')
     response.delete_cookie('user_role')
     return response
+
+def password_reset_form(request):
+
+    if request.method == 'POST':
+        email = request.POST.get('email')
+        
+        if email:
+            user = User.objects.filter(email=email).first()
+        else:
+            messages.error(request, 'Email is required.')
+            return render(request, 'main/accounts/password_reset_form.html')
+        
+        if user:
+            # Generate password reset token
+            token = PasswordResetTokenGenerator().make_token(user)
+            print(f'Generated token: {token}')
+            
+            # Store the token in UserProfile
+            try:
+                user_profile = user.profile
+                user_profile.password_reset_token = token
+                user_profile.save()
+            except UserProfile.DoesNotExist:
+                messages.error(request, 'User profile not found.')
+                return render(request, 'main/accounts/password_reset_form.html')
+            
+            # TODO: Send password reset email
+            # email_subject = 'Password Reset'
+            # email_body = f'Click the link to reset your password: {request.scheme}://{request.get_host()}/password_reset_token/{token}/'
+            # email_from = settings.EMAIL_HOST_USER
+            # recipient_list = [email]
+            # send_mail(email_subject, email_body, email_from, recipient_list)
+
+            messages.success(request, 'Password reset email sent. Please check your email.')
+            # TO BE UPDATED
+            # return redirect('excursion_list')
+            return redirect('password_reset_token', token=token)
+        else:
+            messages.error(request, 'Email not found.')
+            
+    return render(request, 'main/accounts/password_reset_form.html')
+
+def password_reset_token(request, token):
+    
+    if request.method == 'POST':
+        password = request.POST.get('password')
+        confirm_password = request.POST.get('confirm_password')
+        
+        if not password or not confirm_password:
+            messages.error(request, 'Please fill in all fields.')
+            return render(request, 'main/accounts/password_reset_token.html', {'token': token})
+        
+        if password != confirm_password:
+            messages.error(request, 'Passwords do not match.')
+            return render(request, 'main/accounts/password_reset_token.html', {'token': token})
+        else:
+            user_profile = UserProfile.objects.filter(password_reset_token=token).first()
+            
+            if not user_profile:
+                messages.error(request, 'Invalid or expired token.')
+                return redirect('password_reset_form')
+                
+            user = user_profile.user
+
+            if user:
+                check_token = PasswordResetTokenGenerator().check_token(user, token)
+                if not check_token:
+                    messages.error(request, 'Invalid token.')
+                    return redirect('password_reset_form')
+                else:   
+                    user.set_password(password)
+                    user_profile.password_reset_token = None
+                    user_profile.save()
+                    user.save()
+                    messages.success(request, 'Password reset successfully! You can now login with your new password.')
+                    return redirect('login')
+            else:
+                messages.error(request, 'Invalid token.')
+                return redirect('password_reset_form')
+    
+    return render(request, 'main/accounts/password_reset_token.html', {'token': token})
 
 @login_required
 def profile(request, pk):
@@ -1088,15 +1192,33 @@ def profile_edit(request, pk):
     # Get the user first, then their profile
     user = get_object_or_404(User, pk=pk)
     profile = get_object_or_404(UserProfile, user=user)
-    form = UserProfileForm(request.POST, instance=profile)
+
+    print(f'this is the profile: {profile}')
+    print(f'this is the user: {user}')
+    print(f'this is the pk: {pk}')
+    
     if request.method == 'POST':
+        form = UserProfileForm(request.POST, instance=profile)
         try:
             if form.is_valid():
+                # Save profile data
                 form.save()
-                messages.success(request, 'Profile updated.')
+                
+                # Handle password change if provided
+                password1 = form.cleaned_data.get('password1')
+                if password1:
+                    user.set_password(password1)
+                    user.save()
+                    messages.success(request, 'Profile and password updated successfully.')
+                else:
+                    messages.success(request, 'Profile updated successfully.')
+                
                 return redirect('profile', pk=pk)
         except Exception as e:
             messages.error(request, f'Error updating profile: {str(e)}')
+    else:
+        # Initialize form with existing profile data for GET requests
+        form = UserProfileForm(instance=profile)
     
     return render(request, 'main/accounts/edit_profile.html', {
         'form': form,

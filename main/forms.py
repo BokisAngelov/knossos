@@ -331,12 +331,12 @@ class TransactionForm(forms.ModelForm):
 # ----- User & Staff Forms -----
 class SignupForm(UserCreationForm):
     name = forms.CharField(max_length=255, required=True)
-    email = forms.EmailField(required=True)
+    # email = forms.EmailField(required=True)
     phone = forms.CharField(max_length=50, required=False)
     
     class Meta:
         model = User
-        fields = ('username', 'name', 'email', 'phone', 'password1', 'password2')
+        fields = ('name', 'username', 'phone', 'password1', 'password2')
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -347,7 +347,8 @@ class SignupForm(UserCreationForm):
             widget=forms.EmailInput(attrs={'autofocus': True})
         )
         # Make email field hidden since we're using it as username
-        self.fields['email'].widget = forms.HiddenInput()
+        # self.fields['email'].widget = forms.HiddenInput()
+        # self.fields['email'].label = ''
     
     def clean(self):
         cleaned_data = super().clean()
@@ -365,9 +366,35 @@ class SignupForm(UserCreationForm):
         return user
 
 class UserProfileForm(forms.ModelForm):
+    password1 = forms.CharField(
+        label='New Password',
+        widget=forms.PasswordInput(attrs={'placeholder': 'Enter new password'}),
+        required=False,
+        help_text='Leave blank if you don\'t want to change your password.'
+    )
+    password2 = forms.CharField(
+        label='Confirm New Password',
+        widget=forms.PasswordInput(attrs={'placeholder': 'Confirm new password'}),
+        required=False,
+        help_text='Enter the same password as before, for verification.'
+    )
+    
     class Meta:
         model = UserProfile
         fields = ['name', 'email', 'phone']
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        password1 = cleaned_data.get('password1')
+        password2 = cleaned_data.get('password2')
+        
+        if password1 and password2:
+            if password1 != password2:
+                raise forms.ValidationError("The two password fields didn't match.")
+            if len(password1) < 8:
+                raise forms.ValidationError("Password must be at least 8 characters long.")
+        
+        return cleaned_data
 
 # ----- Lookup Forms -----
 class CategoryForm(forms.ModelForm):

@@ -19,6 +19,18 @@
     border-color: #3b82f6;
     box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
   }
+  .error-message {
+    color: #dc2626;
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+  }
+  .field-error {
+    border-color: #dc2626 !important;
+  }
+  .field-error:focus {
+    border-color: #dc2626 !important;
+    box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.25) !important;
+  }
 </style>
 
 <div class="flex justify-center items-center min-h-[80vh]">
@@ -27,15 +39,39 @@
       <h1 class="text-2xl font-bold text-gray-800">Sign Up</h1>
     </div>
 
+    <!-- Display form-level errors -->
+    {% if form.non_field_errors %}
+      <div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+        {% for error in form.non_field_errors %}
+          <p class="text-red-600 text-sm">{{ error }}</p>
+        {% endfor %}
+      </div>
+    {% endif %}
+
     <form method="POST" action="{% url 'signup' %}" class="space-y-4">
       {% csrf_token %}
 
       {% for field in form %}
         <div class="space-y-1">
-          <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-gray-700">{{field.label}}</label>
+          <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-gray-700">
+            {{ field.label }}
+            {% if field.field.required %}
+              <span class="text-red-500">*</span>
+            {% endif %}
+          </label>
           <div class="w-full auth-input-field">
-            {{field}}
+            {{ field }}
           </div>
+          <!-- Display field-specific errors -->
+          {% if field.errors %}
+            {% for error in field.errors %}
+              <p class="error-message">{{ error }}</p>
+            {% endfor %}
+          {% endif %}
+          <!-- Display field help text
+          {% if field.help_text %}
+            <p class="text-sm text-gray-500 mt-1">{{ field.help_text }}</p>
+          {% endif %} -->
         </div>
       {% endfor %}
       
@@ -48,8 +84,22 @@
     
     <div class="text-center mt-4 text-sm text-gray-600">
       <p>Already have an account? <span><a href="{% url 'login' %}" class="text-blue-600 hover:text-blue-800 font-medium">Login</a></span></p>
+      <p>Forgot your password? <span><a href="{% url 'password_reset_form' %}" class="text-blue-600 hover:text-blue-800 font-medium">Reset Password</a></span></p>
     </div>
   </div>
 </div>
 
+<script>
+  // Add error styling to fields with errors
+  document.addEventListener('DOMContentLoaded', function() {
+    const errorMessages = document.querySelectorAll('.error-message');
+    errorMessages.forEach(function(error) {
+      const fieldContainer = error.closest('.space-y-1');
+      const input = fieldContainer.querySelector('input, select, textarea');
+      if (input) {
+        input.classList.add('field-error');
+      }
+    });
+  });
+</script>
 {% endblock %}

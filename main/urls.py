@@ -31,6 +31,8 @@ urlpatterns = [
     path('profile/<int:pk>/', views.profile, name='profile'),
     path('profile/<int:pk>/edit/', views.profile_edit, name='profile_edit'),
     path('logout/', views.logout_view, name='logout'),
+    path('password_reset/', views.password_reset_form, name='password_reset_form'),
+    path('password_reset_token/<str:token>/', views.password_reset_token, name='password_reset_token'),
 
     # Admin Dashboard
     path('profile/admin/<int:pk>/', views.admin_dashboard, name='admin_dashboard'),
