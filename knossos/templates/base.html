@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}Knossos{% endblock %}</title>
-  <link href="{% static 'css/tailwind.css' %}" rel="stylesheet">
+  <link href="{% static 'css/styles.css' %}" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
   <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -17,23 +17,23 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/airbnb.css">
 
 </head>
-<body class="min-h-screen bg-gray-100 flex flex-col">
-  <header class="bg-white shadow">
+<body class="min-h-screen bg-body-light flex flex-col">
+  <header class="bg-brown shadow">
     <div class="container mx-auto px-4 py-6 flex justify-between items-center">
-      <a href="{% url 'homepage' %}" class="text-2xl font-bold text-gray-800">Knossos</a>
+      <a href="{% url 'homepage' %}" class="text-2xl font-bold text-white">KNOSSOS travel</a>
       <nav class="flex items-center justify-between">
-        <ul class="flex items-center space-x-4">
-          <li><a href="{% url 'excursion_list' %}" class="text-gray-600 hover:text-gray-900">Excursions</a></li>
+        <ul class="flex items-center space-x-4 text-white">
+          <li><a href="{% url 'excursion_list' %}" class="text-white hover:text-gray-200 {% if request.path == '/excursions/' %}font-semibold{% endif %}">Excursions</a></li>
           {% if user.is_authenticated %}
             {% if user.is_staff %}
-              <li><a href="{% url 'admin_dashboard' user.profile.id %}" class="text-gray-600 hover:text-gray-900">Dashboard</a></li>
+              <li><a href="{% url 'admin_dashboard' user.profile.id %}" class="text-white hover:text-gray-200 {% if request.path == '/profile/admin/' %}font-semibold{% endif %}">Dashboard</a></li>
             {% else %}
-              <li><a href="{% url 'profile' user.id %}" class="text-gray-600 hover:text-gray-900">Profile</a></li>
+              <li><a href="{% url 'profile' user.id %}" class="text-white hover:text-gray-200 {% if request.path == '/profile/' %}font-semibold{% endif %}">Profile</a></li>
             {% endif %}
-            <li><a href="{% url 'logout' %}" class="text-gray-600 hover:text-gray-900">Logout</a></li>
+            <li><a href="{% url 'logout' %}" class="text-white hover:text-gray-200 {% if request.path == '/logout/' %}font-semibold{% endif %}">Logout</a></li>
           {% else %}
-            <li><a href="{% url 'login' %}" class="text-gray-600 hover:text-gray-900">Login</a></li>
-            <li><a href="{% url 'signup' %}" class="text-gray-600 hover:text-gray-900">Sign Up</a></li>
+            <li><a href="{% url 'login' %}" class="text-white hover:text-gray-200 {% if request.path == '/login/' %}font-semibold{% endif %}">Login</a></li>
+            <li><a href="{% url 'signup' %}" class="text-white hover:text-gray-200 {% if request.path == '/signup/' %}font-semibold{% endif %}">Sign Up</a></li>
           {% endif %}
           {% if user.profile.role == None %}
           <li class="flex items-center gap-2">
@@ -51,7 +51,7 @@
               </button>
             </div>
             <div class="flex items-center gap-2 voucher-clear {% if not voucher_code %}hidden{% endif %}">
-                <span id="voucher-message" class="text-sm text-gray-500">Welcome, {{ voucher_data.client_name }}!</span>
+                <span id="voucher-message" class="text-sm text-white">Welcome, {{ voucher_data.client_name }}!</span>
                 <button type="button" 
                         id="clear-voucher-btn" 
                         class="h-8 px-3 py-1 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
