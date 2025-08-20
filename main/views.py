@@ -682,6 +682,11 @@ def excursion_detail(request, pk):
                         'message': 'Please select a date.'
                     })
                 
+                day_availability = AvailabilityDays.objects.get(date_day=selected_date, excursion_availability=availability_id)
+                day_capacity = day_availability.capacity
+                day_booked_guests = day_availability.booked_guests
+                remaining_seats = day_capacity - day_booked_guests
+                
                 # Validate at least one participant                
                 if adults + children + infants == 0:
                     return JsonResponse({
@@ -695,15 +700,16 @@ def excursion_detail(request, pk):
 
                 # Check if the availability has enough guests
                 total_guests = adults + children + infants
-                availability_guests = availability.max_guests
 
-                if total_guests > availability_guests:
+                if total_guests > remaining_seats:
                     return JsonResponse({
                         'success': False,
-                        'message': 'The availability has not enough guests.'
+                        'message': 'The availability has not enough guests. Remaining seats: ' + str(remaining_seats)
                     })
                 else:
                     availability.booked_guests += total_guests
+                    day_availability.booked_guests += total_guests
+                    day_availability.save()
                     availability.save()
 
                 return JsonResponse({

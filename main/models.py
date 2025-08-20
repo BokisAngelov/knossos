@@ -213,6 +213,7 @@ class AvailabilityDays(models.Model):
     excursion_availability = models.ForeignKey(ExcursionAvailability, on_delete=models.CASCADE, related_name='availability_days', null=True)
     date_day = models.DateField()
     capacity = models.PositiveIntegerField(default=0)
+    booked_guests = models.PositiveIntegerField(default=0)
 
     def __str__(self):
         return f"{self.excursion_availability.excursion.title} - {self.date_day}"

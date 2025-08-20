@@ -897,7 +897,7 @@
                     }
                 })
                 .then(response => {
-                    console.log('Response status:', response.status);
+                    // console.log('Response status:', response.status);
                     if (!response.ok) {
                         throw new Error('Network response was not ok');
                     }
@@ -905,6 +905,7 @@
                 })
                 .then(data => {
                     console.log('Response data:', data);
+
                     if (data.success) {
                         console.log('Redirecting to:', data.redirect_url);
                         window.location.href = data.redirect_url;
@@ -913,7 +914,8 @@
                         submitButton.disabled = false;
                         loadingSpinner.classList.add('hidden');
                         submitText.textContent = 'Book Now';
-                        
+                        document.getElementById('form-errors').textContent = data.message;
+                        console.log('data.message:', data.message);
                         // Display server-side validation errors
                         if (data.errors) {
                             console.log('Validation errors:', data.errors);
@@ -930,7 +932,7 @@
                                 }
                             });
                         } else if (data.message) {
-                            console.log('Error message:', data.message);
+                            // console.log('Error message:', data.message);
                             if (formErrors) {
                                 formErrors.classList.remove('hidden');
                                 const errorList = formErrors.querySelector('ul');
@@ -960,6 +962,8 @@
                             errorList.appendChild(errorItem);
                         }
                     }
+                    document.getElementById('form-errors').textContent = data.message;
+                    console.log('data.message:', data.message);
                 });
             });
         }
