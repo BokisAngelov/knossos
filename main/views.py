@@ -47,7 +47,7 @@ def testmodels(request):
     })
 
 def homepage(request):
-    excursions = Excursion.objects.all().filter(status='active').distinct()
+    excursions = Excursion.objects.all().filter(availabilities__isnull=False).filter(status='active').distinct()
     return render(request, 'main/home.html', {
         'excursions': excursions,
     })
@@ -1824,7 +1824,7 @@ def bookings_list(request):
         'current_sort_order': sort_order,
         'search_query': search_query,
     })
-
+# ?? CONFIRM IF NEEDED
 def filter_bookings(request):
     status = request.GET.get('status')
 
@@ -1839,23 +1839,73 @@ def filter_bookings(request):
 
 @user_passes_test(is_staff)
 def booking_edit(request, pk):
-    booking = get_object_or_404(Booking, pk=pk)
-    form = BookingForm(instance=booking, user=request.user)
-    if request.method == 'POST':
-        form = BookingForm(request.POST, instance=booking, user=request.user)
-        if form.is_valid():
-            booking = form.save(commit=False)
-            # booking.save()
-            # booking.payment_status = 'completed'
-            booking.save()
-            messages.success(request, 'Booking updated successfully.')
-            return redirect('booking_detail', pk=pk)
+    try:
+        booking = get_object_or_404(Booking, pk=pk)
+        
+        if request.method == 'POST':
+            form = BookingForm(request.POST, instance=booking, user=request.user)
+            
+            # Debug: Print form data and errors
+            print(f"Form data: {request.POST}")
+            print(f"Form fields: {list(form.fields.keys())}")
+            print(f"Form is valid: {form.is_valid()}")
+            if not form.is_valid():
+                print(f"Form errors: {form.errors}")
+                print(f"Form non-field errors: {form.non_field_errors()}")
+            
+            if form.is_valid():
+                try:
+                    with transaction.atomic():
+                        booking = form.save()
+                    
+                    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                        return JsonResponse({
+                            'success': True,
+                            'message': 'Booking updated successfully.',
+                            'redirect_url': reverse('booking_detail', kwargs={'pk': pk})
+                        })
+                    
+                    messages.success(request, 'Booking updated successfully.')
+                    return redirect('booking_detail', pk=pk)
+                except Exception as e:
+                    print(f"Error saving booking: {str(e)}")
+                    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                        return JsonResponse({
+                            'success': False,
+                            'message': f'Error updating booking: {str(e)}'
+                        })
+                    messages.error(request, f'Error updating booking: {str(e)}')
+            else:
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    # Format form errors for display
+                    error_messages = []
+                    for field, errors in form.errors.items():
+                        field_name = form.fields[field].label if field in form.fields else field
+                        for error in errors:
+                            error_messages.append(f"{field_name}: {error}")
+                    
+                    return JsonResponse({
+                        'success': False,
+                        'message': 'Please correct the following errors:',
+                        'errors': error_messages
+                    })
+                messages.error(request, 'Please correct the errors below.')
         else:
-            messages.error(request, 'Please correct the errors below.')
-    return render(request, 'main/bookings/booking_edit.html', {
-        'booking': booking,
-        'form': form,
-    })
+            form = BookingForm(instance=booking, user=request.user)
+        
+        return render(request, 'main/bookings/booking_edit.html', {
+            'booking': booking,
+            'form': form,
+        })
+    except Exception as e:
+        print(f"Unexpected error in booking_edit: {str(e)}")
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'success': False,
+                'message': f'An unexpected error occurred: {str(e)}'
+            })
+        messages.error(request, f'An unexpected error occurred: {str(e)}')
+        return redirect('bookings_list')
 
 @user_passes_test(is_staff)
 def manage_reservations(request):

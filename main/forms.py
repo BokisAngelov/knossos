@@ -285,19 +285,37 @@ class BookingForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
-        # Always remove group and payment_status
-        self.fields.pop('group', None)
         
-        # Handle partial_paid_method field for clients (non-staff, non-representative)
-        if not user or not (user.is_staff or getattr(user.profile, 'role', None) == 'representative'):
-            if 'partial_paid_method' in self.fields:
-                # Make the field optional for clients and use hidden widget
-                self.fields['partial_paid_method'].required = False
-                self.fields['partial_paid_method'].widget = forms.HiddenInput()
-                self.fields['partial_paid_method'].initial = ''
-            if 'partial_paid' in self.fields:
-                self.fields['partial_paid'].required = False
-                self.fields['partial_paid'].widget.attrs['disabled'] = True
+        # For editing existing bookings, we only want to show certain fields
+        if kwargs.get('instance'):
+            # Only show fields that should be editable
+            editable_fields = {
+                'guest_name': self.fields['guest_name'],
+                'guest_email': self.fields['guest_email'],
+                'price': self.fields['price'],
+                'partial_paid': self.fields['partial_paid'],
+                'partial_paid_method': self.fields['partial_paid_method'],
+                'payment_status': self.fields['payment_status'],
+                'total_adults': self.fields['total_adults'],
+                'total_kids': self.fields['total_kids'],
+                'total_infants': self.fields['total_infants'],
+            }
+            
+            # Make all fields optional for editing
+            for field in editable_fields.values():
+                field.required = False
+            
+            self.fields = editable_fields
+        else:
+            # For new bookings, handle partial_paid_method field for clients
+            if not user or not (user.is_staff or getattr(user.profile, 'role', None) == 'representative'):
+                if 'partial_paid_method' in self.fields:
+                    self.fields['partial_paid_method'].required = False
+                    self.fields['partial_paid_method'].widget = forms.HiddenInput()
+                    self.fields['partial_paid_method'].initial = ''
+                if 'partial_paid' in self.fields:
+                    self.fields['partial_paid'].required = False
+                    self.fields['partial_paid'].widget.attrs['disabled'] = True
 
     def clean(self):
         cleaned_data = super().clean()

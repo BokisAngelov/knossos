@@ -55,7 +55,7 @@
   </div>
 </div>
 
-<div class="flex justify-center items-center min-h-[80vh]">
+<div class="flex justify-center items-center">
   <div class="bg-white rounded-lg shadow-md w-full max-w-4xl p-6">
     <div class="text-center mb-6">
       <h1 class="text-2xl font-bold text-gray-800">Edit Booking #{{ booking.id }}</h1>
@@ -84,7 +84,7 @@
       {% csrf_token %}
 
       <!-- Guest Information (Editable) -->
-      <div class="p-4 rounded-lg">
+      <div class="p-4 rounded-lg m-0">
         <h3 class="text-lg font-semibold text-gray-800 mb-4">Guest Information</h3>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div class="space-y-1">
@@ -98,20 +98,42 @@
             {% if form.guest_email.errors %}<div class="text-red-500 text-xs mt-1">{{ form.guest_email.errors }}</div>{% endif %}
           </div>
         </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
+          <div class="space-y-1">
+            <label for="{{ form.total_adults.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.total_adults.label }}</label>
+            <div class="w-full auth-input-field">{{ form.total_adults }}</div>
+            {% if form.total_adults.errors %}<div class="text-red-500 text-xs mt-1">{{ form.total_adults.errors }}</div>{% endif %}
+          </div>
+          <div class="space-y-1">
+            <label for="{{ form.total_kids.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.total_kids.label }}</label>
+            <div class="w-full auth-input-field">{{ form.total_kids }}</div>
+            {% if form.total_kids.errors %}<div class="text-red-500 text-xs mt-1">{{ form.total_kids.errors }}</div>{% endif %}
+          </div>
+          <div class="space-y-1">
+            <label for="{{ form.total_infants.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.total_infants.label }}</label>
+            <div class="w-full auth-input-field">{{ form.total_infants }}</div>
+            {% if form.total_infants.errors %}<div class="text-red-500 text-xs mt-1">{{ form.total_infants.errors }}</div>{% endif %}
+          </div>
+        </div>
       </div>
       <!-- Payment Information -->
       <div class="p-4 rounded-lg">
         <h3 class="text-lg font-semibold text-gray-800 mb-4">Payment Information</h3>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div class="space-y-1">
-            <label for="{{ form.total_price.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.total_price.label }}</label>
-            <div class="w-full auth-input-field">{{ form.total_price }}</div>
-            {% if form.total_price.errors %}<div class="text-red-500 text-xs mt-1">{{ form.total_price.errors }}</div>{% endif %}
+            <label for="{{ form.price.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.price.label }}</label>
+            <div class="w-full auth-input-field">{{ form.price }}</div>
+            {% if form.price.errors %}<div class="text-red-500 text-xs mt-1">{{ form.price.errors }}</div>{% endif %}
           </div>
           <div class="space-y-1">
             <label for="{{ form.partial_paid.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.partial_paid.label }}</label>
             <div class="w-full auth-input-field">{{ form.partial_paid }}</div>
             {% if form.partial_paid.errors %}<div class="text-red-500 text-xs mt-1">{{ form.partial_paid.errors }}</div>{% endif %}
+          </div>
+          <div class="space-y-1">
+            <label for="{{ form.partial_paid_method.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.partial_paid_method.label }}</label>
+            <div class="w-full auth-input-field">{{ form.partial_paid_method }}</div>
+            {% if form.partial_paid_method.errors %}<div class="text-red-500 text-xs mt-1">{{ form.partial_paid_method.errors }}</div>{% endif %}
           </div>
           <div class="space-y-1">
             <label for="{{ form.payment_status.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.payment_status.label }}</label>
@@ -166,7 +188,6 @@ document.addEventListener('DOMContentLoaded', function() {
         // Get CSRF token
         const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
         
-        // Submit form using fetch
         fetch(form.action, {
             method: 'POST',
             body: formData,
@@ -176,10 +197,22 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         })
         .then(response => {
+            console.log('Response status:', response.status);            
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
-            return response.json();
+            
+            // Check if response is JSON
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                return response.json();
+            } else {
+                // If not JSON, get the text and log it
+                return response.text().then(text => {
+                    console.log('Non-JSON response:', text);
+                    throw new Error('Response is not JSON');
+                });
+            }
         })
         .then(data => {
             if (data.success) {

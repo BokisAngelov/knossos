@@ -24,6 +24,11 @@
             {% if user.is_staff %}
             <div class="float-right absolute right-0 bottom-0">
                 <input type="hidden" id="booking-id" value="{{ booking.id }}">
+                <a id="edit-booking" class="relative h-8 px-6 py-1 font-medium text-white bg-blue-500 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500s" href="{% url 'booking_edit' booking.id %}">
+                    <svg class="w-4 h-4 mr-2 absolute top-1/2 -translate-y-1/2 left-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                    Edit</a>
                 {% if booking.payment_status == 'pending' or booking.payment_status == 'cancelled' %}
                 <a id="complete-payment" class="h-8 px-4 py-1 font-medium text-white bg-green-500 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500s" href="#">Complete</a>
                 {% endif %}
