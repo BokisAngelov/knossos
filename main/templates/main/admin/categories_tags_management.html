@@ -3,15 +3,21 @@
 
 {% block content %}
 <div class="container mx-auto py-8 px-4">
-  <div class="bg-white rounded-lg shadow-md p-6">
-    <h1 class="text-2xl font-bold text-gray-800 mb-6 text-center">Manage Categories & Tags</h1>
+  <div class="">
+    <a href="{% url 'admin_dashboard' user.id %}" class="inline-flex items-center mb-4 text-blue font-semibold text-sm hover:opacity-80">
+      <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+      </svg>
+      Back to Dashboard
+  </a>
+    <h1 class="text-2xl font-bold mb-6">Manage Categories & Tags</h1>
     
     <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
       <!-- Categories Section -->
-      <div class="border-1 rounded-lg p-4">
+      <div class="bg-white rounded-lg shadow-md p-6">
         <div class="flex justify-between items-center mb-4">
-          <h2 class="text-xl font-semibold text-gray-700">Categories</h2>
-          <button type="button" id="add-category-btn" class="bg-blue-600 hover:bg-blue-700 text-white text-sm py-1 px-3 rounded-md flex items-center">
+          <h2 class="text-xl font-bold text-brown">Categories</h2>
+          <button type="button" id="add-category-btn" class="inline-flex items-center px-3 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:opacity-80">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
             </svg>
@@ -20,26 +26,26 @@
         </div>
         
         <div class="overflow-y-auto max-h-96">
-          <table class="min-w-full" id="categories-table">
+          <table class="text-sm table-bg w-full" id="categories-table">
             <tbody>
               {% for category in categories %}
-                <tr class="border-b hover:bg-gray-50" data-id="{{ category.id }}">
-                  <td class="py-3 px-2 w-full">
-                    <span class="editable-name">{{ category.name }}</span>
+                <tr class="text-brown" data-id="{{ category.id }}">
+                  <td class="px-6 py-4">
+                    <span class="editable-name text-brown font-semibold">{{ category.name }}</span>
                     <input type="text" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ category.name }}">
                   </td>
-                  <td class="py-3 px-2 text-right whitespace-nowrap">
-                    <button type="button" class="edit-btn text-blue-600 hover:text-blue-800 mr-2">
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <td class="px-6 py-4 pr-0 text-right">
+                    <button type="button" class="edit-btn text-blue hover:opacity-80 mr-2">
+                      <svg class="w-6 h-6 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                      </svg>
+                    </svg>
                     </button>
-                    <button type="button" class="delete-btn text-red-600 hover:text-red-800 mr-2">
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <button type="button" class="delete-btn text-orange hover:opacity-80 mr-2">
+                      <svg class="w-6 h-6 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
+                    </svg>
                     </button>
-                    <button type="button" class="save-btn hidden text-green-600 hover:text-green-800">
+                    <button type="button" class="save-btn hidden text-green hover:opacity-80">
                       <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                       </svg>
@@ -60,12 +66,13 @@
           </table>
         </div>
       </div>
-      
-      <!-- Tags Section -->
-      <div class="border rounded-lg p-4">
+
+      <div class="bg-white rounded-lg shadow-md p-6">
+        <!-- Tags Section -->
+      <div class="">
         <div class="flex justify-between items-center mb-4">
-          <h2 class="text-xl font-semibold text-gray-700">Tags</h2>
-          <button type="button" id="add-tag-btn" class="bg-blue-600 hover:bg-blue-700 text-white text-sm py-1 px-3 rounded-md flex items-center">
+          <h2 class="text-xl font-bold text-brown">Tags</h2>
+          <button type="button" id="add-tag-btn" class="inline-flex items-center px-3 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:opacity-80">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
             </svg>
@@ -74,31 +81,31 @@
         </div>
         
         <div class="overflow-y-auto max-h-96">
-          <table class="min-w-full" id="tags-table">
+          <table class="text-sm table-bg w-full" id="tags-table">
             <tbody>
               {% for tag in tags %}
-                <tr class="border-b hover:bg-gray-50" data-id="{{ tag.id }}">
-                  <td class="py-3 px-2 w-full">
-                    <span class="editable-name">{{ tag.name }}</span>
+                <tr class="text-brown" data-id="{{ tag.id }}">
+                  <td class="px-6 py-4">
+                    <span class="editable-name text-brown font-semibold">{{ tag.name }}</span>
                     <input type="text" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ tag.name }}">
                   </td>
-                  <td class="py-3 px-2 text-right whitespace-nowrap">
-                    <button type="button" class="edit-btn text-blue-600 hover:text-blue-800 mr-2">
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <td class="px-6 py-4 pr-0 text-right flex justify-end">
+                    <button type="button" class="edit-btn text-blue hover:opacity-80 mr-2">
+                      <svg class="w-6 h-6 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                      </svg>
+                    </svg>
                     </button>
-                    <button type="button" class="delete-btn text-red-600 hover:text-red-800 mr-2">
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <button type="button" class="delete-btn text-orange hover:opacity-80 mr-2">
+                      <svg class="w-6 h-6 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
+                    </svg>
                     </button>
-                    <button type="button" class="save-btn hidden text-green-600 hover:text-green-800">
+                    <button type="button" class="save-btn hidden text-green hover:opacity-80">
                       <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                       </svg>
                     </button>
-                    <button type="button" class="cancel-btn hidden text-gray-600 hover:text-gray-800">
+                    <button type="button" class="cancel-btn hidden text-gray hover:opacity-80">
                       <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                       </svg>
@@ -114,6 +121,9 @@
           </table>
         </div>
       </div>
+      </div>
+      </div>
+
     </div>
   </div>
 </div>
@@ -165,8 +175,11 @@
       Swal.fire({
         title: 'Add Category',
         input: 'text',
+        titleClass: 'text-brown font-bold',
         inputLabel: 'Category name',
         inputPlaceholder: 'Enter category name',
+        inputClass: 'text-brown font-semibold',
+        confirmButtonText: 'Add',
         showCancelButton: true,
         inputValidator: (value) => {
           if (!value || !value.trim()) {
@@ -187,10 +200,14 @@
       e.preventDefault();
       Swal.fire({
         title: 'Add Tag',
+        titleClass: 'text-brown font-bold',
         input: 'text',
         inputLabel: 'Tag name',
         inputPlaceholder: 'Enter tag name',
+        inputClass: 'text-brown font-semibold',
+        confirmButtonText: 'Add',
         showCancelButton: true,
+        inputClass: 'text-brown font-semibold',
         inputValidator: (value) => {
           if (!value || !value.trim()) {
             return 'Please enter a tag name';

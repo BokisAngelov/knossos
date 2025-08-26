@@ -4,28 +4,28 @@
 {% block content %}
 <div class="container mx-auto py-8 px-4">
   <div class="bg-white rounded-lg shadow-md p-6 mb-8">
-    <h1 class="text-2xl font-bold text-brown mb-1">Welcome {{ user_profile.name|title }} ,</h1>
+    <h1 class="text-2xl font-bold text-brown mb-1">Welcome {{ user_profile.name|title }},</h1>
     <p class="text-sm text-brown mb-4">System Overview and Management</p>
     
     <!-- Analytics Cards -->
     <div class="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
-      <div class="bg-brown-light p-4 rounded-lg border border-brown">
+      <div class="bg-white p-4 rounded-lg border border-brown">
         <p class="text-lg text-brown-light font-bold">Total Bookings</p>
         <p class="text-2xl font-bold text-brown-light">{{ booking_count }}</p>
       </div>
-      <div class="bg-brown-light p-4 rounded-lg border border-brown">
+      <div class="bg-white p-4 rounded-lg border border-brown">
         <p class="text-lg text-brown-light font-bold">Total Excursions</p>
         <p class="text-2xl font-bold text-brown-light">{{ total_excursions_count }}</p>
       </div>
-      <div class="bg-brown-light p-4 rounded-lg border border-brown">
+      <div class="bg-white p-4 rounded-lg border border-brown">
         <p class="text-lg text-brown-light font-bold">Active Excursions</p>
         <p class="text-2xl font-bold text-brown-light">{{ active_excursions_count }}</p>
       </div>
-      <div class="bg-brown-light p-4 rounded-lg border border-brown">
+      <div class="bg-white p-4 rounded-lg border border-brown">
         <p class="text-lg text-brown-light font-bold">Total Clients</p>
         <p class="text-2xl font-bold text-brown-light">{{ clients_count }}</p>
       </div>
-      <div class="bg-brown-light p-4 rounded-lg border border-brown">
+      <div class="bg-white p-4 rounded-lg border border-brown">
         <p class="text-lg text-brown-light font-bold">Revenue</p>
         <p class="text-2xl font-bold text-brown-light">€{{ total_revenue }}</p>
       </div>
@@ -36,7 +36,7 @@
     <div class="space-y-8">
       <!-- Excursion Management Section -->
       <div>
-        <h2 class="text-xl font-semibold text-orange mb-4">Excursion Management</h2>
+        <h2 class="text-xl font-bold text-orange mb-4">Excursion Management</h2>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           <!-- Excursions -->
           <div class="bg-orange-light p-5 rounded-lg border border-orange">
@@ -49,8 +49,8 @@
               </a>
             </div>
             <ul class="space-y-2">
-              <li><a href="{% url 'admin_excursions' %}" class="text-blue hover:opacity-80">View All Excursions</a></li>
-              <li><a href="{% url 'excursion_create' %}" class="text-blue hover:opacity-80">Add New Excursion</a></li>
+              <li><a href="{% url 'admin_excursions' %}" class="text-blue font-semibold hover:opacity-80">View All Excursions</a></li>
+              <li><a href="{% url 'excursion_create' %}" class="text-blue font-semibold hover:opacity-80">Add New Excursion</a></li>
             </ul>
           </div>
           
@@ -64,7 +64,7 @@
               </a> -->
             </div>
             <ul class="space-y-2">
-              <li><a href="{% url 'availability_list' %}" class="text-blue hover:opacity-80">Manage Availability</a></li>
+              <li><a href="{% url 'availability_list' %}" class="text-blue font-semibold hover:opacity-80">Manage Availability</a></li>
             </ul>
           </div>
 
@@ -75,7 +75,7 @@
               <h3 class="text-lg font-bold text-orange">Groups</h3>
             </div>
             <ul class="space-y-2">
-              <li><a href="{% url 'group_list' %}" class="text-blue hover:opacity-80">Manage Groups</a></li>
+              <li><a href="{% url 'group_list' %}" class="text-blue font-semibold hover:opacity-80">Manage Groups</a></li>
             </ul>
           </div>
 
@@ -84,7 +84,7 @@
 
       <!-- Location Management Section -->
       <div>
-        <h2 class="text-xl font-semibold text-turquaz mb-4">Location Management</h2>
+        <h2 class="text-xl font-bold text-turquaz mb-4">Location Management</h2>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           <!-- Hotels -->
           <div class="bg-turquaz-light p-5 rounded-lg border border-turquaz">
@@ -98,7 +98,7 @@
               </a>
             </div>
             <ul class="space-y-2">
-              <li><a href="{% url 'hotel_list' %}" class="text-blue hover:opacity-80">Manage Hotels</a></li>
+              <li><a href="{% url 'hotel_list' %}" class="text-blue font-semibold hover:opacity-80">Manage Hotels</a></li>
             </ul>
           </div>
 
@@ -117,7 +117,7 @@
               
             </div>
             <ul class="space-y-2">
-              <li><a href="{% url 'pickup_groups_list' %}" class="text-blue hover:opacity-80">Manage Pickup Groups</a></li>
+              <li><a href="{% url 'pickup_groups_list' %}" class="text-blue font-semibold hover:opacity-80">Manage Pickup Groups</a></li>
             </ul>
           </div>
 
@@ -134,7 +134,7 @@
               </a> 
             </div>
             <ul class="space-y-2">
-              <li><a href="{% url 'pickup_points_list' %}" class="text-blue hover:opacity-80">Manage Pickup Points</a></li>
+              <li><a href="{% url 'pickup_points_list' %}" class="text-blue font-semibold hover:opacity-80">Manage Pickup Points</a></li>
             </ul>
           </div>
            
@@ -143,7 +143,7 @@
 
       <!-- User Management Section -->
       <div>
-        <h2 class="text-xl font-semibold text-green mb-4">User Management</h2>
+        <h2 class="text-xl font-bold text-green mb-4">User Management</h2>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-6">
 
           <!-- Staff -->
@@ -155,7 +155,7 @@
               <h3 class="text-lg font-bold text-green">Staff</h3>
             </div>
             <ul class="space-y-2">
-              <li><a href="{% url 'staff_list' %}" class="text-blue hover:opacity-80">Manage Staff</a></li>
+              <li><a href="{% url 'staff_list' %}" class="text-blue font-semibold hover:opacity-80">Manage Staff</a></li>
             </ul> 
           </div>
 
@@ -168,7 +168,7 @@
               <h3 class="text-lg font-bold text-green">Representatives</h3>
             </div>
             <ul class="space-y-2">
-              <li><a href="{% url 'reps_list' %}" class="text-blue hover:opacity-80">Manage Representatives</a></li>
+              <li><a href="{% url 'reps_list' %}" class="text-blue font-semibold hover:opacity-80">Manage Representatives</a></li>
             </ul>
           </div>
 
@@ -181,7 +181,7 @@
               <h3 class="text-lg font-bold text-green">Guides</h3>
             </div>
             <ul class="space-y-2">
-              <li><a href="{% url 'guides_list' %}" class="text-blue hover:opacity-80">Manage Guides</a></li>
+              <li><a href="{% url 'guides_list' %}" class="text-blue font-semibold hover:opacity-80">Manage Guides</a></li>
             </ul>
           </div>
 
@@ -194,7 +194,7 @@
               <h3 class="text-lg font-bold text-green">Clients</h3>
             </div>
             <ul class="space-y-2">
-              <li><a href="{% url 'clients_list' %}" class="text-blue hover:opacity-80">Manage Clients</a></li>
+              <li><a href="{% url 'clients_list' %}" class="text-blue font-semibold hover:opacity-80">Manage Clients</a></li>
             </ul>
           </div>
 
@@ -203,7 +203,7 @@
 
       <!-- System Management Section -->
       <div>
-        <h2 class="text-xl font-semibold text-yellow mb-4">System Management</h2>
+        <h2 class="text-xl font-bold text-yellow mb-4">System Management</h2>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           <!-- Categories & Tags -->
           <div class="bg-yellow-light p-5 rounded-lg border border-yellow">
@@ -214,7 +214,7 @@
               <h3 class="text-lg font-bold text-yellow">Categories & Tags</h3>
             </div>
             <ul class="space-y-2">
-              <li><a href="{% url 'manage_categories_tags' %}" class="text-blue hover:opacity-80">Manage Categories & Tags</a></li>
+              <li><a href="{% url 'manage_categories_tags' %}" class="text-blue font-semibold hover:opacity-80">Manage Categories & Tags</a></li>
             </ul>
           </div>
           
@@ -231,7 +231,7 @@
               </a>
             </div>
             <ul class="space-y-2">
-              <li><a href="{% url 'providers_list' %}" class="text-blue hover:opacity-80">Manage Providers</a></li>
+              <li><a href="{% url 'providers_list' %}" class="text-blue font-semibold hover:opacity-80">Manage Providers</a></li>
             </ul>
           </div>
           <!-- Reservations -->
@@ -245,7 +245,7 @@
               <h3 class="text-lg font-bold text-yellow">Reservations</h3>
             </div>
             <ul class="space-y-2">
-              <li><a href="{% url 'admin_reservations' %}" class="text-blue hover:opacity-80">Manage Reservations</a></li>
+              <li><a href="{% url 'admin_reservations' %}" class="text-blue font-semibold hover:opacity-80">Manage Reservations</a></li>
             </ul>
           </div>
 
@@ -260,7 +260,7 @@
               <h3 class="text-lg font-bold text-yellow">Bookings</h3>
             </div>
             <ul class="space-y-2">
-              <li><a href="{% url 'bookings_list' %}" class="text-blue hover:opacity-80">Manage Bookings</a></li>
+              <li><a href="{% url 'bookings_list' %}" class="text-blue font-semibold hover:opacity-80">Manage Bookings</a></li>
             </ul>
           </div>
 
@@ -271,7 +271,7 @@
   
   <!-- Recent Bookings -->
   <div class="bg-white rounded-lg shadow-md p-6">
-    <h2 class="text-2xl font-semibold text-brown mb-6">Recent Bookings</h2>
+    <h2 class="text-2xl font-bold text-brown mb-6">Recent Bookings</h2>
     
     {% if recent_bookings %}
       <div class="overflow-x-auto">
@@ -337,6 +337,50 @@
     {% else %}
       <p class="text-table-text font-semibold">No recent bookings found.</p>
     {% endif %}
+  </div>
+
+  <div class="bg-white rounded-lg shadow-md p-6 mt-8">
+    <h2 class="text-2xl font-bold text-brown mb-6">Upcoming Excursions</h2>
+
+    <div class="overflow-x-auto">
+      {% if upcoming_excursions %}
+      <table class="min-w-full text-sm table-bg">
+        <thead class="text-base">
+          <tr>
+            <th scope="col" class="px-6 py-3 text-left font-medium text-black-600 tracking-wider">Excursion</th>
+            <th scope="col" class="px-6 py-3 text-left font-medium text-black-600 tracking-wider">Date</th>
+            <th scope="col" class="px-6 py-3 text-left font-medium text-black-600 tracking-wider">Booked Guests</th>
+            <th scope="col" class="px-6 py-3 text-left font-medium text-black-600 tracking-wider">Capacity</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for up_excursion in upcoming_excursions %}
+          <tr class="font-medium">
+            <td class="px-6 py-4 whitespace-nowrap">
+              <div class="text-sm table-text font-semibold">{{ up_excursion.excursion_availability.excursion.title }}</div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <div class="text-sm table-text font-semibold">{{ up_excursion.date_day|date:"d/m/Y" }}</div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <div class="text-sm table-text font-semibold">{{ up_excursion.booked_guests }}
+                {% if up_excursion.booked_guests == up_excursion.capacity %}
+                  <span class="ml-2 bg-orange font-semibold text-white px-2 rounded-full">Fully booked</span>
+                {% endif %}
+              </div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <div class="text-sm table-text font-semibold">{{ up_excursion.capacity }}</div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+      <p class="text-table-text font-semibold">No upcoming excursions found.</p>
+    {% endif %}
+
   </div>
 </div>
 

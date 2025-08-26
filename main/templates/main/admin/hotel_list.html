@@ -8,8 +8,14 @@
     <!-- Header Section -->
     <div class="flex justify-between items-center mb-6">
         <div>
-            <h1 class="text-2xl font-bold text-gray-900">Hotels</h1>
-            <p class="text-sm text-gray-500">Manage your hotel information</p>
+            <a href="{% url 'admin_dashboard' user.id %}" class="inline-flex items-center mb-4 text-blue font-semibold text-sm hover:opacity-80">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                Back to Dashboard
+            </a>
+            <h1 class="text-2xl font-bold">Hotels</h1>
+            <p class="text-sm text-brown">Manage your hotel information</p>
         </div>
         <button type="button" id="add-hotel-btn" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -53,40 +59,40 @@
                 <table class="min-w-full text-sm table-bg">
                     <thead class="text-base">
                         <tr>
-                            <th class="px-6 py-3 text-left font-medium text-black-600 tracking-wider">Name</th>
-                            <th class="px-6 py-3 text-left font-medium text-black-600 tracking-wider">Address</th>
-                            <th class="px-6 py-3 text-left font-medium text-black-600 tracking-wider">Phone</th>
-                            <th class="px-6 py-3 text-left font-medium text-black-600 tracking-wider">Email</th>
-                            <th class="px-6 py-3 text-left font-medium text-black-600 tracking-wider">Pickup Group</th>
-                            <th class="px-6 py-3 text-left font-medium text-black-600 tracking-wider text-right">Actions</th>
+                            <th class="px-4 py-3 text-left font-medium text-black-600 tracking-wider">Name</th>
+                            <th class="px-4 py-3 text-left font-medium text-black-600 tracking-wider">Address</th>
+                            <th class="px-4 py-3 text-left font-medium text-black-600 tracking-wider">Phone</th>
+                            <th class="px-4 py-3 text-left font-medium text-black-600 tracking-wider">Email</th>
+                            <th class="px-4 py-3 text-left font-medium text-black-600 tracking-wider">Pickup Group</th>
+                            <th class="px-4 py-3 text-left font-medium text-black-600 tracking-wider text-right">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for hotel in hotels %}
                         <tr class="font-medium" data-id="{{ hotel.id }}">
-                            <td class="px-6 py-4 whitespace-nowrap">
+                            <td class="px-4 py-4 whitespace-nowrap">
                                 <span class="editable-name text-sm table-text font-semibold">{{ hotel.name }}</span>
                                 <input type="text" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ hotel.name }}">
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
+                            <td class="px-4 py-4 whitespace-nowrap">
                                 <span class="editable-address text-sm table-text font-semibold">{% if hotel.address %}{{ hotel.address }}{% else %}None{% endif %}</span>
                                 <input type="text" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ hotel.address }}">
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
+                            <td class="px-4 py-4 whitespace-nowrap">
                                 <span class="editable-phone text-sm table-text font-semibold">{% if hotel.phone_number %}{{ hotel.phone_number }}{% else %}None{% endif %}</span>
                                 <input type="tel" class="edit-input hidden w-full border rounded px-2 py-1" 
                                        pattern="[+]?[0-9\s\-\(\)]{8,20}"
                                        title="Please enter a valid phone number (8-20 digits, may include +, spaces, hyphens, and parentheses)"
                                        value="{{ hotel.phone_number }}">
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
+                            <td class="px-4 py-4 whitespace-nowrap">
                                 <span class="editable-email text-sm table-text font-semibold">{% if hotel.email %}{{ hotel.email }}{% else %}None{% endif %}</span>
                                 <input type="email" class="edit-input hidden w-full border rounded px-2 py-1" 
                                        pattern="[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}"
                                        title="Please enter a valid email address"
                                        value="{{ hotel.email }}">
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
+                            <td class="px-4 py-4 whitespace-nowrap">
                                 <span class="editable-pickup-group text-sm table-text font-semibold">{% if hotel.pickup_group %}{{ hotel.pickup_group.name }}{% else %}None{% endif %}</span>
                                 <select class="edit-input hidden w-full border rounded px-2 py-1 bg-white">
                                     {% for pickup_group in pickup_groups %}
@@ -94,7 +100,7 @@
                                     {% endfor %}
                                 </select>
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap flex justify-end">
+                            <td class="px-4 py-4 whitespace-nowrap flex justify-end">
                                 <button type="button" class="edit-btn text-blue hover:opacity-80 font-semibold mr-2">
                                     <svg class="w-6 h-6 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -102,7 +108,7 @@
                                 </button>
                                 <button type="button" class="delete-btn text-orange hover:opacity-80 font-semibold mr-2">
                                     <svg class="w-6 h-6 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 1 0 00-1 1v3M4 7h16" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                     </svg>
                                 </button>
                                 <button type="button" class="save-btn hidden text-green hover:opacity-80 font-semibold mr-2">
@@ -123,23 +129,23 @@
             </div>
 
             <!-- Pagination -->
-            {% if is_paginated %}
-            <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+            {% if page_obj.has_other_pages %}
+            <div class="bg-white px-4 py-3 flex items-center justify-between sm:px-6">
                 <div class="flex-1 flex justify-between sm:hidden">
                     {% if page_obj.has_previous %}
-                        <a href="?page={{ page_obj.previous_page_number }}" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        <a href="?page={{ page_obj.previous_page_number }}" class="relative inline-flex items-center px-4 py-2 border border-blue-primary text-sm font-medium rounded-md text-blue-primary bg-white hover:bg-gray-50">
                             Previous
                         </a>
                     {% endif %}
                     {% if page_obj.has_next %}
-                        <a href="?page={{ page_obj.next_page_number }}" class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        <a href="?page={{ page_obj.next_page_number }}" class="ml-3 relative inline-flex items-center px-4 py-2 border border-blue-primary text-sm font-medium rounded-md text-blue-primary bg-white hover:bg-gray-50">
                             Next
                         </a>
                     {% endif %}
                 </div>
                 <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
                     <div>
-                        <p class="text-sm text-gray-700">
+                        <p class="text-sm">
                             Showing
                             <span class="font-medium">{{ page_obj.start_index }}</span>
                             to
@@ -152,7 +158,7 @@
                     <div>
                         <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
                             {% if page_obj.has_previous %}
-                                <a href="?page={{ page_obj.previous_page_number }}" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                <a href="?page={{ page_obj.previous_page_number }}" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-blue-primary bg-white text-sm font-medium text-blue-primary hover:bg-gray-50">
                                     <span class="sr-only">Previous</span>
                                     <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                                         <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
@@ -162,18 +168,18 @@
 
                             {% for num in page_obj.paginator.page_range %}
                                 {% if page_obj.number == num %}
-                                    <span class="relative inline-flex items-center px-4 py-2 border border-blue-500 bg-blue-50 text-sm font-medium text-blue-600">
+                                    <span class="relative inline-flex items-center px-4 py-2 border border-blue-primary bg-blue-50 text-sm font-medium text-blue-primary">
                                         {{ num }}
                                     </span>
                                 {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
-                                    <a href="?page={{ num }}" class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+                                    <a href="?page={{ num }}" class="relative inline-flex items-center px-4 py-2 border border-blue-primary bg-white text-sm font-medium text-blue-primary hover:bg-gray-50">
                                         {{ num }}
                                     </a>
                                 {% endif %}
                             {% endfor %}
 
                             {% if page_obj.has_next %}
-                                <a href="?page={{ page_obj.next_page_number }}" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                <a href="?page={{ page_obj.next_page_number }}" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-blue-primary bg-white text-sm font-medium text-blue-primary hover:bg-gray-50">
                                     <span class="sr-only">Next</span>
                                     <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                                         <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />

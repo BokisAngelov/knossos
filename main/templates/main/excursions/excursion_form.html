@@ -48,13 +48,26 @@
   }
 </style>
 
+<div class="flex justify-center items-center">
+  <div class="w-full max-w-4xl p-6 pl-0">
+    <a href="{% url 'admin_dashboard' user.id %}" class="inline-flex items-center mb-2 text-blue font-semibold text-sm hover:opacity-80">
+      <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+      </svg>
+      Back to Dashboard
+    </a>
+  </div>
+</div>
+
 <div class="flex justify-center items-center min-h-[80vh]">
+  
   <div class="bg-white rounded-lg shadow-md w-full max-w-4xl p-6">
-    <div class="text-center mb-6">
-      <h1 class="text-2xl font-bold text-gray-800">
+    <div class="mb-6">
+      
+      <h1 class="text-2xl font-bold text-brown">
         {% if excursion %}Edit{% else %}Add{% endif %} Excursion
       </h1>
-      <p class="text-sm text-gray-500 mt-2">
+      <p class="text-sm text-brown mt-2">
         {% if excursion %}
           Update excursion details
         {% else %}
@@ -69,41 +82,41 @@
       <!-- Title & Status -->
       <div class="flex gap-4">
         <div class="flex-[4_4_0%] space-y-1">
-          <label for="{{ form.title.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.title.label }}</label>
-          <div class="w-full auth-input-field">{{ form.title }}</div>
+          <label for="{{ form.title.id_for_label }}" class="block text-md font-semibold text-brown-light">{{ form.title.label }}</label>
+          <div class="w-full auth-input-field rounded-lg border border-brown">{{ form.title }}</div>
           {% if form.title.errors %}<div class="text-red-500 text-xs mt-1">{{ form.title.errors }}</div>{% endif %}
         </div>
         <div class="flex-[1_1_0%] space-y-1">
-          <label for="{{ form.status.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.status.label }}</label>
-          <div class="w-full auth-input-field">{{ form.status }}</div>
+          <label for="{{ form.status.id_for_label }}" class="block text-md font-semibold text-brown-light">{{ form.status.label }}</label>
+          <div class="w-full auth-input-field rounded-lg border border-brown">{{ form.status }}</div>
           {% if form.status.errors %}<div class="text-red-500 text-xs mt-1">{{ form.status.errors }}</div>{% endif %}
         </div>
       </div>
 
       <!-- Description -->
       <div class="space-y-1">
-        <label for="{{ form.description.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.description.label }}</label>
-        <div class="w-full auth-input-field">{{ form.description }}</div>
+        <label for="{{ form.description.id_for_label }}" class="block text-md font-semibold text-brown-light">{{ form.description.label }}</label>
+        <div class="w-full auth-input-field rounded-lg border border-brown">{{ form.description }}</div>
         {% if form.description.errors %}<div class="text-red-500 text-xs mt-1">{{ form.description.errors }}</div>{% endif %}
       </div>
 
       <!-- Intro Image -->
       <div class="space-y-1">
-        <label for="{{ form.intro_image.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.intro_image.label }}</label>
-        <div class="w-full auth-input-field">{{ form.intro_image }}</div>
+        <label for="{{ form.intro_image.id_for_label }}" class="block text-md font-semibold text-brown-light">{{ form.intro_image.label }}</label>
+        <div class="w-full auth-input-field rounded-lg border border-brown">{{ form.intro_image }}</div>
         {% if form.intro_image.errors %}<div class="text-red-500 text-xs mt-1">{{ form.intro_image.errors }}</div>{% endif %}
       </div>
 
       <!-- Provider & Guide -->
       <div class="flex gap-4">
         <div class="flex-1 space-y-1">
-          <label for="{{ form.provider.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.provider.label }}</label>
-          <div class="w-full auth-input-field">{{ form.provider }}</div>
+          <label for="{{ form.provider.id_for_label }}" class="block text-md font-semibold text-brown-light">{{ form.provider.label }}</label>
+          <div class="w-full auth-input-field rounded-lg border border-brown">{{ form.provider }}</div>
           {% if form.provider.errors %}<div class="text-red-500 text-xs mt-1">{{ form.provider.errors }}</div>{% endif %}
         </div>
         <div class="flex-1 space-y-1">
-          <label for="{{ form.guide.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.guide.label }}</label>
-          <div class="w-full auth-input-field">{{ form.guide }}</div>
+          <label for="{{ form.guide.id_for_label }}" class="block text-md font-semibold text-brown-light">{{ form.guide.label }}</label>
+          <div class="w-full auth-input-field rounded-lg border border-brown">{{ form.guide }}</div>
           {% if form.guide.errors %}<div class="text-red-500 text-xs mt-1">{{ form.guide.errors }}</div>{% endif %}
         </div>
       </div>
@@ -111,13 +124,13 @@
       <!-- Full Day & On Request -->
       <div class="flex gap-4">
         <div class="flex-1 space-y-1">
-          <label for="{{ form.full_day.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.full_day.label }}</label>
-          <div class="w-full auth-input-field">{{ form.full_day }}</div>
+          <label for="{{ form.full_day.id_for_label }}" class="block text-md font-semibold text-brown-light">{{ form.full_day.label }}</label>
+          <div class="w-full auth-input-field rounded-lg border border-brown">{{ form.full_day }}</div>
           {% if form.full_day.errors %}<div class="text-red-500 text-xs mt-1">{{ form.full_day.errors }}</div>{% endif %}
         </div>
         <div class="flex-1 space-y-1">
-          <label for="{{ form.on_request.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.on_request.label }}</label>
-          <div class="w-full auth-input-field">{{ form.on_request }}</div>
+          <label for="{{ form.on_request.id_for_label }}" class="block text-md font-semibold text-brown-light">{{ form.on_request.label }}</label>
+          <div class="w-full auth-input-field rounded-lg border border-brown">{{ form.on_request }}</div>
           {% if form.on_request.errors %}<div class="text-red-500 text-xs mt-1">{{ form.on_request.errors }}</div>{% endif %}
         </div>
       </div>
@@ -125,23 +138,27 @@
       <!-- Category & Tags -->
       <div class="flex">
         <div class="flex-1 space-y-1">
-          <label for="{{ form.category.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.category.label }}</label>
-          <div class="w-full auth-input-field"><div class="checkbox-list">{{ form.category }}</div></div>
+          <label for="{{ form.category.id_for_label }}" class="block text-md font-semibold text-brown-light">{{ form.category.label }}</label>
+          <div class="w-full auth-input-field">
+            <div class="checkbox-list">{{ form.category }}</div>
+          </div>
           {% if form.category.errors %}<div class="text-red-500 text-xs mt-1">{{ form.category.errors }}</div>{% endif %}
         </div>
         <div class="flex-1 space-y-1">
-          <label for="{{ form.tags.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.tags.label }}</label>
-          <div class="w-full auth-input-field"><div class="checkbox-list">{{ form.tags }}</div></div>
+          <label for="{{ form.tags.id_for_label }}" class="block text-md font-semibold text-brown-light">{{ form.tags.label }}</label>
+          <div class="w-full auth-input-field ">
+            <div class="checkbox-list">{{ form.tags }}</div>
+          </div>
           {% if form.tags.errors %}<div class="text-red-500 text-xs mt-1">{{ form.tags.errors }}</div>{% endif %}
         </div>
       </div>
       
       <div class="mt-6 flex gap-4">
-        <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+        <button type="submit" class="flex-1 bg-blue text-white font-medium py-2 px-4 rounded-md hover:opacity-80">
           {% if excursion %}Update{% else %}Create{% endif %} Excursion
         </button>
         <a href="{% if excursion %}{% url 'excursion_detail' excursion.id %}{% else %}{% url 'admin_excursions' %}{% endif %}" 
-           class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 px-4 rounded-md text-center focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2">
+           class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-4 rounded-md text-center focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2">
           Cancel
         </a>
       </div>

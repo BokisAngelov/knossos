@@ -8,6 +8,7 @@ from django.contrib import messages
 from django.db import transaction
 from django.utils import timezone
 from django.core.serializers.json import DjangoJSONEncoder
+from django.core.paginator import Paginator
 from datetime import date, datetime, time, timedelta
 from django.contrib.auth.models import User
 from django.http import JsonResponse, Http404, HttpResponse
@@ -51,6 +52,7 @@ def homepage(request):
     return render(request, 'main/home.html', {
         'excursions': excursions,
     })
+
 def manage_cookies(request, cookie_name, cookie_value, cookie_action):
 
     if cookie_action == 'set':
@@ -295,6 +297,7 @@ def create_reservation(booking_data):
             'message': 'Reservation not found.'
         }
     
+#  Sync with Cyberlogic API
 def sync_pickup_groups(request):
     if request.method == 'POST':
         try:
@@ -1242,6 +1245,8 @@ def admin_dashboard(request, pk):
     user = User.objects.get(profile__id=pk)
     user_profile = UserProfile.objects.get(user=user)
 
+    upcoming_excursions = AvailabilityDays.objects.filter(excursion_availability__status='active', date_day__gte=timezone.now()).order_by('date_day')[:5]
+
     total_revenue = Booking.objects.filter(payment_status='completed').aggregate(
         total=Sum('price')
     )['total'] or 0
@@ -1264,6 +1269,7 @@ def admin_dashboard(request, pk):
         'booking_count': Booking.objects.filter(payment_status='completed').count(),
         'user_profile': user_profile,
         'total_excursions_count': total_excursions_count,
+        'upcoming_excursions': upcoming_excursions,
     }
     
     return render(request, 'main/admin/dashboard.html', context)
@@ -1744,9 +1750,14 @@ def availability_list(request):
             Q(excursion__title__icontains=search_query)
         )
 
+    paginator = Paginator(availabilities, 15)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
     return render(request, 'main/availabilities/availabilities_list.html', {
         'availabilities': availabilities,
         'excursions': excursions,
+        'page_obj': page_obj,
     })
 
 @user_passes_test(is_staff)
@@ -1816,10 +1827,13 @@ def bookings_list(request):
         bookings = bookings.filter(
             Q(guest_name__icontains=search_query) |
             Q(guest_email__icontains=search_query) |
-            Q(id__icontains=search_query) |
             Q(payment_status__icontains=search_query) |
             Q(excursion_availability__excursion__title__icontains=search_query)
         )
+
+    paginator = Paginator(bookings, 15)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
     
     # Apply sorting
     bookings = bookings.order_by(sort_field)
@@ -1829,6 +1843,7 @@ def bookings_list(request):
         'current_sort_by': sort_by,
         'current_sort_order': sort_order,
         'search_query': search_query,
+        'page_obj': page_obj,
     })
 # ?? CONFIRM IF NEEDED
 def filter_bookings(request):
@@ -2388,9 +2403,14 @@ def admin_excursions(request):
             Q(title__icontains=search_query)
         )
 
+    paginator = Paginator(excursions, 15)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
 
     return render(request, 'main/admin/admin_excursions.html', {
         'excursions': excursions,
+        'page_obj': page_obj,
     })
 
 @user_passes_test(is_staff)
@@ -2399,7 +2419,6 @@ def hotel_list(request):
     pickup_groups = PickupGroup.objects.all()
     pickup_groups_json = json.dumps([{'id': pickup_group.id, 'name': pickup_group.name} for pickup_group in pickup_groups])
 
-    # Handle search
     search_query = request.GET.get('search', '').strip()
     if search_query:
         hotels = hotels.filter(
@@ -2407,10 +2426,16 @@ def hotel_list(request):
             Q(address__icontains=search_query) 
         )
 
+    # Create paginator with filtered results
+    paginator = Paginator(hotels, 15)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
     return render(request, 'main/admin/hotel_list.html', {
-        'hotels': hotels,
+        'hotels': page_obj.object_list,
         'pickup_groups': pickup_groups,
         'pickup_groups_json': pickup_groups_json,
+        'page_obj': page_obj,
     })
 
 @user_passes_test(is_staff)

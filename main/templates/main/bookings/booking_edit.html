@@ -45,8 +45,8 @@
 </style>
 
 <div class="flex justify-center items-center">
-  <div class="w-full max-w-4xl p-6">
-    <a href="{% url 'booking_detail' booking.id %}" class="inline-flex items-left text-gray-600 hover:text-gray-900">
+  <div class="w-full max-w-4xl p-6 pl-0">
+    <a href="{% url 'booking_detail' booking.id %}" class="inline-flex items-left text-sm font-semibold text-blue hover:opacity-80">
       <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
       </svg>
@@ -58,8 +58,8 @@
 <div class="flex justify-center items-center">
   <div class="bg-white rounded-lg shadow-md w-full max-w-4xl p-6">
     <div class="text-center mb-6">
-      <h1 class="text-2xl font-bold text-gray-800">Edit Booking #{{ booking.id }}</h1>
-      <p class="text-sm text-gray-500 mt-2">Update booking information for {{ booking.guest_name }} at {{ booking.excursion_availability.excursion.title }}</p>
+      <h1 class="text-2xl font-bold text-brown">Edit Booking #{{ booking.id }}</h1>
+      <p class="text-sm text-brown mt-2">Update booking information for {{ booking.guest_name }} at {{ booking.excursion_availability.excursion.title }}</p>
     </div>
 
     {% if messages %}
@@ -85,59 +85,59 @@
 
       <!-- Guest Information (Editable) -->
       <div class="p-4 rounded-lg m-0">
-        <h3 class="text-lg font-semibold text-gray-800 mb-4">Guest Information</h3>
+        <h3 class="text-lg font-bold mb-2">Guest Information</h3>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div class="space-y-1">
-            <label for="{{ form.guest_name.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.guest_name.label }}</label>
-            <div class="w-full auth-input-field">{{ form.guest_name }}</div>
+            <label for="{{ form.guest_name.id_for_label }}" class="block text-md font-semibold text-brown-light">{{ form.guest_name.label }}</label>
+            <div class="w-full auth-input-field rounded-lg border border-brown text-brown font-semibold">{{ form.guest_name }}</div>
             {% if form.guest_name.errors %}<div class="text-red-500 text-xs mt-1">{{ form.guest_name.errors }}</div>{% endif %}
           </div>
           <div class="space-y-1">
-            <label for="{{ form.guest_email.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.guest_email.label }}</label>
-            <div class="w-full auth-input-field">{{ form.guest_email }}</div>
+            <label for="{{ form.guest_email.id_for_label }}" class="block text-md font-semibold text-brown-light">{{ form.guest_email.label }}</label>
+            <div class="w-full auth-input-field rounded-lg border border-brown text-brown font-semibold">{{ form.guest_email }}</div>
             {% if form.guest_email.errors %}<div class="text-red-500 text-xs mt-1">{{ form.guest_email.errors }}</div>{% endif %}
           </div>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
           <div class="space-y-1">
-            <label for="{{ form.total_adults.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.total_adults.label }}</label>
-            <div class="w-full auth-input-field">{{ form.total_adults }}</div>
+            <label for="{{ form.total_adults.id_for_label }}" class="block text-md font-semibold text-brown-light">{{ form.total_adults.label }}</label>
+            <div class="w-full auth-input-field rounded-lg border border-brown text-brown font-semibold">{{ form.total_adults }}</div>
             {% if form.total_adults.errors %}<div class="text-red-500 text-xs mt-1">{{ form.total_adults.errors }}</div>{% endif %}
           </div>
           <div class="space-y-1">
-            <label for="{{ form.total_kids.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.total_kids.label }}</label>
-            <div class="w-full auth-input-field">{{ form.total_kids }}</div>
+            <label for="{{ form.total_kids.id_for_label }}" class="block text-md font-semibold text-brown-light">{{ form.total_kids.label }}</label>
+            <div class="w-full auth-input-field rounded-lg border border-brown text-brown font-semibold">{{ form.total_kids }}</div>
             {% if form.total_kids.errors %}<div class="text-red-500 text-xs mt-1">{{ form.total_kids.errors }}</div>{% endif %}
           </div>
           <div class="space-y-1">
-            <label for="{{ form.total_infants.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.total_infants.label }}</label>
-            <div class="w-full auth-input-field">{{ form.total_infants }}</div>
+            <label for="{{ form.total_infants.id_for_label }}" class="block text-md font-semibold text-brown-light">{{ form.total_infants.label }}</label>
+            <div class="w-full auth-input-field rounded-lg border border-brown text-brown font-semibold">{{ form.total_infants }}</div>
             {% if form.total_infants.errors %}<div class="text-red-500 text-xs mt-1">{{ form.total_infants.errors }}</div>{% endif %}
           </div>
         </div>
       </div>
       <!-- Payment Information -->
       <div class="p-4 rounded-lg">
-        <h3 class="text-lg font-semibold text-gray-800 mb-4">Payment Information</h3>
+        <h3 class="text-lg font-bold mb-2">Payment Information</h3>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div class="space-y-1">
-            <label for="{{ form.price.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.price.label }}</label>
-            <div class="w-full auth-input-field">{{ form.price }}</div>
+            <label for="{{ form.price.id_for_label }}" class="block text-md font-semibold text-brown-light">{{ form.price.label }}</label>
+            <div class="w-full auth-input-field rounded-lg border border-brown text-brown font-semibold">{{ form.price }}</div>
             {% if form.price.errors %}<div class="text-red-500 text-xs mt-1">{{ form.price.errors }}</div>{% endif %}
           </div>
           <div class="space-y-1">
-            <label for="{{ form.partial_paid.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.partial_paid.label }}</label>
-            <div class="w-full auth-input-field">{{ form.partial_paid }}</div>
+            <label for="{{ form.partial_paid.id_for_label }}" class="block text-md font-semibold text-brown-light">{{ form.partial_paid.label }}</label>
+            <div class="w-full auth-input-field rounded-lg border border-brown text-brown font-semibold">{{ form.partial_paid }}</div>
             {% if form.partial_paid.errors %}<div class="text-red-500 text-xs mt-1">{{ form.partial_paid.errors }}</div>{% endif %}
           </div>
           <div class="space-y-1">
-            <label for="{{ form.partial_paid_method.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.partial_paid_method.label }}</label>
-            <div class="w-full auth-input-field">{{ form.partial_paid_method }}</div>
+            <label for="{{ form.partial_paid_method.id_for_label }}" class="block text-md font-semibold text-brown-light">{{ form.partial_paid_method.label }}</label>
+            <div class="w-full auth-input-field rounded-lg border border-brown text-brown font-semibold">{{ form.partial_paid_method }}</div>
             {% if form.partial_paid_method.errors %}<div class="text-red-500 text-xs mt-1">{{ form.partial_paid_method.errors }}</div>{% endif %}
           </div>
           <div class="space-y-1">
-            <label for="{{ form.payment_status.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.payment_status.label }}</label>
-            <div class="w-full auth-input-field">{{ form.payment_status }}</div>
+            <label for="{{ form.payment_status.id_for_label }}" class="block text-md font-semibold text-brown-light">{{ form.payment_status.label }}</label>
+            <div class="w-full auth-input-field rounded-lg border border-brown text-brown font-semibold">{{ form.payment_status }}</div>
             {% if form.payment_status.errors %}<div class="text-red-500 text-xs mt-1">{{ form.payment_status.errors }}</div>{% endif %}
           </div>
         </div>
@@ -145,11 +145,11 @@
 
 
       <div class="mt-6 flex gap-4">
-        <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+        <button type="submit" class="flex-1 bg-blue hover:opacity-80 text-white font-medium py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
           Update Booking
         </button>
         <a href="{% url 'booking_detail' booking.id %}" 
-           class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 px-4 rounded-md text-center focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2">
+           class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-4 rounded-md text-center focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2">
           Cancel
         </a>
       </div>

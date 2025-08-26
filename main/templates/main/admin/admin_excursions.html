@@ -6,8 +6,14 @@
     <!-- Header Section -->
     <div class="flex justify-between items-center mb-6">
         <div>
-            <h1 class="text-2xl font-bold text-gray-900">Excursions</h1>
-            <p class="text-sm text-gray-500">Manage your excursion offerings</p>
+            <a href="{% url 'admin_dashboard' user.id %}" class="inline-flex items-center mb-4 text-blue font-semibold text-sm hover:opacity-80">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                Back to Dashboard
+            </a>
+            <h1 class="text-2xl font-bold">Excursions</h1>
+            <p class="text-sm text-brown">Manage your excursion offerings</p>
         </div>
         <a href="{% url 'excursion_create' %}" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -51,32 +57,32 @@
                 <table class="min-w-full text-sm table-bg">
                     <thead class="text-base">
                         <tr>
-                            <th scope="col" class="px-6 py-3 text-left font-medium text-black-600 tracking-wider">Title</th>
-                            <th scope="col" class="px-6 py-3 text-left font-medium text-black-600 tracking-wider">Provider</th>
-                            <th scope="col" class="px-6 py-3 text-left font-medium text-black-600 tracking-wider">Guide</th>
-                            <th scope="col" class="px-6 py-3 text-left font-medium text-black-600 tracking-wider">Duration</th>
-                            <th scope="col" class="px-6 py-3 text-left font-medium text-black-600 tracking-wider">Status</th>
-                            <th scope="col" class="px-6 py-3 text-left font-medium text-black-600 tracking-wider text-right">Actions</th>
+                            <th scope="col" class="px-4 py-3 text-left font-medium text-black-600 tracking-wider">Title</th>
+                            <th scope="col" class="px-4 py-3 text-left font-medium text-black-600 tracking-wider">Provider</th>
+                            <th scope="col" class="px-4 py-3 text-left font-medium text-black-600 tracking-wider">Guide</th>
+                            <th scope="col" class="px-4 py-3 text-left font-medium text-black-600 tracking-wider">Duration</th>
+                            <th scope="col" class="px-4 py-3 text-left font-medium text-black-600 tracking-wider">Status</th>
+                            <th scope="col" class="px-4 py-3 text-left font-medium text-black-600 tracking-wider text-right">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for excursion in excursions %}
                             <tr class="font-medium">
-                                <td class="px-6 py-4 whitespace-nowrap">
+                                <td class="px-4 py-4 whitespace-nowrap">
                                     <div class="text-sm table-text font-semibold">{{ excursion.title }}</div>
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
+                                <td class="px-4 py-4 whitespace-nowrap">
                                     <div class="text-sm table-text font-semibold">{{ excursion.provider.name|default:"-" }}</div>
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
+                                <td class="px-4 py-4 whitespace-nowrap">
                                     <div class="text-sm table-text font-semibold">{{ excursion.guide.name|default:"-" }}</div>
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
+                                <td class="px-4 py-4 whitespace-nowrap">
                                     <div class="text-sm table-text font-semibold">
                                         {% if excursion.full_day %}Full Day{% else %}Half Day{% endif %}
                                     </div>
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
+                                <td class="px-4 py-4 whitespace-nowrap">
                                     <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full text-white
                                     {% if excursion.status == 'active' %}bg-green 
                                     {% else %}bg-orange{% endif %}">
@@ -108,23 +114,23 @@
             </div>
 
             <!-- Pagination -->
-            {% if is_paginated %}
-            <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+            {% if page_obj.has_other_pages %}
+            <div class="bg-white px-4 py-3 flex items-center justify-between sm:px-6">
                 <div class="flex-1 flex justify-between sm:hidden">
                     {% if page_obj.has_previous %}
-                        <a href="?page={{ page_obj.previous_page_number }}" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        <a href="?page={{ page_obj.previous_page_number }}" class="relative inline-flex items-center px-4 py-2 border border-blue-primary text-sm font-medium rounded-md text-blue-primary bg-white hover:bg-gray-50">
                             Previous
                         </a>
                     {% endif %}
                     {% if page_obj.has_next %}
-                        <a href="?page={{ page_obj.next_page_number }}" class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        <a href="?page={{ page_obj.next_page_number }}" class="ml-3 relative inline-flex items-center px-4 py-2 border border-blue-primary text-sm font-medium rounded-md text-blue-primary bg-white hover:bg-gray-50">
                             Next
                         </a>
                     {% endif %}
                 </div>
                 <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
                     <div>
-                        <p class="text-sm text-gray-700">
+                        <p class="text-sm text-blue-primary">
                             Showing
                             <span class="font-medium">{{ page_obj.start_index }}</span>
                             to
@@ -137,7 +143,7 @@
                     <div>
                         <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
                             {% if page_obj.has_previous %}
-                                <a href="?page={{ page_obj.previous_page_number }}" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                <a href="?page={{ page_obj.previous_page_number }}" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-blue-primary bg-white text-sm font-medium text-blue-primary hover:bg-gray-50">
                                     <span class="sr-only">Previous</span>
                                     <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                                         <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
@@ -147,18 +153,18 @@
 
                             {% for num in page_obj.paginator.page_range %}
                                 {% if page_obj.number == num %}
-                                    <span class="relative inline-flex items-center px-4 py-2 border border-blue-500 bg-blue-50 text-sm font-medium text-blue-600">
+                                    <span class="relative inline-flex items-center px-4 py-2 border border-blue-primary bg-blue-50 text-sm font-medium text-blue-primary">
                                         {{ num }}
                                     </span>
                                 {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
-                                    <a href="?page={{ num }}" class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+                                    <a href="?page={{ num }}" class="relative inline-flex items-center px-4 py-2 border border-blue-primary bg-white text-sm font-medium text-blue-primary hover:bg-gray-50">
                                         {{ num }}
                                     </a>
                                 {% endif %}
                             {% endfor %}
 
                             {% if page_obj.has_next %}
-                                <a href="?page={{ page_obj.next_page_number }}" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                <a href="?page={{ page_obj.next_page_number }}" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-blue-primary bg-white text-sm font-medium text-blue-primary hover:bg-gray-50">
                                     <span class="sr-only">Next</span>
                                     <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                                         <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />

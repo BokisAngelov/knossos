@@ -30,10 +30,10 @@ class ExcursionForm(forms.ModelForm):
                 'class': 'editor',
                 'style': 'width: 100%;'
             }),
-            'category': forms.CheckboxSelectMultiple,
-            'tags': forms.CheckboxSelectMultiple,
-            'full_day': forms.Select(choices=[(True, 'Yes'), (False, 'No')]),
-            'on_request': forms.Select(choices=[(True, 'Yes'), (False, 'No')]),
+            'category': forms.CheckboxSelectMultiple(attrs={'class': 'text-brown font-semibold bg-brown-light hover:opacity-80'}),
+            'tags': forms.CheckboxSelectMultiple(attrs={'class': 'text-brown font-semibold bg-brown-light hover:opacity-80'}),
+            'full_day': forms.Select(choices=[(True, 'Yes'), (False, 'No')], attrs={'class': 'text-brown font-semibold'}),
+            'on_request': forms.Select(choices=[(True, 'Yes'), (False, 'No')], attrs={'class': 'text-brown font-semibold'}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -101,7 +101,7 @@ class WeekdayCapacityWidget(forms.CheckboxSelectMultiple):
                         {"checked" if is_checked else ""} 
                         
                         class="w-4 h-4">
-                    <label for="{checkbox_id}" class="min-w-[120px] px-3 py-1 bg-gray-100 rounded text-center font-medium">{weekday.get_code_display()}</label>
+                    <label for="{checkbox_id}" class="min-w-[120px] bg-brown-light rounded-lg p-2 text-brown text-center font-semibold text-md">{weekday.get_code_display()}</label>
                     
                 </div>
             '''
@@ -148,7 +148,7 @@ class PickupGroupWidget(forms.CheckboxSelectMultiple):
                                 value="{group.id}" 
                                 {'checked' if is_checked else ''} 
                                 class="w-4 h-4">
-                            <label for="{checkbox_id}" class="px-3 py-1 bg-gray-100 rounded text-center font-medium flex-1">
+                            <label for="{checkbox_id}" class="px-3 py-1 bg-brown-light rounded-lg text-brown text-center font-semibold text-md flex-1">
                                 {group.name} 
                             </label>
                             
@@ -202,6 +202,7 @@ class PickupPointWidget(forms.CheckboxSelectMultiple):
             output.append('</div>')
         output.append('</div>')
         return mark_safe(''.join(output))
+
 class ExcursionAvailabilityForm(forms.ModelForm):
     class Meta:
         model = ExcursionAvailability
@@ -214,25 +215,25 @@ class ExcursionAvailabilityForm(forms.ModelForm):
             'excursion': forms.Select(attrs={'class': 'form-control'}),
             'start_time': forms.TimeInput(attrs={
                 'type': 'time',
-                'class': 'form-control',
+                'class': 'form-control text-brown font-semibold',
                 'inputmode': 'numeric',
                 'pattern': '[0-9]{2}:[0-9]{2}'
             }),
             'end_time': forms.TimeInput(attrs={
                 'type': 'time', 
-                'class': 'form-control',    
+                'class': 'form-control text-brown font-semibold',    
                 'inputmode': 'numeric',
                 'pattern': '[0-9]{2}:[0-9]{2}'
             }),
             'pickup_groups': PickupGroupWidget,
             'pickup_points': PickupPointWidget,
             'weekdays': WeekdayCapacityWidget,
-            'start_date': forms.DateInput(attrs={'type': 'date'}),
-            'end_date': forms.DateInput(attrs={'type': 'date'}),
-            'adult_price': forms.NumberInput(attrs={'class': 'price-field'}),
-            'child_price': forms.NumberInput(attrs={'class': 'price-field'}),
-            'infant_price': forms.NumberInput(attrs={'class': 'price-field'}),
-            'status': forms.Select(attrs={'class': 'form-control'}),
+            'start_date': forms.DateInput(attrs={'type': 'date', 'class': 'text-brown font-semibold'}),
+            'end_date': forms.DateInput(attrs={'type': 'date' , 'class': 'text-brown font-semibold'}),
+            'adult_price': forms.NumberInput(attrs={'class': 'price-field text-brown font-semibold'}),
+            'child_price': forms.NumberInput(attrs={'class': 'price-field text-brown font-semibold'}),
+            'infant_price': forms.NumberInput(attrs={'class': 'price-field text-brown font-semibold'}),
+            'status': forms.Select(attrs={'class': 'form-control text-brown font-semibold'}),
         }
 
     def __init__(self, *args, **kwargs):

@@ -7,6 +7,12 @@
     <!-- Header Section -->
     <div class="flex justify-between items-center mb-6">
         <div>
+            <a href="{% url 'admin_dashboard' user.id %}" class="inline-flex items-center mb-4 text-blue font-semibold text-sm hover:opacity-80">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                Back to Dashboard
+            </a>
             <h1 class="text-2xl font-bold text-gray-900">Clients</h1>
             <p class="text-sm text-gray-500">Manage your client information</p>
         </div>
@@ -78,18 +84,18 @@
     </div>
 
     <!-- Clients Table -->
-    <div class="bg-white rounded-lg shadow-md overflow-hidden">
+    <div class="bg-white rounded-lg shadow-md p-6">
         {% if clients %}
             <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
+                <table class="min-w-full text-sm table-bg">
+                    <thead class="text-base">
                         <tr>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th scope="col" class="px-4 py-3 text-left font-medium text-black-600 tracking-wider">
                                 <div class="flex items-center">
                                     <input type="checkbox" id="select-all-checkbox" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
                                 </div>
                             </th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th scope="col" class="px-4 py-3 text-left font-medium text-black-600 tracking-wider">
                                 <a href="?{% if request.GET.search %}search={{ request.GET.search }}&{% endif %}sort=name&order={% if current_sort == 'name' and current_order == 'asc' %}desc{% else %}asc{% endif %}" class="group inline-flex items-center hover:text-gray-700">
                                     Name
                                     <span class="ml-2 flex-none rounded">
@@ -111,7 +117,7 @@
                                     </span>
                                 </a>
                             </th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th scope="col" class="px-4 py-3 text-left font-medium text-black-600 tracking-wider">
                                 <a href="?{% if request.GET.search %}search={{ request.GET.search }}&{% endif %}sort=email&order={% if current_sort == 'email' and current_order == 'asc' %}desc{% else %}asc{% endif %}" class="group inline-flex items-center hover:text-gray-700">
                                     Email
                                     <span class="ml-2 flex-none rounded">
@@ -133,7 +139,7 @@
                                     </span>
                                 </a>
                             </th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th scope="col" class="px-4 py-3 text-left font-medium text-black-600 tracking-wider">
                                 <a href="?{% if request.GET.search %}search={{ request.GET.search }}&{% endif %}sort=phone&order={% if current_sort == 'phone' and current_order == 'asc' %}desc{% else %}asc{% endif %}" class="group inline-flex items-center hover:text-gray-700">
                                     Phone
                                     <span class="ml-2 flex-none rounded">
@@ -155,7 +161,7 @@
                                     </span>
                                 </a>
                             </th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th scope="col" class="px-4 py-3 text-left font-medium text-black-600 tracking-wider">
                                 <a href="?{% if request.GET.search %}search={{ request.GET.search }}&{% endif %}sort=status&order={% if current_sort == 'status' and current_order == 'asc' %}desc{% else %}asc{% endif %}" class="group inline-flex items-center hover:text-gray-700">
                                     Status
                                     <span class="ml-2 flex-none rounded">
@@ -177,71 +183,60 @@
                                     </span>
                                 </a>
                             </th>
-                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th scope="col" class="px-4 py-3 text-right font-medium text-black-600 tracking-wider">
                                 Actions
                             </th>
                         </tr>
                     </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
+                    <tbody>
                         {% for client in clients %}
                             <tr data-id="{{ client.user.id }}">
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="flex items-center">
-                                        <input type="checkbox" name="selected_clients" value="{{ client.id }}" class="client-checkbox h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
-                                    </div>
+                                <td class="px-4 py-4 whitespace-nowrap">
+                                    <input type="checkbox" name="selected_clients" value="{{ client.id }}" class="client-checkbox h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="flex items-center">
-                                        <div class="">
-                                            <div class="text-sm font-medium text-gray-900">
-                                                <span class="editable-name">{{ client.name|title }}</span>
-                                                <input type="text" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ client.name }}">
-                                            </div>
-                                        </div>
-                                    </div>
+                                <td class="px-4 py-4 whitespace-nowrap">
+                                    <span class="editable-name text-sm table-text font-semibold">{{ client.name|title }}</span>
+                                    <input type="text" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ client.name }}">
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="text-sm text-gray-900">
-                                        <span class="editable-email">{{ client.email }}</span>
-                                        <input type="email" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ client.email }}">
-                                    </div>
+                                <td class="px-4 py-4 whitespace-nowrap">
+                                    <span class="editable-email text-sm table-text font-semibold">{{ client.email }}</span>
+                                    <input type="email" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ client.email }}">
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="text-sm text-gray-500">
-                                        <span class="editable-phone">{{ client.phone }}</span>
-                                        <input type="tel" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ client.phone }}">
-                                    </div>
+                                <td class="px-4 py-4 whitespace-nowrap">
+                                    <span class="editable-phone text-sm table-text font-semibold">{{ client.phone }}</span>
+                                    <input type="tel" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ client.phone }}">
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                                        {% if client.status == 'active' %}bg-green-100 text-green-800{% else %}bg-red-100 text-red-800{% endif %}">
+                                <td class="px-4 py-4 whitespace-nowrap">
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full text-white
+                                        {% if client.status == 'active' %}bg-green 
+                                        {% else %}bg-red{% endif %}">
                                         {{ client.status|title }}
                                     </span>
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                    <button type="button" class="view-btn text-blue-600 hover:text-blue-800 mr-2" data-id="{{ client.user.id }}">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                <td class="px-4 py-4 whitespace-nowrap flex justify-end">
+                                    <button type="button" class="view-btn text-turquaz hover:opacity-80 font-semibold mr-2" data-id="{{ client.user.id }}">
+                                        <svg class="w-6 h-6 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
                                         </svg>
                                     </button>
-                                    <button type="button" class="edit-btn text-blue-600 hover:text-blue-800 mr-2">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <button type="button" class="edit-btn text-blue hover:opacity-80 font-semibold mr-2">
+                                        <svg class="w-6 h-6 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                                         </svg>
                                     </button>
-                                    <button type="button" class="delete-btn text-red-600 hover:text-red-800">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <button type="button" class="delete-btn text-orange hover:opacity-80 font-semibold">
+                                        <svg class="w-6 h-6 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                         </svg>
                                     </button>
-                                    <button type="button" class="save-btn hidden text-green-600 hover:text-green-800">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <button type="button" class="save-btn hidden text-green hover:opacity-80 font-semibold">
+                                        <svg class="w-6 h-6 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                                         </svg>
                                     </button>
-                                    <button type="button" class="cancel-btn hidden text-gray-600 hover:text-gray-800">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <button type="button" class="cancel-btn hidden text-gray hover:opacity-80 font-semibold">
+                                        <svg class="w-6 h-6 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                                         </svg>
                                     </button>

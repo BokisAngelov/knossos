@@ -1,6 +1,9 @@
 button:hover, a:hover, input[type="submit"]:hover {
     cursor: pointer;
 }
+h1, h2, h3, h4, h5, h6 {
+    color: #463229;
+}
 
 .bg-body-light{
     background-color: #f5e9da;
@@ -44,6 +47,9 @@ button:hover, a:hover, input[type="submit"]:hover {
 .bg-orange-light {
     background-color: #fff4f0;
 }
+.bg-turquaz {
+    background-color: #7ad3d8;
+}
 .text-turquaz {
     color: #7ad3d8;
 }
@@ -84,5 +90,25 @@ button:hover, a:hover, input[type="submit"]:hover {
     border-width: 2px;
 }
 .bg-green-light {
-    background-color: #f7f7f7;
+    background-color: #fbfff3;
+}
+select option {
+    color: #463229;
+    font-weight: 600;
+}
+.swal2-input{
+    color: #463229!important;
+    border: 2px solid #c6b09d !important;
+    margin: 1em 2em 3px;
+}
+.swal2-input:focus {
+    border: 2px solid #c6b09d !important;
+    outline: none;
+}
+.swal2-confirm {
+    background-color: #0077b6;
+}
+.swal2-confirm:hover {
+    background-color: #0077b6;
+    opacity: 0.8;
 }
