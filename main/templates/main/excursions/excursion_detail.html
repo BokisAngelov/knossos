@@ -719,8 +719,8 @@
                 updatePriceAndPickupPoints();
             });
         
-            // partialPayment = document.querySelector('#partial-payment').value;
-            if (userRole == 'admin') {
+            if (document.querySelector('#partial-payment')) {
+                
                 document.querySelector('#partial-payment').addEventListener('change', function(e) {
                     e.preventDefault();
                     const partialPayment = document.querySelector('#partial-payment').value;
@@ -739,7 +739,8 @@
                         // document.querySelector('#partial-paid-method').value = partialPaidMethod;
                     }
                 });
-
+            }
+            if (document.getElementById('delete-excursion-btn')) {
                 // Delete excursion confirmation
                 document.getElementById('delete-excursion-btn').addEventListener('click', function(e) {
                     e.preventDefault();
