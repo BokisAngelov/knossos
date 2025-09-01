@@ -421,8 +421,8 @@
     const pickupPointSelect = document.getElementById('pickup-point');
     const datePickerInput = document.getElementById('date-picker');
     
-    const userRole = getCookie('user_role');
-    const userId = getCookie('user_id');
+    const userRole = getCookie('user_role') ? getCookie('user_role') : '';
+    const userId = getCookie('user_id') ? getCookie('user_id') : '';
     // const availabilityIdInput = document.getElementById('availability-id');
 
     // console.log(availabilityIdInput);
@@ -959,12 +959,13 @@
                         const errorList = formErrors.querySelector('ul');
                         if (errorList) {
                             const errorItem = document.createElement('li');
-                            errorItem.textContent = 'An error occurred while processing your booking.';
+                            errorItem.textContent = 'An error occurred while processing your booking. Please try again.';
                             errorList.appendChild(errorItem);
                         }
                     }
-                    document.getElementById('form-errors').textContent = data.message;
-                    console.log('data.message:', data.message);
+                    // document.getElementById('form-errors').removeAttribute('class', 'hidden');
+                    document.getElementById('form-errors').textContent = error;
+                    console.log('error.message:', error.message);
                 });
             });
         }

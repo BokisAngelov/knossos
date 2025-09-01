@@ -309,7 +309,7 @@ class BookingForm(forms.ModelForm):
             self.fields = editable_fields
         else:
             # For new bookings, handle partial_paid_method field for clients
-            if not user or not (user.is_staff or getattr(user.profile, 'role', None) == 'representative'):
+            if not user or not user.is_authenticated or not (user.is_staff or getattr(user, 'profile', None) and getattr(user.profile, 'role', None) == 'representative'):
                 if 'partial_paid_method' in self.fields:
                     self.fields['partial_paid_method'].required = False
                     self.fields['partial_paid_method'].widget = forms.HiddenInput()

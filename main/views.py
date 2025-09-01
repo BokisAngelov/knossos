@@ -635,7 +635,7 @@ def excursion_detail(request, pk):
                 
                 # Only get partial_paid_method for staff and representatives
                 partial_paid_method = ''
-                if request.user and (request.user.is_staff or getattr(request.user.profile, 'role', None) == 'representative'):
+                if request.user and request.user.is_authenticated and (request.user.is_staff or (hasattr(request.user, 'profile') and getattr(request.user.profile, 'role', None) == 'representative')):
                     partial_paid_method = request.POST.get('partial_paid_method', '')
                     if partial_paid_method is None:
                         partial_paid_method = ''
@@ -655,10 +655,10 @@ def excursion_detail(request, pk):
                 guest_name = request.POST.get('guest_name', None)
 
                 user = request.user
-                user_instance = user if user else None              
+                user_instance = user if user.is_authenticated else None              
                 
                 booking.excursion_availability = excursion_availability
-                booking.user = user_instance
+                booking.user = user_instance if user_instance else None
                 booking.total_adults = adults
                 booking.total_kids = children
                 booking.total_infants = infants
@@ -724,7 +724,7 @@ def excursion_detail(request, pk):
                 return JsonResponse({
                     'success': False,
                     'message': str(e),
-                    'errors': booking_form.errors
+                    'errors': getattr(booking_form, 'errors', {}) if 'booking_form' in locals() else {}
                 })
         
 
@@ -936,7 +936,7 @@ def booking_delete(request, pk):
             'message': f'Error deleting booking: {str(e)}'
         })
 
-@login_required
+# @login_required
 def booking_detail(request, pk):
     
     booking = get_object_or_404(Booking, pk=pk)
