@@ -1082,6 +1082,8 @@ def login_view(request):
             else:
                 return redirect('login')
             
+            response.delete_cookie('voucher_code')
+            
             response.set_cookie('user_id', user.id)
             response.set_cookie('user_role', user.profile.role)
             return response
@@ -1095,6 +1097,7 @@ def login_view(request):
 def logout_view(request):
     logout(request)
     response = redirect('excursion_list')
+    response.delete_cookie('voucher_code')
     response.delete_cookie('user_id')
     response.delete_cookie('user_role')
     return response
@@ -1820,7 +1823,7 @@ def bookings_list(request):
         sort_field = sort_by
     
     # Start with all bookings
-    bookings = Booking.objects.all()
+    bookings = Booking.objects.all().order_by('created_at')
     
     # Apply search filter if search query is provided
     if search_query:
@@ -1829,7 +1832,7 @@ def bookings_list(request):
             Q(guest_email__icontains=search_query) |
             Q(payment_status__icontains=search_query) |
             Q(excursion_availability__excursion__title__icontains=search_query)
-        )
+        )    
 
     paginator = Paginator(bookings, 15)
     page_number = request.GET.get('page')

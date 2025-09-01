@@ -15,7 +15,7 @@
             {% for excursion in excursions %}
                 <div class="bg-white shadow-md rounded-lg overflow-hidden">
                     <a href="{% url 'excursion_detail' excursion.pk %}">
-                        <img src="{% if excursion.intro_image %}{{ excursion.intro_image.url }}{% else %}{% static 'main/images/excursion-default.jpg' %}{% endif %}" alt="{{ excursion.title }}" class="w-full h-48 object-cover">
+                        <img src="{% if excursion.intro_image %}{{ excursion.intro_image.url }}{% else %}{% static 'main/media/excursions/98_LawaxTO.jpg' %}{% endif %}" alt="{{ excursion.title }}" class="w-full h-48 object-cover">
                     </a>
                 </div>
             {% endfor %}

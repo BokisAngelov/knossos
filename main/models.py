@@ -23,6 +23,9 @@ class Category(models.Model):
 
     def __str__(self):
         return self.name
+    
+    class Meta:
+        ordering = ['name']
 
 class Tag(models.Model):
     name = models.CharField(max_length=255)
@@ -43,6 +46,9 @@ class PickupGroup(models.Model):
     # region = models.ForeignKey(Region, on_delete=models.SET_NULL, null=True, related_name='pickup_groups')
     def __str__(self):
         return self.name
+    
+    class Meta:
+        ordering = ['name']
     
 class UserProfile(models.Model):
     STATUS_CHOICES = [
@@ -151,7 +157,6 @@ class Excursion(models.Model):
     guide = models.ForeignKey(UserProfile, on_delete=models.SET_NULL, blank=True, null=True, related_name='excursions_guide', limit_choices_to={'role': 'guide'})
 
     def __str__(self):
-        
         return self.title
 
 class ExcursionImage(models.Model):
@@ -243,6 +248,9 @@ class Hotel(models.Model):
 
     def __str__(self):
         return self.name
+    
+    class Meta:
+        ordering = ['name']
 
 class Reservation(models.Model):
     STATUS_CHOICES = [
@@ -305,6 +313,9 @@ class Booking(models.Model):
 
     def __str__(self):
         return f"Booking #{self.id} by {self.user.username if self.user else 'Guest'}"
+    
+    class Meta:
+        ordering = ['created_at']
 
 class Transaction(models.Model):
     booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name='transactions')
@@ -314,5 +325,8 @@ class Transaction(models.Model):
 
     def __str__(self):
         return f"Transaction #{self.id} for Booking #{self.booking.id}"
+    
+    class Meta:
+        ordering = ['created_at']
 
 

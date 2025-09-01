@@ -147,13 +147,14 @@
 
       function checkVoucherOnLoad() {
           // const voucherInput = document.getElementById('voucher');
-          const voucherCode = getCookie('voucher_code');
+          const voucherCode = getCookie('voucher_code') ? getCookie('voucher_code') : "";
 
           // console.log("code from cookie: " + voucherCode);
 
           if (voucherCode) {
               checkVoucher(voucherCode, false); 
           }
+          else return;
       }
       checkVoucherOnLoad();
       function checkVoucher(code, shouldReload = true) {
@@ -198,7 +199,7 @@
           })
           .catch(error => {
               console.error('Error:', error);
-              document.getElementById('voucher-message').textContent = 'An error occurred while checking the voucher.';
+              // document.getElementById('voucher-message').textContent = 'An error occurred while checking the voucher.';
           });
       }
 
@@ -230,7 +231,7 @@
           })
           .catch(error => {
               console.error('Error:', error);
-              document.getElementById('voucher-message').textContent = 'An error occurred while clearing the voucher.';
+              // document.getElementById('voucher-message').textContent = 'An error occurred while clearing the voucher.';
           });
       }
 
