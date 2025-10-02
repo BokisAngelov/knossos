@@ -389,7 +389,12 @@ def sync_excursions(request):
                 excursion_id = excursion['Id']
                 excursion_provider = excursion['Organizer_Name']
                 # print('excursion_name: ' + str(excursion_name))
-                excursion_provider_id = UserProfile.objects.get(name=excursion_provider, role='provider').id
+                # Get the first matching provider (in case there are duplicates)
+                provider_profile = UserProfile.objects.filter(name=excursion_provider, role='provider').first()
+                if not provider_profile:
+                    print(f"Warning: No provider found with name '{excursion_provider}' and role 'provider'")
+                    continue
+                excursion_provider_id = provider_profile.id
                 excursion_description_response = get_excursion_description(excursion_id)
                 excursion_description = excursion_description_response['Overview'][0]['Description']['MainDescription']
                 excursion_intro_image = excursion_description_response['Media']['DefaultImage']['MainUrl']
@@ -428,14 +433,25 @@ def sync_providers(request):
                 provider_zipcode = provider['Zip']
 
                 # 1. Get or create the User instance
-                user, user_created = User.objects.get_or_create(
-                    id=provider_id,
-                    username=provider_email or f"provider_{provider_id}",
-                    defaults={
-                        'first_name': provider_name,
-                        'email': provider_email or "",
-                    }
-                )
+                # First try to get existing user by ID, then by username
+                try:
+                    user = User.objects.get(id=provider_id)
+                    user_created = False
+                except User.DoesNotExist:
+                    try:
+                        # Check if user with this username already exists
+                        username = provider_email or f"provider_{provider_id}"
+                        user = User.objects.get(username=username)
+                        user_created = False
+                    except User.DoesNotExist:
+                        # Create new user
+                        user = User.objects.create(
+                            id=provider_id,
+                            username=provider_email or f"provider_{provider_id}",
+                            first_name=provider_name,
+                            email=provider_email or "",
+                        )
+                        user_created = True
 
                 # 2. Get or create the UserProfile instance
                 profile, profile_created = UserProfile.objects.get_or_create(
@@ -462,76 +478,6 @@ def sync_providers(request):
         except Exception as e:
             return JsonResponse({'success': False, 'message': f'Error syncing providers: {str(e)}'})
     return JsonResponse({'success': False, 'message': 'Invalid request method.'})
-
-# def sync_excursion_availabilities(request):
-#     if request.method == 'POST':
-#         try:
-#             # excursion_availabilities_cl = get_excursion_availabilities()
-#             excursions = Excursion.objects.all()
-#             availabilities = []
-#             today = datetime.now().strftime("%Y-%m-%d")
-#             excursion_availabilities_cl = get_excursion_availabilities(excursion_id=3909)
-#             availability = excursion_availabilities_cl[0]['Availability']
-#             if availability:
-#                 # print('availability: ' + str(availability[0]['Date']))
-#                 availabilities.append(availability)
-#                 # print('excursion id with availability: ' + str(excursion_id))
-
-
-#             print('availabilities: ' + str(availabilities))
-
-#             for i, av in enumerate(availabilities):
-#                 av_date = av[i]['Date']
-#                 print('av_date: ' + str(av_date))
-
-#             # for excursion in excursions:
-#             #     excursion_id = excursion.id
-#             #     excursion_availabilities_cl = get_excursion_availabilities(excursion_id)
-#             #     availability = excursion_availabilities_cl[0]['Availability']
-#             #     if availability:
-#             #         # print('availability: ' + str(availability[0]['Date']))
-#             #         availabilities.append(availability)
-#             #         print('excursion id with availability: ' + str(excursion_id))
-
-
-#             #     print('availabilities: ' + str(availabilities))
-#                 # for av in availabilities:
-#                 #     av_date = av[0]['Date']
-#                 #     # av_date = datetime.strptime(av_date_str, "%Y-%m-%d")
-#                 #     print('av_date: ' + str(av_date))
-#                     # print('today: ' + str(today))
-#                     # print('today: ' + str(today))
-#                     # if av_date > today:
-#                     #     print('av_date is in the future: ' + str(av_date))
-
-#                 # print('availability: ' + str(availability))
-                        
-#             total_synced = 0
-#             # for availability in excursion_availabilities_cl[0]['Availability']:
-#             #     print('availability: ' + str(availability['Date']))
-
-#                 # availability = excursion_availabilities['Data'][0]
-#                 # excursion_availability_id = excursion_availability['Id']
-#                 # excursion_id = excursion_availability['ExcursionId']
-#                 # excursion = Excursion.objects.get(id=excursion_id)
-
-#                 # excursion_availability_entry, created = ExcursionAvailability.objects.get_or_create(
-#                 #     id=excursion_availability_id,
-#                 #     defaults={'excursion': excursion}
-#                 # )
-#                 # if created:
-#                 #     print('created excursion availability: ' + str(excursion_availability_entry))
-#                 #     total_synced += 1
-
-#                 # if total_synced > 0:
-#                 #     message = 'Sync successful! Total excursion availabilities synced: ' + str(total_synced)
-#                 # else:
-#                 #     message = 'Excursion availabilities are up to date.'
-#             message = 'Hiiiii.'
-#             return JsonResponse({'success': True, 'message': message})
-#         except Exception as e:
-#             return JsonResponse({'success': False, 'message': f'Error syncing excursion availabilities: {str(e)}'})
-#     return JsonResponse({'success': False, 'message': 'Invalid request method.'})
 
 # ----- Excursion Views -----
 def excursion_list(request):

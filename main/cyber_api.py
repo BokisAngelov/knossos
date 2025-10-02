@@ -8,45 +8,46 @@ def get_token():
         'scope': 'read',
         'username': 'innov',
         'password': 'innov'
-    })
+    },
+    verify=False)
 
     return response.json()["access_token"]
 
 def get_groups():
-    response = requests.get(API_URL + "/excursionPickupGroups" )
+    response = requests.get(API_URL + "/excursionPickupGroups" , verify=False)
     return response.json()
 
 def get_hotels():
     token = get_token()
-    response = requests.get(API_URL + "/hotels", headers={'Authorization': 'Bearer ' + token})
+    response = requests.get(API_URL + "/hotels", headers={'Authorization': 'Bearer ' + token}, verify=False)
     return response.json()
 
 def get_pickup_points():
-    response = requests.get(API_URL + "/excursionPickupPoints" )
+    response = requests.get(API_URL + "/excursionPickupPoints" , verify=False)
     return response.json()
 
 def get_bookings():
     token = get_token()
     booking_id = 49941 # need to update to get all bookings
-    response = requests.get(API_URL + "/bookings/" + str(booking_id) + "/itinerary", headers={'Authorization': 'Bearer ' + token})
+    response = requests.get(API_URL + "/bookings/" + str(booking_id) + "/itinerary", headers={'Authorization': 'Bearer ' + token}, verify=False)
 
     return response.json()
 
 def get_excursions():
     token = get_token()
-    response = requests.get(API_URL + "/excursionsList", headers={'Authorization': 'Bearer ' + token})
+    response = requests.get(API_URL + "/excursionsList", headers={'Authorization': 'Bearer ' + token}, verify=False)
     # print('response:', response.json(), type(response.json()))
     return response.json()
 
 def get_excursion_description(excursion_id):
     token = get_token()
 
-    response = requests.get(API_URL + "/excursion/" + str(excursion_id) + "/description/en", headers={'Authorization': 'Bearer ' + token})
+    response = requests.get(API_URL + "/excursion/" + str(excursion_id) + "/description/en", headers={'Authorization': 'Bearer ' + token}, verify=False)
     return response.json()
 
 def get_providers():
     token = get_token()
-    response = requests.get(API_URL + "/vendors", headers={'Authorization': 'Bearer ' + token})
+    response = requests.get(API_URL + "/vendors", headers={'Authorization': 'Bearer ' + token}, verify=False)
     return response.json()
 
 def get_excursion_availabilities(excursion_id):
@@ -58,14 +59,14 @@ def get_excursion_availabilities(excursion_id):
         "ExcursionId": excursion_id, #3914
         "SellerId": 1980
     }
-    response = requests.post(API_URL + "/excursion/datesPerLanguage", json=data)
+    response = requests.post(API_URL + "/excursion/datesPerLanguage", json=data, verify=False)
     # print('response: ' + str(response.json()))
     return response.json()
 
 def get_reservation(booking_id):
     token = get_token()
     # booking_id = 49941
-    response = requests.get(API_URL + "/bookings/" + str(booking_id) + "/itinerary", headers={'Authorization': 'Bearer ' + token})
+    response = requests.get(API_URL + "/bookings/" + str(booking_id) + "/itinerary", headers={'Authorization': 'Bearer ' + token}, verify=False)
 
     return response.json()
 
