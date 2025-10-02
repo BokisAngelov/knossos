@@ -52,11 +52,45 @@ ExcursionImageFormSet = inlineformset_factory(
 class FeedbackForm(forms.ModelForm):
     class Meta:
         model = Feedback
-        fields = ['rating', 'comment']
+        fields = ['excursion', 'rating', 'comment']
         widgets = {
-            'rating': forms.NumberInput(attrs={'min': 1, 'max': 5}),
+            'excursion': forms.HiddenInput(),
+            'rating': forms.Select(                
+                choices=[(i, f"{i} {'★' * i}{'☆' * (5-i)}") for i in range(1, 6)],
+                attrs={"class": "select select-bordered w-full", "required": True},),
             'comment': forms.Textarea(attrs={'rows': 3}),
         }
+
+    def __init__(self, *args, **kwargs):
+        self.author = kwargs.pop('author', None)
+        self.excursion = kwargs.pop('excursion', None)
+        super().__init__(*args, **kwargs)
+        
+        # Set initial excursion value
+        if self.excursion:
+            self.fields['excursion'].initial = self.excursion
+
+
+    def clean(self):
+        cleaned_data = super().clean()
+        
+        excursion = cleaned_data.get('excursion') or self.excursion
+        rating = cleaned_data.get('rating')
+        comment = cleaned_data.get('comment')
+
+        if not rating:
+            raise ValidationError({'rating': 'Rating is required.'})
+
+        if not comment:
+            raise ValidationError({'comment': 'Comment is required.'})
+
+        # check if user has already reviewed this excursion
+        if self.author and excursion and not self.instance.pk:
+            existing_feedback = Feedback.objects.filter(author=self.author, excursion=excursion).exists()
+            if existing_feedback:
+                raise ValidationError({'comment': 'You have already reviewed this excursion.'})
+        
+        return cleaned_data
 
 # ----- Availability Form -----
 class WeekdayCapacityWidget(forms.CheckboxSelectMultiple):

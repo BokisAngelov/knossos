@@ -30,6 +30,7 @@ import json
 from django.db.models import Q, Sum, Count
 from django.apps import apps
 from .cyber_api import get_groups, get_hotels, get_pickup_points, get_excursions, get_excursion_description, get_providers, get_excursion_availabilities, get_reservation
+from .utils import FeedbackService, BookingService, ExcursionService, create_reservation
 
 def is_staff(user):
     return user.is_staff
@@ -197,105 +198,6 @@ def retrive_voucher(request):
             'message': 'Invalid request method.'
         })
    
-def create_reservation(booking_data):
-    if booking_data is not None:
-        try:
-        
-            booking_id = booking_data.get("Id")
-            lead_name = booking_data.get("LeadName")
-            lead_email = booking_data.get("LeadEmail")
-            lead_phone = booking_data.get("LeadPhone")
-            adults = booking_data.get("Adults")
-            children = booking_data.get("Children")
-            date_from_full = booking_data.get("DateFrom")
-            date_from = date_from_full.split("T")[0]
-            # date_from = datetime.strptime(date_from_part, "%Y-%m-%d").strftime("%d-%m-%Y")
-            date_to_full = booking_data.get("DateTo")
-            date_to = date_to_full.split("T")[0]
-            print('date_to - create_reservation function: ' + str(date_to))
-            # date_to = datetime.strptime(date_to_part, "%Y-%m-%d").strftime("%d-%m-%Y")
-
-            pickup_point_id = None
-            hotel_id = None
-            pickup_time = None
-            for service in booking_data.get("Services", []):
-                if "PickupPoint" in service and pickup_point_id is None:
-                    pickup_point_id = service["PickupPoint"].get("Id")
-                if service.get("Type") == "Hotel" and hotel_id is None:
-                    hotel_id = service.get("Id")
-
-                if service.get("TransferType") == "DepartureTransfer":
-                    pickup_time = service.get("PickupTime")
-
-                if pickup_point_id is not None and hotel_id is not None and pickup_time is not None:
-                    break
-
-            pickup_point_instance = PickupPoint.objects.get(id=pickup_point_id) if pickup_point_id else None
-            pickup_group_instance = pickup_point_instance.pickup_group if pickup_point_instance else None
-
-            # Convert pickup_time string to time object
-            departure_time_obj = None
-            if pickup_time:
-                try:
-                    departure_time_obj = datetime.strptime(pickup_time, '%H:%M').time()
-                except (ValueError, TypeError):
-                    departure_time_obj = None
-
-            print(f"Pickup Group ID: {pickup_group_instance.id if pickup_group_instance else None}")
-            print(f"Pickup Time: {pickup_time}")
-            print(f"Date From: {date_from}")
-            print(f"Date To: {date_to}")
-
-            hotel_instance = Hotel.objects.get(id=hotel_id) if hotel_id else None
-
-            reservation_obj, created = Reservation.objects.get_or_create(
-                voucher_id=booking_id,
-                defaults={
-                    'client_name': lead_name,
-                    'client_email': lead_email,
-                    'client_phone': lead_phone,
-                    'total_adults': adults,
-                    'total_kids': children,
-                    'check_in': date_from,
-                    'check_out': date_to,
-                    'pickup_point': pickup_point_instance,
-                    'pickup_group': pickup_group_instance,
-                    'hotel': hotel_instance,
-                    'departure_time': departure_time_obj,
-                }
-            )
-
-            if created:
-                print(f"Booking created: {reservation_obj}")
-            else:
-                print(f"Booking already exists: {reservation_obj}")
-
-            response_data = {
-                'success': True,
-                'message': 'Reservation found.' if not created else 'Reservation created successfully.',
-                'return_data': {
-                    'client_name': lead_name,
-                    'pickup_group': pickup_group_instance.name if pickup_group_instance else None,
-                    'pickup_point': pickup_point_instance.name if pickup_point_instance else None,
-                    'pickup_group_id': pickup_group_instance.id if pickup_group_instance else None,
-                    'pickup_point_id': pickup_point_instance.id if pickup_point_instance else None,
-                    'client_email': lead_email,
-                },
-                'created': created
-            }
-            
-            return reservation_obj, response_data
-
-        except Exception as e:
-            return None, {
-                'success': False,
-                'message': str(e)
-            }
-    else:
-        return None, {
-            'success': False,
-            'message': 'Reservation not found.'
-        }
     
 #  Sync with Cyberlogic API
 def sync_pickup_groups(request):
@@ -487,211 +389,184 @@ def excursion_list(request):
     })
 
 def excursion_detail(request, pk):
-
-    excursion = get_object_or_404(Excursion, pk=pk)    
+    """View for displaying excursion details and handling feedback/booking submissions."""
+    excursion = get_object_or_404(Excursion, pk=pk)
+    feedbacks = excursion.feedback_entries.all()
     feedback_form, booking_form = None, None
     excursion_availabilities = ExcursionAvailability.objects.filter(excursion=excursion)
     excursion_availability = excursion_availabilities.first()
     
-    availability_dates_by_region = {}
-    pickup_points = []
+    # Check if user has already submitted feedback for this excursion
+    user_has_feedback = FeedbackService.user_has_feedback(request.user, excursion)
 
-
+    # Handle case when no availability exists
     if not excursion_availability:
-        feedback_form = FeedbackForm()
-        booking_form = BookingForm(user=request.user)
+        return _render_excursion_without_availability(
+            request, excursion, feedbacks, user_has_feedback
+        )
 
-        return render(request, 'main/excursions/excursion_detail.html', {
-            'excursion': excursion,
-            'feedback_form': feedback_form,
-            'booking_form': booking_form,
-            'excursion_availability': excursion_availability,
-            'availability_dates_by_region': availability_dates_by_region,
-            'pickup_points': pickup_points,
-            # 'voucher_code': voucher_code,
-            # 'return_data': return_data,
-            'remaining_seats': 0,
-        })
-
-
-    for availability in excursion_availabilities:
-        for pickup_group in availability.pickup_groups.all():
-            group_id = str(pickup_group.id)
-            # days = availability.availability_days.filter(excursion_availability=availability)
-            days = availability.availability_days.all()
-            
-            # Convert queryset to list of dicts
-            date_entries = [
-                {"date": day.date_day.isoformat(), "id": day.id}
-                for day in days
-            ]
-            # If the group already exists, append dates; else, create new entry
-            if group_id not in availability_dates_by_region:
-                availability_dates_by_region[group_id] = []
-            availability_dates_by_region[group_id].extend(date_entries)
-
-            # Get pickup points for this group
-            points = PickupPoint.objects.filter(pickup_group=pickup_group).order_by('name')
-            pickup_points.append({
-                "pickup_group": group_id,
-                "points": list(points.values('id', 'name'))
-            })
-
-    pickup_group_ids = [int(gid) for gid in availability_dates_by_region.keys()]
-    pickup_groups = PickupGroup.objects.filter(id__in=pickup_group_ids).values('id', 'name')
-    # Optionally, build a dict for easy lookup in JS
-    pickup_group_map = {str(g['id']): g['name'] for g in pickup_groups}
-    # print('pickup points: ' + str(pickup_points))
+    # Process availability data
+    availability_dates_by_region, pickup_points = ExcursionService.get_availability_data(
+        excursion_availabilities
+    )
+    pickup_group_map = ExcursionService.get_pickup_group_map(availability_dates_by_region)
 
 
     # Handle feedback submission
     if request.method == 'POST' and 'feedback_submit' in request.POST:
-        feedback_form = FeedbackForm(request.POST)
-        if feedback_form.is_valid() and request.user.is_authenticated:
-            feedback = feedback_form.save(commit=False)
-            feedback.excursion = excursion
-            feedback.author = request.user
-            feedback.created_at = timezone.now()
-            feedback.save()
-            messages.success(request, 'Thank you for your feedback.')
-            return redirect('excursion_detail', pk)
+        return _handle_feedback_submission(request, excursion, user_has_feedback, pk)
         
     # Handle booking submission
     elif request.method == 'POST' and 'booking_submit' in request.POST:
-        
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            try:
-                booking_form = BookingForm(request.POST, user=request.user)
-                
-                if not booking_form.is_valid():
-                    return JsonResponse({
-                        'success': False,
-                        'errors': booking_form.errors
-                    })
-                
-                booking = booking_form.save(commit=False)
-                
-                # Handle empty strings by converting them to 0 before int conversion
-                adults = int(request.POST.get('adults', '0') or '0')
-                children = int(request.POST.get('children', '0') or '0')
-                infants = int(request.POST.get('infants', '0') or '0')
-                total_price = int(request.POST.get('total_price', '0') or '0')
-                partial_price = int(request.POST.get('partial_payment', '0') or '0')
-                voucher_id = request.POST.get('voucher_code', None)
-                
-                # Only get partial_paid_method for staff and representatives
-                partial_paid_method = ''
-                if request.user and request.user.is_authenticated and (request.user.is_staff or (hasattr(request.user, 'profile') and getattr(request.user.profile, 'role', None) == 'representative')):
-                    partial_paid_method = request.POST.get('partial_paid_method', '')
-                    if partial_paid_method is None:
-                        partial_paid_method = ''
-                
-                # print('voucher_id: ' + str(voucher_id))
-                reservation_instance = None
-                if voucher_id:
-                    try:
-                        reservation_instance = Reservation.objects.get(voucher_id=voucher_id)
-                    except Reservation.DoesNotExist:
-                        prepare_data = get_reservation(voucher_id)
-                        # print(prepare_data)
-                        reservation_instance, reservation_response = create_reservation(prepare_data)
-                        # print('reservation_instance: ' + str(reservation_instance))
-
-                guest_email = request.POST.get('guest_email', None)
-                guest_name = request.POST.get('guest_name', None)
-
-                user = request.user
-                user_instance = user if user.is_authenticated else None              
-                
-                booking.excursion_availability = excursion_availability
-                booking.user = user_instance if user_instance else None
-                booking.total_adults = adults
-                booking.total_kids = children
-                booking.total_infants = infants
-                booking.voucher_id = reservation_instance
-                booking.guest_email = guest_email
-                booking.guest_name = guest_name
-                booking.price = total_price # price before discount or partial payment
-                booking.partial_paid_method = partial_paid_method
-                if partial_price > 0:
-                    final_price = total_price - partial_price
-                    booking.partial_paid = partial_price if partial_price else None
-                else:
-                    final_price = total_price
-                    booking.partial_paid = 0 if partial_price else None
-
-                booking.total_price = final_price # price after discount or partial payment
-
-                selected_date = request.POST.get('selected_date')
-                availability_id = request.POST.get('availability_id')
-                
-                if not selected_date or not availability_id:
-                    return JsonResponse({
-                        'success': False,
-                        'message': 'Please select a date.'
-                    })
-                
-                day_availability = AvailabilityDays.objects.get(date_day=selected_date, excursion_availability=availability_id)
-                day_capacity = day_availability.capacity
-                day_booked_guests = day_availability.booked_guests
-                remaining_seats = day_capacity - day_booked_guests
-                
-                # Validate at least one participant                
-                if adults + children + infants == 0:
-                    return JsonResponse({
-                        'success': False,
-                        'message': 'Please select at least one participant.'
-                    })
-
-                booking.date = selected_date
-                booking.availability_id = availability_id
-                booking.save()
-
-                # Check if the availability has enough guests
-                total_guests = adults + children + infants
-
-                if total_guests > remaining_seats:
-                    return JsonResponse({
-                        'success': False,
-                        'message': 'The availability has not enough guests. Remaining seats: ' + str(remaining_seats)
-                    })
-                else:
-                    availability.booked_guests += total_guests
-                    day_availability.booked_guests += total_guests
-                    day_availability.save()
-                    availability.save()
-
-                return JsonResponse({
-                    'success': True,
-                    'redirect_url': reverse('checkout', kwargs={'booking_pk': booking.pk})
-                })
-
-            except Exception as e:
-                return JsonResponse({
-                    'success': False,
-                    'message': str(e),
-                    'errors': getattr(booking_form, 'errors', {}) if 'booking_form' in locals() else {}
-                })
+            return _handle_ajax_booking_submission(request, excursion_availability)
         
 
-    # Calculate remaining seats for the first availability
-    remaining_seats = 0
-    if excursion_availability:
-        remaining_seats = excursion_availability.max_guests - excursion_availability.booked_guests
+    # Calculate remaining seats and prepare context
+    remaining_seats = excursion_availability.max_guests - excursion_availability.booked_guests if excursion_availability else 0
+    feedback_form = _get_feedback_form(request.user, user_has_feedback, excursion)
+    booking_form = BookingForm(user=request.user)
 
     return render(request, 'main/excursions/excursion_detail.html', {
         'excursion': excursion,
+        'feedbacks': feedbacks,
         'feedback_form': feedback_form,
         'excursion_availabilities': excursion_availabilities,
         'excursion_availability': excursion_availability,
         'booking_form': booking_form,
         'availability_dates_by_region': availability_dates_by_region,
         'pickup_points': pickup_points,
-        # 'voucher_code': voucher_code,
-        # 'return_data': return_data,
+        'user_has_feedback': user_has_feedback,
         'pickup_group_map': pickup_group_map,
         'remaining_seats': remaining_seats,
     })
+
+
+# Helper functions for better code organization
+
+def _render_excursion_without_availability(request, excursion, feedbacks, user_has_feedback):
+    """Render excursion detail page when no availability exists."""
+    feedback_form = _get_feedback_form(request.user, user_has_feedback, excursion)
+    booking_form = BookingForm(user=request.user)
+
+    return render(request, 'main/excursions/excursion_detail.html', {
+        'excursion': excursion,
+        'feedbacks': feedbacks,
+        'feedback_form': feedback_form,
+        'booking_form': booking_form,
+        'excursion_availability': None,
+        'availability_dates_by_region': {},
+        'pickup_points': [],
+        'user_has_feedback': user_has_feedback,
+        'remaining_seats': 0,
+    })
+
+
+def _get_feedback_form(user, user_has_feedback, excursion):
+    """Get feedback form if user is authenticated and hasn't submitted feedback."""
+    if user.is_authenticated and not user_has_feedback:
+        return FeedbackForm(author=user, excursion=excursion)
+    return None
+
+
+def _handle_feedback_submission(request, excursion, user_has_feedback, pk):
+    """Handle feedback form submission."""
+    if user_has_feedback or not request.user.is_authenticated:
+        messages.error(request, 'You have already submitted feedback for this excursion.')
+        return redirect('excursion_detail', pk)
+    
+    feedback_form = FeedbackForm(request.POST, author=request.user, excursion=excursion)
+    if feedback_form.is_valid():
+        try:
+            FeedbackService.create_feedback(
+                user=request.user,
+                excursion=excursion,
+                rating=feedback_form.cleaned_data['rating'],
+                comment=feedback_form.cleaned_data['comment']
+            )
+            messages.success(request, 'Thank you for your feedback.')
+        except ValidationError as e:
+            messages.error(request, str(e))
+    else:
+        # Form has errors, will be displayed in template
+        pass
+    
+    return redirect('excursion_detail', pk)
+
+
+def _handle_ajax_booking_submission(request, excursion_availability):
+    """Handle AJAX booking form submission."""
+    try:
+        booking_form = BookingForm(request.POST, user=request.user)
+        
+        if not booking_form.is_valid():
+            return JsonResponse({
+                'success': False,
+                'errors': booking_form.errors
+            })
+        
+        # Validate booking data
+        booking_data = BookingService.validate_booking_data(request.POST)
+        
+        # Handle voucher
+        voucher_id = request.POST.get('voucher_code')
+        voucher_instance = BookingService.handle_voucher(voucher_id)
+        
+        # Get guest data
+        guest_data = {
+            'guest_email': request.POST.get('guest_email'),
+            'guest_name': request.POST.get('guest_name'),
+        }
+        
+        # Get partial payment method for staff/representatives
+        partial_paid_method = ''
+        if (request.user and request.user.is_authenticated and 
+            (request.user.is_staff or 
+             (hasattr(request.user, 'profile') and 
+              getattr(request.user.profile, 'role', None) == 'representative'))):
+            partial_paid_method = request.POST.get('partial_paid_method', '')
+        
+        # Get selected date and availability
+        selected_date = request.POST.get('selected_date')
+        availability_id = request.POST.get('availability_id')
+        
+        if not selected_date or not availability_id:
+            return JsonResponse({
+                'success': False,
+                'message': 'Please select a date.'
+            })
+        
+        # Create booking
+        booking = BookingService.create_booking(
+            user=request.user,
+            excursion_availability=excursion_availability,
+            booking_data=booking_data,
+            guest_data=guest_data,
+            voucher_instance=voucher_instance,
+            selected_date=selected_date,
+            availability_id=availability_id
+        )
+        
+        # Set partial payment method
+        booking.partial_paid_method = partial_paid_method
+        booking.save()
+        
+        return JsonResponse({
+            'success': True,
+            'redirect_url': reverse('checkout', kwargs={'booking_pk': booking.pk})
+        })
+
+    except ValidationError as e:
+        return JsonResponse({
+            'success': False,
+            'message': str(e)
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': str(e),
+            'errors': getattr(booking_form, 'errors', {}) if 'booking_form' in locals() else {}
+        })
 
 def get_user_details_cookies(request):
     

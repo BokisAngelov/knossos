@@ -148,7 +148,6 @@ class Excursion(models.Model):
     intro_image = models.ImageField(upload_to=excursion_intro_image_path, blank=True, null=True)
     category = models.ManyToManyField(Category, related_name='excursions', blank=True, null=True)
     tags = models.ManyToManyField(Tag, related_name='excursions', blank=True, null=True)
-    feedbacks = models.ManyToManyField('Feedback', related_name='excursions', blank=True)
     overall_rating = models.DecimalField(max_digits=3, decimal_places=2, null=True, blank=True)
     status = models.CharField(max_length=8, choices=STATUS_CHOICES, default='inactive')
     full_day = models.BooleanField(default=False)
