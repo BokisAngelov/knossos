@@ -152,6 +152,89 @@
           {% if form.tags.errors %}<div class="text-red-500 text-xs mt-1">{{ form.tags.errors }}</div>{% endif %}
         </div>
       </div>
+
+      <!-- Gallery Section -->
+      <div class="space-y-4">
+        <div class="flex items-center justify-between">
+          <h3 class="text-lg font-semibold text-brown">Gallery Images</h3>
+          <button type="button" id="add-image-btn" class="bg-blue text-white px-4 py-2 rounded-md hover:opacity-80 text-sm">
+            Add Image
+          </button>
+        </div>
+        
+        <div id="gallery-container" class="space-y-4">
+          {{ formset.management_form }}
+          {% for form in formset %}
+            <div class="gallery-item border border-gray-200 rounded-lg p-4 {% if form.instance.pk %}existing-image{% else %}new-image{% endif %}" data-form-index="{{ forloop.counter0 }}">
+              <div class="flex items-start gap-4">
+                <!-- Image Preview -->
+                <div class="w-32 h-32 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center bg-gray-50 image-preview">
+                  {% if form.instance.image %}
+                    <img src="{{ form.instance.image.url }}" alt="{{ form.instance.alt_text }}" class="w-full h-full object-cover rounded-lg">
+                  {% else %}
+                    <div class="text-center text-gray-500">
+                      <svg class="w-8 h-8 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                      </svg>
+                      <p class="text-xs">Click to upload</p>
+                    </div>
+                  {% endif %}
+                </div>
+                
+                <!-- Form Fields -->
+                <div class="flex-1 space-y-3">
+                  <!-- Hidden fields -->
+                  {% for hidden in form.hidden_fields %}
+                    {{ hidden }}
+                  {% endfor %}
+                  
+                  <!-- Image field (hidden, triggered by preview click) -->
+                  {{ form.image }}
+                  
+                  <!-- Alt text field -->
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                    {{ form.alt_text }}
+                    {% if form.alt_text.errors %}
+                      <div class="text-red-500 text-xs mt-1">{{ form.alt_text.errors }}</div>
+                    {% endif %}
+                  </div>
+                  
+                  <!-- Order field -->
+                  <div class="flex items-center gap-4">
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Order</label>
+                      {{ form.order }}
+                      {% if form.order.errors %}
+                        <div class="text-red-500 text-xs mt-1">{{ form.order.errors }}</div>
+                      {% endif %}
+                    </div>
+                    
+                    <!-- Delete checkbox -->
+                    {% if form.instance.pk %}
+                      <div class="flex items-center">
+                        {{ form.DELETE }}
+                        <label for="{{ form.DELETE.id_for_label }}" class="ml-2 text-sm text-red-600">Delete</label>
+                      </div>
+                    {% endif %}
+                    
+                    <!-- Remove button for new images -->
+                    {% if not form.instance.pk %}
+                      <button type="button" class="remove-image-btn text-red-600 hover:text-red-800 text-sm">
+                        Remove
+                      </button>
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+              
+              {% if form.image.errors %}
+                <div class="text-red-500 text-xs mt-2">{{ form.image.errors }}</div>
+              {% endif %}
+            </div>
+          {% endfor %}
+        </div>
+      </div>
       
       <div class="mt-6 flex gap-4">
         <button type="submit" class="flex-1 bg-blue text-white font-medium py-2 px-4 rounded-md hover:opacity-80">
@@ -168,6 +251,118 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Gallery management functionality
+    let formIndex = parseInt(document.querySelector('#id_images-TOTAL_FORMS').value) || 0;
+    
+    // Add new image form
+    document.getElementById('add-image-btn').addEventListener('click', function() {
+        const container = document.getElementById('gallery-container');
+        const newForm = createImageForm(formIndex);
+        container.appendChild(newForm);
+        formIndex++;
+        updateFormIndex();
+    });
+    
+    // Handle image preview clicks
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.image-preview')) {
+            const preview = e.target.closest('.image-preview');
+            const fileInput = preview.closest('.gallery-item').querySelector('input[type="file"]');
+            fileInput.click();
+        }
+    });
+    
+    // Handle file input changes
+    document.addEventListener('change', function(e) {
+        if (e.target.type === 'file' && e.target.accept === 'image/*') {
+            handleImagePreview(e.target);
+        }
+    });
+    
+    // Handle remove buttons
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('remove-image-btn')) {
+            e.target.closest('.gallery-item').remove();
+            updateFormIndex();
+        }
+    });
+    
+    function createImageForm(index) {
+        const div = document.createElement('div');
+        div.className = 'gallery-item border border-gray-200 rounded-lg p-4 new-image';
+        div.setAttribute('data-form-index', index);
+        
+        div.innerHTML = `
+            <div class="flex items-start gap-4">
+                <div class="w-32 h-32 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center bg-gray-50 image-preview cursor-pointer">
+                    <div class="text-center text-gray-500">
+                        <svg class="w-8 h-8 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                        </svg>
+                        <p class="text-xs">Click to upload</p>
+                    </div>
+                </div>
+                
+                <div class="flex-1 space-y-3">
+                    <input type="file" name="images-${index}-image" id="id_images-${index}-image" class="hidden" accept="image/*">
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                        <input type="text" name="images-${index}-alt_text" id="id_images-${index}-alt_text" 
+                               placeholder="Enter image description..." 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    
+                    <div class="flex items-center gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Order</label>
+                            <input type="number" name="images-${index}-order" id="id_images-${index}-order" 
+                                   value="${index}" min="0"
+                                   class="w-20 px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        
+                        <button type="button" class="remove-image-btn text-red-600 hover:text-red-800 text-sm">
+                            Remove
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        return div;
+    }
+    
+    function handleImagePreview(input) {
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const preview = input.closest('.gallery-item').querySelector('.image-preview');
+                preview.innerHTML = `<img src="${e.target.result}" alt="Preview" class="w-full h-full object-cover rounded-lg">`;
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+    
+    function updateFormIndex() {
+        const totalForms = document.querySelectorAll('.gallery-item').length;
+        document.querySelector('#id_images-TOTAL_FORMS').value = totalForms;
+        
+        // Update form indices
+        document.querySelectorAll('.gallery-item').forEach((item, index) => {
+            item.setAttribute('data-form-index', index);
+            
+            // Update input names and IDs for new forms
+            if (item.classList.contains('new-image')) {
+                const inputs = item.querySelectorAll('input');
+                inputs.forEach(input => {
+                    if (input.name) {
+                        input.name = input.name.replace(/images-\d+-/, `images-${index}-`);
+                        input.id = input.id.replace(/id_images-\d+-/, `id_images-${index}-`);
+                    }
+                });
+            }
+        });
+    }
     const form = document.getElementById('excursion-form');
     
     form.addEventListener('submit', function(e) {

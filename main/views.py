@@ -615,10 +615,14 @@ def get_user_details_cookies(request):
 def excursion_create(request):
     if request.method == 'POST':
         form = ExcursionForm(request.POST, request.FILES)
-        if form.is_valid():
+        formset = ExcursionImageFormSet(request.POST, request.FILES)
+        
+        if form.is_valid() and formset.is_valid():
             try:
                 with transaction.atomic():
                     excursion = form.save()
+                    formset.instance = excursion
+                    formset.save()
                 if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                     return JsonResponse({
                         'success': True,
@@ -643,6 +647,12 @@ def excursion_create(request):
                     for error in errors:
                         error_messages.append(f"{field_name}: {error}")
                 
+                # Add formset errors
+                for i, form_errors in enumerate(formset.errors):
+                    for field, errors in form_errors.items():
+                        for error in errors:
+                            error_messages.append(f"Image {i+1} {field}: {error}")
+                
                 return JsonResponse({
                     'success': False,
                     'message': 'Please correct the following errors:',
@@ -651,21 +661,26 @@ def excursion_create(request):
             messages.error(request, 'Please correct the errors below.')
     else:
         form = ExcursionForm()
+        formset = ExcursionImageFormSet()
     
     return render(request, 'main/excursions/excursion_form.html', {
         'form': form,
+        'formset': formset,
     })
 
 @user_passes_test(is_staff)
 def excursion_update(request, pk):
     excursion = get_object_or_404(Excursion, pk=pk)
-    form = ExcursionForm(request.POST, request.FILES, instance=excursion)
     
     if request.method == 'POST':
-        if form.is_valid():
+        form = ExcursionForm(request.POST, request.FILES, instance=excursion)
+        formset = ExcursionImageFormSet(request.POST, request.FILES, instance=excursion)
+        
+        if form.is_valid() and formset.is_valid():
             try:
                 with transaction.atomic():
                     excursion = form.save()
+                    formset.save()
                 if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                     return JsonResponse({
                         'success': True,
@@ -683,18 +698,85 @@ def excursion_update(request, pk):
                 messages.error(request, f'Error updating excursion: {str(e)}')
         else:
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                error_messages = []
+                for field, errors in form.errors.items():
+                    field_name = form.fields[field].label if field in form.fields else field
+                    for error in errors:
+                        error_messages.append(f"{field_name}: {error}")
+                
+                # Add formset errors
+                for i, form_errors in enumerate(formset.errors):
+                    for field, errors in form_errors.items():
+                        for error in errors:
+                            error_messages.append(f"Image {i+1} {field}: {error}")
+                
                 return JsonResponse({
                     'success': False,
-                    'message': 'Please correct the errors below.',
-                    'errors': form.errors
+                    'message': 'Please correct the following errors:',
+                    'errors': error_messages
                 })
             messages.error(request, 'Please correct the errors below.')
     else:
         form = ExcursionForm(instance=excursion)
+        formset = ExcursionImageFormSet(instance=excursion)
     
     return render(request, 'main/excursions/excursion_form.html', {
         'form': form,
+        'formset': formset,
         'excursion': excursion,
+    })
+
+@user_passes_test(is_staff)
+def gallery_image_delete(request, pk):
+    """Delete a single gallery image via AJAX"""
+    if request.method == 'POST':
+        try:
+            image = get_object_or_404(ExcursionImage, pk=pk)
+            excursion_pk = image.excursion.pk
+            image.delete()
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Image deleted successfully.'
+            })
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'message': str(e)
+            })
+    
+    return JsonResponse({
+        'success': False,
+        'message': 'Invalid request method.'
+    })
+
+@user_passes_test(is_staff)
+def gallery_reorder(request, pk):
+    """Reorder gallery images via AJAX"""
+    if request.method == 'POST':
+        try:
+            excursion = get_object_or_404(Excursion, pk=pk)
+            image_orders = request.POST.getlist('image_order[]')
+            
+            for i, image_id in enumerate(image_orders):
+                ExcursionImage.objects.filter(
+                    id=image_id, 
+                    excursion=excursion
+                ).update(order=i)
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Gallery order updated successfully.'
+            })
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'message': str(e)
+            })
+    
+    return JsonResponse({
+        'success': False,
+        'message': 'Invalid request method.'
     })
 
 @user_passes_test(is_staff)

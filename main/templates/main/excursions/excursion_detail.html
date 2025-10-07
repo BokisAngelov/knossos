@@ -64,17 +64,64 @@
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <!-- Left column - Main content -->
         <div class="lg:col-span-2 space-y-8">
-            <!-- Hero section -->
+            <!-- Hero section with Gallery -->
             <div class="bg-white rounded-lg shadow-md overflow-hidden">
-                <div class="relative">
-                    <img src="{% if excursion.intro_image %}{{ excursion.intro_image.url }}{% else %}{% static 'main/images/excursion-default.jpg' %}{% endif %}" alt="{{ excursion.title }}" class="w-full h-96 object-cover">
-                    <div class="absolute top-4 right-4">
-                        {% if excursion.guide %}
-                        <span class="px-3 py-1 text-sm font-semibold rounded-full bg-green-100 text-green-800">
-                            Guided Excursion
-                        {% endif %}
-                        </span>
+                <!-- Image Gallery Section -->
+                <div class="grid grid-cols-1 {% if excursion.images.exists %}lg:grid-cols-3{% endif %} gap-4 p-4">
+                    <!-- Main Image -->
+                    <div class="{% if excursion.images.exists %}lg:col-span-1{% endif %} relative bg-gray-100 rounded-lg overflow-hidden">
+                        <img src="{% if excursion.intro_image %}{{ excursion.intro_image.url }}{% else %}{% static 'main/images/excursion-default.jpg' %}{% endif %}" 
+                             alt="{{ excursion.title }}" 
+                             class="w-full h-96 object-cover object-center rounded-lg cursor-pointer main-image bg-gray-100 block" 
+                             data-image-url="{% if excursion.intro_image %}{{ excursion.intro_image.url }}{% else %}{% static 'main/images/excursion-default.jpg' %}{% endif %}"
+                             data-alt="{{ excursion.title }}">
+                        <div class="absolute top-4 right-4">
+                            {% if excursion.guide %}
+                            <span class="px-3 py-1 text-sm font-semibold rounded-full bg-green-100 text-green-800">
+                                Guided Excursion
+                            </span>
+                            {% endif %}
+                        </div>
                     </div>
+                    
+                    <!-- Gallery Thumbnails -->
+                    {% if excursion.images.exists %}
+                    <div class="{% if excursion.images.exists %}lg:col-span-2{% endif %} grid grid-cols-2 gap-2 h-96">
+                        {% for image in excursion.images.all|slice:":4" %}
+                        <div class="relative group cursor-pointer gallery-item bg-gray-100 rounded-lg overflow-hidden" 
+                             data-image-url="{{ image.image.url }}" 
+                             data-alt="{{ image.alt_text }}"
+                             data-gallery-index="{{ forloop.counter }}">
+                            <div 
+                                 class="w-full h-full bg-center bg-cover transition-transform duration-300 group-hover:scale-102"
+                                 style="background-image: url('{{ image.image.url }}');">
+                            </div>
+                            
+                            <!-- Overlay for "View All" on 4th image if more images exist -->
+                            {% if forloop.counter == 4 and excursion.images.count > 4 %}
+                            <div class="absolute inset-0 bg-opacity-60 flex items-center justify-center">
+                                <div class="text-center text-white">
+                                    <svg class="w-8 h-8 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 002 2z"></path>
+                                    </svg>
+                                    <p class="text-sm font-medium">+{{ excursion.images.count|add:"-3" }} more</p>
+                                </div>
+                            </div>
+                            {% else %}
+                            <!-- Regular hover overlay -->
+                            <div class="absolute inset-0 bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-300 flex items-center justify-center">
+                                <div class="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"></path>
+                                    </svg>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                        
+                    </div>
+                    {% endif %}
                 </div>
                 <div class="p-6">
                     <h1 class="text-3xl font-bold text-gray-900 mb-4 excursion-title">{{ excursion.title }}</h1>
@@ -158,19 +205,6 @@
                 </div>
             </div>
 
-            <!-- Gallery -->
-            {% if excursion.images.exists %}
-            <div class="bg-white rounded-lg shadow-md p-6">
-                <h2 class="text-xl font-semibold text-gray-900 mb-4">Gallery</h2>
-                <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    {% for image in excursion.images.all %}
-                    <div class="relative aspect-w-4 aspect-h-3">
-                        <img src="{{ image.image.url }}" alt="{{ image.alt_text }}" class="object-cover rounded-lg">
-                    </div>
-                    {% endfor %}
-                </div>
-            </div>
-            {% endif %}
 
             <!-- Feedback Section -->
             <div class="bg-white rounded-lg shadow-md p-6">
@@ -404,6 +438,38 @@
                 </form>
                 {% endif %}
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Lightbox Modal -->
+<div id="gallery-lightbox" class="fixed inset-0 bg-black bg-opacity-90 z-50 hidden flex items-center justify-center">
+    <div class="relative max-w-4xl max-h-full p-4">
+        <!-- Close button -->
+        <button id="close-lightbox" class="absolute top-4 right-4 text-white hover:text-gray-300 z-10">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+        </button>
+        
+        <!-- Navigation arrows -->
+        <button id="prev-image" class="absolute left-4 top-1/2 transform -translate-y-1/2 text-white hover:text-gray-300 z-10">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+            </svg>
+        </button>
+        
+        <button id="next-image" class="absolute right-4 top-1/2 transform -translate-y-1/2 text-white hover:text-gray-300 z-10">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+            </svg>
+        </button>
+        
+        <!-- Image container -->
+        <div class="text-center">
+            <img id="lightbox-image" src="" alt="" class="max-w-full max-h-[80vh] object-contain">
+            <p id="lightbox-caption" class="text-white mt-4 text-lg"></p>
+            <div id="lightbox-counter" class="text-gray-300 mt-2"></div>
         </div>
     </div>
 </div>
@@ -984,6 +1050,116 @@
                     document.getElementById('form-errors').textContent = error;
                     console.log('error.message:', error.message);
                 });
+            });
+        }
+        
+        // Gallery lightbox functionality
+        const galleryItems = document.querySelectorAll('.gallery-item');
+        const mainImage = document.querySelector('.main-image');
+        const lightbox = document.getElementById('gallery-lightbox');
+        const lightboxImage = document.getElementById('lightbox-image');
+        const lightboxCaption = document.getElementById('lightbox-caption');
+        const lightboxCounter = document.getElementById('lightbox-counter');
+        const closeLightbox = document.getElementById('close-lightbox');
+        const prevImage = document.getElementById('prev-image');
+        const nextImage = document.getElementById('next-image');
+        
+        let currentImageIndex = 0;
+        
+        // Build images array including main image and gallery images
+        const images = [];
+        
+        // Add main image first
+        if (mainImage) {
+            images.push({
+                url: mainImage.dataset.imageUrl,
+                alt: mainImage.dataset.alt || ''
+            });
+        }
+        
+        // Add gallery images
+        Array.from(galleryItems).forEach(item => {
+            images.push({
+                url: item.dataset.imageUrl,
+                alt: item.dataset.alt || ''
+            });
+        });
+        
+        function showLightbox(index) {
+            if (images.length === 0) return;
+            
+            currentImageIndex = index;
+            lightboxImage.src = images[index].url;
+            lightboxImage.alt = images[index].alt;
+            lightboxCaption.textContent = images[index].alt;
+            lightboxCounter.textContent = `${index + 1} / ${images.length}`;
+            lightbox.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+        
+        function hideLightbox() {
+            lightbox.classList.add('hidden');
+            document.body.style.overflow = 'auto';
+        }
+        
+        function showNextImage() {
+            currentImageIndex = (currentImageIndex + 1) % images.length;
+            showLightbox(currentImageIndex);
+        }
+        
+        function showPrevImage() {
+            currentImageIndex = (currentImageIndex - 1 + images.length) % images.length;
+            showLightbox(currentImageIndex);
+        }
+        
+        // Event listener for main image
+        if (mainImage) {
+            mainImage.addEventListener('click', () => showLightbox(0));
+        }
+        
+        // Event listeners for gallery thumbnails
+        galleryItems.forEach((item, index) => {
+            item.addEventListener('click', () => {
+                // Add 1 to index because main image is at index 0
+                showLightbox(index + 1);
+            });
+        });
+        
+        if (closeLightbox) {
+            closeLightbox.addEventListener('click', hideLightbox);
+        }
+        
+        if (prevImage) {
+            prevImage.addEventListener('click', showPrevImage);
+        }
+        
+        if (nextImage) {
+            nextImage.addEventListener('click', showNextImage);
+        }
+        
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (lightbox && !lightbox.classList.contains('hidden')) {
+                switch(e.key) {
+                    case 'Escape':
+                        hideLightbox();
+                        break;
+                    case 'ArrowLeft':
+                        showPrevImage();
+                        break;
+                    case 'ArrowRight':
+                        showNextImage();
+                        break;
+                }
+            }
+        });
+        
+        // Close lightbox when clicking outside image
+        if (lightbox) {
+            lightbox.addEventListener('click', (e) => {
+                if (e.target === lightbox) {
+                    hideLightbox();
+                }
             });
         }
     });

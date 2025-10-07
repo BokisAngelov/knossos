@@ -7,9 +7,9 @@ from datetime import datetime
 def excursion_intro_image_path(instance, filename):
     # If the instance doesn't have an ID yet (new excursion), use a temporary path
     if not instance.pk:
-        return f"media/excursions/temp/{filename}"
+        return f"excursions/temp/{filename}"
     # For existing excursions, use their ID
-    return f"media/excursions/ex-{instance.pk}/{filename}"
+    return f"excursions/ex-{instance.pk}/{filename}"
 
 def excursion_image_path(instance, filename):
     # If the excursion doesn't have an ID yet, use a temporary path
@@ -162,6 +162,11 @@ class ExcursionImage(models.Model):
     excursion = models.ForeignKey(Excursion, on_delete=models.CASCADE, related_name='images')
     image = models.ImageField(upload_to=excursion_image_path)
     alt_text = models.CharField(max_length=255, blank=True)
+    order = models.PositiveIntegerField(default=0, help_text="Order of image in gallery")
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+
+    class Meta:
+        ordering = ['order', 'created_at']
 
     def __str__(self):
         return f"Image for {self.excursion.title}"

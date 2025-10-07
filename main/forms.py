@@ -42,10 +42,34 @@ class ExcursionForm(forms.ModelForm):
         if not self.instance.pk:  # Only set default for new excursions
             self.initial['provider'] = 10
 
+# Enhanced gallery image form
+class ExcursionImageForm(forms.ModelForm):
+    class Meta:
+        model = ExcursionImage
+        fields = ['image', 'alt_text', 'order']
+        widgets = {
+            'alt_text': forms.TextInput(attrs={
+                'placeholder': 'Enter image description...',
+                'class': 'w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
+            }),
+            'order': forms.NumberInput(attrs={
+                'class': 'w-20 px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500',
+                'min': '0'
+            }),
+            'image': forms.FileInput(attrs={
+                'class': 'hidden',
+                'accept': 'image/*'
+            })
+        }
+
 # Inline formset to manage gallery images alongside ExcursionForm
 ExcursionImageFormSet = inlineformset_factory(
     Excursion, ExcursionImage,
-    fields=['image', 'alt_text'], extra=3, can_delete=True
+    form=ExcursionImageForm,
+    fields=['image', 'alt_text', 'order'], 
+    extra=0, 
+    can_delete=True,
+    can_order=True
 )
 
 # ----- Feedback Form -----

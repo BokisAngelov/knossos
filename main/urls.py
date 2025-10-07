@@ -13,6 +13,10 @@ urlpatterns = [
     path('excursions/<int:pk>/', views.excursion_detail, name='excursion_detail'),
     path('excursions/<int:pk>/edit/', views.excursion_update, name='excursion_update'),
     path('excursions/<int:pk>/delete/', views.excursion_delete, name='excursion_delete'),
+    
+    # Gallery management URLs
+    path('gallery/image/<int:pk>/delete/', views.gallery_image_delete, name='gallery_image_delete'),
+    path('gallery/excursion/<int:pk>/reorder/', views.gallery_reorder, name='gallery_reorder'),
     path('get_user_details/', views.get_user_details_cookies, name='get_user_details'),
 
     # Booking URLs
