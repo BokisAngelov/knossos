@@ -384,6 +384,27 @@ def sync_providers(request):
 # ----- Excursion Views -----
 def excursion_list(request):
     excursions = Excursion.objects.filter(availabilities__isnull=False).filter(status='active').distinct()
+
+    search_query = request.GET.get('search', '')
+    category_query = request.GET.get('category', '')
+    tag_query = request.GET.get('tag', '')
+    date_from_query = request.GET.get('date_from', '')
+    date_to_query = request.GET.get('date_to', '')
+
+    if search_query:
+        excursions = excursions.filter(title__icontains=search_query)
+    if category_query:
+        excursions = excursions.filter(category__name__icontains=category_query)
+    if tag_query:
+        excursions = excursions.filter(tags__name__icontains=tag_query)
+    if date_from_query:
+        excursions = excursions.filter(availabilities__start_date__gte=date_from_query)
+    if date_to_query:
+        excursions = excursions.filter(availabilities__end_date__lte=date_to_query)
+
+    
+
+
     return render(request, 'main/excursions/excursion_list.html', {
         'excursions': excursions,
     })

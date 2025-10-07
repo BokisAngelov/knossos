@@ -15,6 +15,120 @@
         {% endif %}
     </div>
 
+    <!-- Display Messages -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-success mb-4">
+                <span>{{ message }}</span>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Search and Filter Section -->
+    <div class="mb-6">
+        <div class="flex flex-col lg:flex-row gap-4 items-start lg:items-end">
+            <!-- Search Form -->
+            <div class="flex-1">
+                <form method="GET" id="search-form" class="flex gap-2 items-center">
+                    <div class="form-control flex-1">
+                        <div class="input-group">
+                            <input 
+                                type="text" 
+                                name="search" 
+                                value="{{ search_query }}" 
+                                placeholder="Search excursions..." 
+                                class="input input-bordered flex-1"
+                                hx-get="{% url 'excursion_list' %}"
+                                hx-target="#excursion-list-container"
+                                hx-trigger="keyup changed delay:500ms"
+                                hx-include="#search-form"
+                            />
+                            <button type="submit" class="btn btn-primary">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Filter Form -->
+            <div class="flex-1">
+                <form method="GET" id="filter-form" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                    <!-- Category Filter -->
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">Category</span>
+                        </label>
+                        <select name="category" class="select select-bordered">
+                            <option value="">All Categories</option>
+                            {% for category in categories %}
+                                <option value="{{ category.id }}" {% if category.id|stringformat:"s" == category_query %}selected{% endif %}>
+                                    {{ category.name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <!-- Tag Filter -->
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">Tag</span>
+                        </label>
+                        <select name="tag" class="select select-bordered">
+                            <option value="">All Tags</option>
+                            {% for tag in tags %}
+                                <option value="{{ tag.id }}" {% if tag.id|stringformat:"s" == tag_query %}selected{% endif %}>
+                                    {{ tag.name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <!-- Date Range Filter -->
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">Date Range</span>
+                        </label>
+                        <div class="input-group">
+                            <input 
+                                type="date" 
+                                name="date_from" 
+                                value="{{ date_from_query }}" 
+                                class="input input-bordered"
+                            />
+                            <span class="input-group-text">to</span>
+                            <input 
+                                type="date" 
+                                name="date_to" 
+                                value="{{ date_to_query }}" 
+                                class="input input-bordered"
+                            />
+                        </div>
+                    </div>
+                    <!-- Clear Filters Button -->
+                    <div class="form-control">
+                        <button 
+                            type="button"
+                            id="clear-filters-btn"
+                            hx-get="{% url 'excursion_list' %}"
+                            hx-target="#excursion-list-container"
+                            onclick="clearAllFilters();"
+                            class="btn btn-outline btn-sm{% if not search_query and not category_query and not tag_query and not date_from_query and not date_to_query %} btn-disabled{% endif %}"
+                            {% if not search_query and not category_query and not tag_query and not date_from_query and not date_to_query %}disabled{% endif %}>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                            Clear
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+
     {% if excursions %}
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {% for excursion in excursions %}
