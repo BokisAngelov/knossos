@@ -13,8 +13,8 @@
                 </svg>
                 Back to Dashboard
             </a>
-            <h1 class="text-2xl font-bold">Providers</h1>
-            <p class="text-sm text-brown">Manage your provider information</p>
+            <h1 class="text-3xl font-bold page-header-color mb-1">Providers</h1>
+            <p class="text-md font-semibold text-purple">Manage your provider information</p>
         </div>
         <button type="button" id="add-provider-btn" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -25,7 +25,7 @@
     </div>
 
     <!-- Search and Filter Section -->
-    <div class="bg-white rounded-lg shadow-md p-4 mb-6">
+    <div class="bg-white p-4 mb-6">
         <form method="get" class="flex flex-wrap gap-4">
             <div class="flex-1 min-w-[200px]">
                 <label for="search" class="sr-only">Search</label>
@@ -52,22 +52,22 @@
     </div>
 
     <!-- Providers Table -->
-    <div class="bg-white rounded-lg shadow-md p-6">
+    <div class="bg-white p-6">
         {% if providers %}
             <div class="overflow-x-auto">
-                <table class="min-w-full text-sm table-bg">
+                <table class="min-w-full text-sm">
                     <thead class="text-base">
                         <tr>
-                            <th scope="col" class="px-4 py-3 text-left font-medium text-black-600 tracking-wider">
+                            <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">
                                 Name
                             </th>
-                            <th scope="col" class="px-4 py-3 text-left font-medium text-black-600 tracking-wider">
+                            <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">
                                 Email
                             </th>
-                            <th scope="col" class="px-4 py-3 text-left font-medium text-black-600 tracking-wider">
+                            <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">
                                 Phone
                             </th>
-                            <th scope="col" class="px-4 py-3 text-right font-medium text-black-600 tracking-wider">
+                            <th scope="col" class="px-4 py-3 text-right font-semibold text-header-grey tracking-wider text-lg">
                                 Actions
                             </th>
                         </tr>
@@ -76,15 +76,15 @@
                         {% for provider in providers %}
                             <tr data-id="{{ provider.id }}">
                                 <td class="px-4 py-4 whitespace-nowrap">
-                                    <span class="editable-name text-sm table-text font-semibold">{{ provider.name }}</span>
+                                    <span class="editable-name text-sm font-normal">{{ provider.name }}</span>
                                     <input type="text" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ provider.name }}">
                                 </td>
                                 <td class="px-4 py-4 whitespace-nowrap">
-                                    <span class="editable-email text-sm table-text font-semibold">{{ provider.email }}</span>
+                                    <span class="editable-email text-sm font-normal">{{ provider.email }}</span>
                                     <input type="email" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ provider.email }}">
                                 </td>
                                 <td class="px-4 py-4 whitespace-nowrap">
-                                    <span class="editable-phone text-sm table-text font-semibold">{{ provider.phone }}</span>
+                                    <span class="editable-phone text-sm font-normal">{{ provider.phone }}</span>
                                     <input type="tel" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ provider.phone }}">
                                 </td>
                                 <td class="px-4 py-4 whitespace-nowrap flex justify-end">
@@ -180,11 +180,11 @@
             {% endif %}
         {% else %}
             <div class="text-center py-12">
-                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="mx-auto h-12 w-12 text-header-grey" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                 </svg>
-                <h3 class="mt-2 text-sm font-medium text-gray-900">No providers found</h3>
-                <p class="mt-1 text-sm text-gray-500">Get started by adding a new provider.</p>
+                <h3 class="mt-2 text-sm font-medium text-header-grey">No providers found</h3>
+                <p class="mt-1 text-sm text-header-grey">Get started by adding a new provider.</p>
                 <div class="mt-6">
                     <button type="button" id="add-provider-btn-empty" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">

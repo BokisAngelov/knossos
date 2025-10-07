@@ -30,8 +30,8 @@ class ExcursionForm(forms.ModelForm):
                 'class': 'editor',
                 'style': 'width: 100%;'
             }),
-            'category': forms.CheckboxSelectMultiple(attrs={'class': 'text-brown font-semibold bg-brown-light hover:opacity-80'}),
-            'tags': forms.CheckboxSelectMultiple(attrs={'class': 'text-brown font-semibold bg-brown-light hover:opacity-80'}),
+            'category': forms.CheckboxSelectMultiple(attrs={'class': 'text-brown font-semibold bg-blue-light hover:opacity-80'}),
+            'tags': forms.CheckboxSelectMultiple(attrs={'class': 'text-brown font-semibold bg-blue-light hover:opacity-80'}),
             'full_day': forms.Select(choices=[(True, 'Yes'), (False, 'No')], attrs={'class': 'text-brown font-semibold'}),
             'on_request': forms.Select(choices=[(True, 'Yes'), (False, 'No')], attrs={'class': 'text-brown font-semibold'}),
         }

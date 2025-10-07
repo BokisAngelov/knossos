@@ -12,8 +12,8 @@
                 </svg>
                 Back to Dashboard
             </a>
-            <h1 class="text-2xl font-bold">Excursions</h1>
-            <p class="text-sm text-brown">Manage your excursion offerings</p>
+            <h1 class="text-3xl font-bold page-header-color">Excursions</h1>
+            <p class="text-md font-semibold text-purple">Manage your excursion offerings</p>
         </div>
         <a href="{% url 'excursion_create' %}" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -24,7 +24,7 @@
     </div>
 
     <!-- Search and Filter Section -->
-    <div class="bg-white rounded-lg shadow-md p-4 mb-6">
+    <div class="bg-white p-4 mb-6">
         <form method="get" class="flex flex-wrap gap-4">
             <div class="flex-1 min-w-[200px]">
                 <label for="search" class="sr-only">Search</label>
@@ -51,57 +51,57 @@
     </div>
 
     <!-- Excursions Table -->
-    <div class="bg-white rounded-lg shadow-md p-6">        
+    <div class="bg-white rounded-lg p-6">        
         {% if excursions %}
             <div class="overflow-x-auto">
-                <table class="min-w-full text-sm table-bg">
+                <table class="min-w-full text-sm">
                     <thead class="text-base">
                         <tr>
-                            <th scope="col" class="px-4 py-3 text-left font-medium text-black-600 tracking-wider">Title</th>
-                            <th scope="col" class="px-4 py-3 text-left font-medium text-black-600 tracking-wider">Provider</th>
-                            <th scope="col" class="px-4 py-3 text-left font-medium text-black-600 tracking-wider">Guide</th>
-                            <th scope="col" class="px-4 py-3 text-left font-medium text-black-600 tracking-wider">Duration</th>
-                            <th scope="col" class="px-4 py-3 text-left font-medium text-black-600 tracking-wider">Status</th>
-                            <th scope="col" class="px-4 py-3 text-left font-medium text-black-600 tracking-wider text-right">Actions</th>
+                            <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">Title</th>
+                            <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">Provider</th>
+                            <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">Guide</th>
+                            <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">Duration</th>
+                            <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">Status</th>
+                            <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg text-right">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for excursion in excursions %}
                             <tr class="font-medium">
                                 <td class="px-4 py-4 whitespace-nowrap">
-                                    <div class="text-sm table-text font-semibold">{{ excursion.title }}</div>
+                                    <div class="text-sm font-normal">{{ excursion.title }}</div>
                                 </td>
                                 <td class="px-4 py-4 whitespace-nowrap">
-                                    <div class="text-sm table-text font-semibold">{{ excursion.provider.name|default:"-" }}</div>
+                                    <div class="text-sm font-normal">{{ excursion.provider.name|default:"-" }}</div>
                                 </td>
                                 <td class="px-4 py-4 whitespace-nowrap">
-                                    <div class="text-sm table-text font-semibold">{{ excursion.guide.name|default:"-" }}</div>
+                                    <div class="text-sm font-normal">{{ excursion.guide.name|default:"-" }}</div>
                                 </td>
                                 <td class="px-4 py-4 whitespace-nowrap">
-                                    <div class="text-sm table-text font-semibold">
+                                    <div class="text-sm table-text font-normal">
                                         {% if excursion.full_day %}Full Day{% else %}Half Day{% endif %}
                                     </div>
                                 </td>
                                 <td class="px-4 py-4 whitespace-nowrap">
-                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full text-white
+                                    <span class="px-2 inline-flex text-xs leading-5 font-normal rounded-full text-white
                                     {% if excursion.status == 'active' %}bg-green 
-                                    {% else %}bg-orange{% endif %}">
+                                    {% else %}bg-red{% endif %}">
                                         {{ excursion.status|title }}
                                     </span>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap flex justify-end">
-                                    <button type="button" class="view-btn text-turquaz hover:opacity-80 font-semibold mr-2" data-id="{{ excursion.id }}">
+                                    <button type="button" class="view-btn text-turquaz hover:opacity-80 font-normal mr-2" data-id="{{ excursion.id }}">
                                         <svg class="w-6 h-6 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
                                         </svg>
                                     </button>
-                                    <button type="button" class="edit-btn text-blue hover:opacity-80 font-semibold mr-2" data-id="{{ excursion.id }}" data-name="{{ excursion.title }}">
+                                    <button type="button" class="edit-btn text-blue hover:opacity-80 font-normal mr-2" data-id="{{ excursion.id }}" data-name="{{ excursion.title }}">
                                         <svg class="w-6 h-6 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                                         </svg>
                                     </button>
-                                    <button type="button" class="delete-btn text-orange hover:opacity-80 font-semibold" data-id="{{ excursion.id }}">
+                                    <button type="button" class="delete-btn text-red hover:opacity-80 font-normal" data-id="{{ excursion.id }}">
                                         <svg class="w-6 h-6 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                         </svg>
@@ -177,7 +177,7 @@
             </div>
             {% endif %}
         {% else %}
-            <p class="text-table-text font-semibold">No excursions found.</p>
+            <p class="text-header-grey font-semibold">No excursions found.</p>
         {% endif %}
     </div>
 </div>

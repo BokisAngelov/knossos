@@ -6,17 +6,36 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .bg-body-light{
-    background-color: #f5e9da;
+    background-color: #fcfcfc;
+}
+.text-header-grey{
+    color: #4d4d4d;
+}
+.page-header-color{
+    color: #333333;
 }
 .bg-blue, .bg-blue-600, .bg-blue-primary {
-    background-color: #0077b6;
+    background-color: #2196f3;
+}
+.bg-blue-light{
+    background-color: #d3e4ef;
+}
+.form-fields-border{
+    border-color: #666666;
+    border-width: 2px;
+}
+.bg-blue-nav{
+    background-color: #1976d2;
 }
 .text-blue {
-    color: #0077b6;
+    color: #2196f3;
 }
 .border-blue-primary {
-    border-color: #0077b6;
+    border-color: #2196f3;
     border-width: 2px;
+}
+.text-purple {
+    color: #8e24aa;
 }
 .bg-brown {
     background-color: #463229;
@@ -35,13 +54,13 @@ h1, h2, h3, h4, h5, h6 {
     color: #c6b09d;
 }
 .bg-orange {
-    background-color: #ec8863;
+    background-color: #ff6b35;
 }
 .text-orange {
-    color: #ec8863;
+    color: #ff6b35;
 }
 .border-orange {
-    border-color: #ec8863;
+    border-color: #ff6b35;
     border-width: 2px;
 }
 .bg-orange-light {
@@ -60,33 +79,36 @@ h1, h2, h3, h4, h5, h6 {
 .bg-turquaz-light {
     background-color: #f7f7f7;
 }
+.bg-red{
+    background-color: #e53935;
+}
 .bg-yellow {
-    background-color: #eac784;
+    background-color: #e6b655;
 }
 .text-yellow {
-    color: #eac784;
+    color: #e6b655;
 }
 .border-yellow {
-    border-color: #eac784;
+    border-color: #e6b655;
     border-width: 2px;
 }
 .bg-yellow-light {
-    background-color: #fff9f0;
+    background-color: #ffc107;
 }
 .table-bg{
     background-color: #fcfaf7;
 }
 .table-text{
-    color: #aa917e;
+    color: #455a64;
 }
 .bg-green {
-    background-color: #6c8a46;
+    background-color: #4caf50;
 }
 .text-green {
-    color: #6c8a46;
+    color: #4caf50;
 }
 .border-green {
-    border-color: #6c8a46;
+    border-color: #4caf50;
     border-width: 2px;
 }
 .bg-green-light {
@@ -96,19 +118,22 @@ select option {
     color: #463229;
     font-weight: 600;
 }
+.checkbox-list{
+    grid-template-columns: repeat(2, 1fr)!important;
+}
 .swal2-input{
     color: #463229!important;
-    border: 2px solid #c6b09d !important;
+    border: 2px solid #666666 !important;
     margin: 1em 2em 3px;
 }
 .swal2-input:focus {
-    border: 2px solid #c6b09d !important;
+    border: 2px solid #666666 !important;
     outline: none;
 }
 .swal2-confirm {
-    background-color: #0077b6;
+    background-color: #2196f3;
 }
 .swal2-confirm:hover {
-    background-color: #0077b6;
+    background-color: #2196f3;
     opacity: 0.8;
 }

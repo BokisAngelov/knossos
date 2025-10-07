@@ -12,8 +12,8 @@
                     </svg>
                     Back to Dashboard
                 </a>
-                <h1 class="text-2xl font-bold ">Availabilities</h1>
-                <p class="text-sm text-brown">Manage your excursion availabilities</p>
+                <h1 class="text-3xl font-bold page-header-color mb-1">Availabilities</h1>
+                <p class="text-md font-semibold text-purple">Manage your excursion availabilities</p>
             </div>
             {% if excursions %}
             <a href="{% url 'availability_create' %}" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
@@ -26,7 +26,7 @@
         </div>
 
         <!-- Search and Filter Section -->
-        <div class="bg-white rounded-lg shadow-md p-4 mb-6">
+        <div class="bg-white p-4 mb-6">
             <form method="get" class="flex flex-wrap gap-4">
                 <div class="flex-1 min-w-[200px]">
                     <label for="search" class="sr-only">Search</label>
@@ -53,34 +53,34 @@
         </div>
 
         <!-- Availabilities Table -->
-        <div class="bg-white rounded-lg shadow-md p-6">            
+        <div class="bg-white p-6">            
             {% if availabilities %}
                 <div class="overflow-x-auto">
-                    <table class="min-w-full text-sm table-bg">
+                    <table class="min-w-full text-sm">
                         <thead class="text-base">
                             <tr>
-                                <th scope="col" class="px-4 py-3 text-left font-medium text-black-600 tracking-wider">Excursion</th>
-                                <th scope="col" class="px-4 py-3 text-left font-medium text-black-600 tracking-wider">Start Date</th>
-                                <th scope="col" class="px-4 py-3 text-left font-medium text-black-600 tracking-wider">End Date</th>
-                                <th scope="col" class="px-4 py-3 text-left font-medium text-black-600 tracking-wider">Pickup Group</th>
-                                <th scope="col" class="px-4 py-3 text-left font-medium text-black-600 tracking-wider">Status</th>
-                                <th scope="col" class="px-4 py-3 text-left font-medium text-black-600 tracking-wider text-right">Actions</th>
+                                <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">Excursion</th>
+                                <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">Start Date</th>
+                                <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">End Date</th>
+                                <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">Pickup Group</th>
+                                <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">Status</th>
+                                <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for availability in availabilities %}
                                 <tr class="font-medium">
                                     <td class="px-4 py-4 whitespace-nowrap">
-                                        <div class="text-sm table-text font-semibold">{{ availability.excursion }}</div>
+                                        <div class="text-sm font-normal">{{ availability.excursion }}</div>
                                     </td>
                                     <td class="px-4 py-4 whitespace-nowrap">
-                                        <div class="text-sm table-text font-semibold">{{ availability.start_date|date:"M d, Y" }}</div>
+                                        <div class="text-sm font-normal">{{ availability.start_date|date:"M d, Y" }}</div>
                                     </td>
                                     <td class="px-4 py-4 whitespace-nowrap">
-                                        <div class="text-sm table-text font-semibold">{{ availability.end_date|date:"M d, Y" }}</div>
+                                        <div class="text-sm font-normal">{{ availability.end_date|date:"M d, Y" }}</div>
                                     </td>
                                     <td class="px-4 py-4 whitespace-nowrap">
-                                        <div class="text-sm table-text font-semibold">{{ availability.pickup_groups.all|join:", " }}</div>
+                                        <div class="text-sm font-normal">{{ availability.pickup_groups.all|join:", " }}</div>
                                     </td>
                                     <td class="px-4 py-4 whitespace-nowrap">
                                         <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full text-white
@@ -177,7 +177,7 @@
                 </div>
                 {% endif %}
             {% else %}
-                <p class="text-table-text font-semibold">No availabilities found.</p>
+                <p class="text-header-grey font-semibold">No availabilities found.</p>
             {% endif %}
         </div>
     </div>

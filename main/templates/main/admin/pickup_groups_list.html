@@ -12,8 +12,8 @@
                 </svg>
                 Back to Dashboard
             </a>
-            <h1 class="text-2xl font-bold">Pickup Groups</h1>
-            <p class="text-sm text-brown">Manage your pickup groups</p>
+            <h1 class="text-3xl font-bold page-header-color mb-1">Pickup Groups</h1>
+            <p class="text-md font-semibold text-purple">Manage your pickup groups</p>
         </div>
         <button type="button" id="add-group-btn" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -24,7 +24,7 @@
     </div>
 
     <!-- Search and Filter Section -->
-    <div class="bg-white rounded-lg shadow-md p-4 mb-6">
+    <div class="bg-white p-4 mb-6">
         <form method="get" class="flex flex-wrap gap-4">
             <div class="flex-1 min-w-[200px]">
                 <label for="search" class="sr-only">Search</label>
@@ -51,32 +51,32 @@
     </div>
 
     <!-- Pickup Groups Table -->
-    <div class="bg-white rounded-lg shadow-md p-6">
+    <div class="bg-white p-6">
         {% if pickup_groups %}
             <div class="overflow-x-auto">
-                <table class="min-w-full text-sm table-bg">
+                <table class="min-w-full text-sm">
                     <thead class="text-base">
                         <tr>
-                            <th class="px-4 py-3 text-left font-medium text-black-600 tracking-wider">Name</th>
-                            <th class="px-4 py-3 text-left font-medium text-black-600 tracking-wider">Code</th>
-                            <th class="px-4 py-3 text-left font-medium text-black-600 tracking-wider"><a class="text-blue hover:opacity-80" href="{% url 'pickup_points_list' %}">Pickup Points</a></th>
-                            <th class="px-4 py-3 text-right font-medium text-black-600 tracking-wider">Actions</th>
+                            <th class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">Name</th>
+                            <th class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">Code</th>
+                            <th class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg"><a class="text-blue hover:opacity-80" href="{% url 'pickup_points_list' %}">Pickup Points</a></th>
+                            <th class="px-4 py-3 text-right font-semibold text-header-grey tracking-wider text-lg">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for group in pickup_groups %}
                         <tr class="font-medium" data-id="{{ group.id }}">
                             <td class="px-4 py-4 whitespace-nowrap">
-                                <span class="editable-name text-sm table-text font-semibold">{{ group.name }}</span>
+                                <span class="editable-name text-sm font-normal">{{ group.name }}</span>
                                 <input type="text" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ group.name }}">
                             </td>
                             <td class="px-4 py-4 whitespace-nowrap">
-                                <span class="editable-code text-sm table-text font-semibold">{{ group.code }}</span>
+                                <span class="editable-code text-sm font-normal">{{ group.code }}</span>
                                 <input type="text" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ group.code }}">
                             </td>
                             <td class="px-4 py-4 whitespace-nowrap">
                                 {% for point in group.pickup_points.all %}
-                                    <p class="text-sm table-text font-semibold">{{ point.name }}</p>
+                                    <p class="text-sm font-normal">{{ point.name }}</p>
                                 {% endfor %}
                             </td>
                             <td class="px-4 py-4 whitespace-nowrap flex justify-end">
@@ -95,7 +95,7 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                                     </svg>
                                 </button>
-                                <button type="button" class="cancel-btn hidden text-gray hover:opacity-80 font-semibold">
+                                <button type="button" class="cancel-btn hidden text-header-grey hover:opacity-80 font-semibold">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                                     </svg>
@@ -108,11 +108,11 @@
             </div>
         {% else %}
             <div class="text-center py-12">
-                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="mx-auto h-12 w-12 text-header-grey" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                 </svg>
-                <h3 class="mt-2 text-sm font-medium text-gray-900">No pickup groups found</h3>
-                <p class="mt-1 text-sm text-gray-500">Get started by adding a new pickup group.</p>
+                <h3 class="mt-2 text-sm font-medium text-header-grey">No pickup groups found</h3>
+                <p class="mt-1 text-sm text-header-grey">Get started by adding a new pickup group.</p>
             </div>
         {% endif %}
     </div>

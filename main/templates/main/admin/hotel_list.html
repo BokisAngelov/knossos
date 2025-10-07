@@ -14,8 +14,8 @@
                 </svg>
                 Back to Dashboard
             </a>
-            <h1 class="text-2xl font-bold">Hotels</h1>
-            <p class="text-sm text-brown">Manage your hotel information</p>
+            <h1 class="text-3xl font-bold page-header-color mb-1">Hotels</h1>
+            <p class="text-md font-semibold text-purple">Manage your hotel information</p>
         </div>
         <button type="button" id="add-hotel-btn" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -26,7 +26,7 @@
     </div>
 
     <!-- Search and Filter Section -->
-    <div class="bg-white rounded-lg shadow-md p-4 mb-6">
+    <div class="bg-white p-4 mb-6">
         <form method="get" class="flex flex-wrap gap-4">
             <div class="flex-1 min-w-[200px]">
                 <label for="search" class="sr-only">Search</label>
@@ -53,47 +53,47 @@
     </div>
 
     <!-- Hotels Table -->
-    <div class="bg-white rounded-lg shadow-md p-6">        
+    <div class="bg-white p-6">        
         {% if hotels %}
             <div class="overflow-x-auto">
-                <table class="min-w-full text-sm table-bg">
+                <table class="min-w-full text-sm">
                     <thead class="text-base">
                         <tr>
-                            <th class="px-4 py-3 text-left font-medium text-black-600 tracking-wider">Name</th>
-                            <th class="px-4 py-3 text-left font-medium text-black-600 tracking-wider">Address</th>
-                            <th class="px-4 py-3 text-left font-medium text-black-600 tracking-wider">Phone</th>
-                            <th class="px-4 py-3 text-left font-medium text-black-600 tracking-wider">Email</th>
-                            <th class="px-4 py-3 text-left font-medium text-black-600 tracking-wider">Pickup Group</th>
-                            <th class="px-4 py-3 text-left font-medium text-black-600 tracking-wider text-right">Actions</th>
+                            <th class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">Name</th>
+                            <th class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">Address</th>
+                            <th class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">Phone</th>
+                            <th class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">Email</th>
+                            <th class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">Pickup Group</th>
+                            <th class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg text-right">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for hotel in hotels %}
                         <tr class="font-medium" data-id="{{ hotel.id }}">
                             <td class="px-4 py-4 whitespace-nowrap">
-                                <span class="editable-name text-sm table-text font-semibold">{{ hotel.name }}</span>
+                                <span class="editable-name text-sm font-normal">{{ hotel.name }}</span>
                                 <input type="text" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ hotel.name }}">
                             </td>
                             <td class="px-4 py-4 whitespace-nowrap">
-                                <span class="editable-address text-sm table-text font-semibold">{% if hotel.address %}{{ hotel.address }}{% else %}None{% endif %}</span>
+                                <span class="editable-address text-sm font-normal">{% if hotel.address %}{{ hotel.address }}{% else %}None{% endif %}</span>
                                 <input type="text" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ hotel.address }}">
                             </td>
                             <td class="px-4 py-4 whitespace-nowrap">
-                                <span class="editable-phone text-sm table-text font-semibold">{% if hotel.phone_number %}{{ hotel.phone_number }}{% else %}None{% endif %}</span>
+                                <span class="editable-phone text-sm font-normal">{% if hotel.phone_number %}{{ hotel.phone_number }}{% else %}None{% endif %}</span>
                                 <input type="tel" class="edit-input hidden w-full border rounded px-2 py-1" 
                                        pattern="[+]?[0-9\s\-\(\)]{8,20}"
                                        title="Please enter a valid phone number (8-20 digits, may include +, spaces, hyphens, and parentheses)"
                                        value="{{ hotel.phone_number }}">
                             </td>
                             <td class="px-4 py-4 whitespace-nowrap">
-                                <span class="editable-email text-sm table-text font-semibold">{% if hotel.email %}{{ hotel.email }}{% else %}None{% endif %}</span>
+                                <span class="editable-email text-sm font-normal">{% if hotel.email %}{{ hotel.email }}{% else %}None{% endif %}</span>
                                 <input type="email" class="edit-input hidden w-full border rounded px-2 py-1" 
                                        pattern="[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}"
                                        title="Please enter a valid email address"
                                        value="{{ hotel.email }}">
                             </td>
                             <td class="px-4 py-4 whitespace-nowrap">
-                                <span class="editable-pickup-group text-sm table-text font-semibold">{% if hotel.pickup_group %}{{ hotel.pickup_group.name }}{% else %}None{% endif %}</span>
+                                <span class="editable-pickup-group text-sm font-normal">{% if hotel.pickup_group %}{{ hotel.pickup_group.name }}{% else %}None{% endif %}</span>
                                 <select class="edit-input hidden w-full border rounded px-2 py-1 bg-white">
                                     {% for pickup_group in pickup_groups %}
                                         <option value="{{ pickup_group.id }}" {% if hotel.pickup_group and hotel.pickup_group.id == pickup_group.id %}selected{% endif %}>{{ pickup_group.name }}</option>
@@ -192,7 +192,7 @@
             </div>
             {% endif %}
         {% else %}
-            <p class="text-table-text font-semibold">No hotels found.</p>
+            <p class="text-header-grey font-semibold">No hotels found.</p>
         {% endif %}
     </div>
 </div>

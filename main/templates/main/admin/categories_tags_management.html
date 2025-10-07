@@ -10,13 +10,14 @@
       </svg>
       Back to Dashboard
   </a>
-    <h1 class="text-2xl font-bold mb-6">Manage Categories & Tags</h1>
+    <h1 class="text-3xl font-bold page-header-color mb-1">Manage Categories & Tags</h1>
+    <p class="text-md font-semibold text-purple">Manage your categories and tags</p>
     
     <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
       <!-- Categories Section -->
-      <div class="bg-white rounded-lg shadow-md p-6">
+      <div class="bg-white p-6">
         <div class="flex justify-between items-center mb-4">
-          <h2 class="text-xl font-bold text-brown">Categories</h2>
+          <h2 class="text-xl font-bold text-header-grey">Categories</h2>
           <button type="button" id="add-category-btn" class="inline-flex items-center px-3 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:opacity-80">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -26,12 +27,12 @@
         </div>
         
         <div class="overflow-y-auto max-h-96">
-          <table class="text-sm table-bg w-full" id="categories-table">
+          <table class="text-sm w-full" id="categories-table">
             <tbody>
               {% for category in categories %}
                 <tr class="text-brown" data-id="{{ category.id }}">
                   <td class="px-6 py-4">
-                    <span class="editable-name text-brown font-semibold">{{ category.name }}</span>
+                    <span class="editable-name text-brown font-normal">{{ category.name }}</span>
                     <input type="text" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ category.name }}">
                   </td>
                   <td class="px-6 py-4 pr-0 text-right">
@@ -59,7 +60,7 @@
                 </tr>
               {% empty %}
                 <tr>
-                  <td colspan="2" class="py-4 text-center text-gray-500">No categories found.</td>
+                  <td colspan="2" class="py-4 text-center text-header-grey">No categories found.</td>
                 </tr>
               {% endfor %}
             </tbody>
@@ -67,11 +68,11 @@
         </div>
       </div>
 
-      <div class="bg-white rounded-lg shadow-md p-6">
+      <div class="bg-white p-6">
         <!-- Tags Section -->
       <div class="">
         <div class="flex justify-between items-center mb-4">
-          <h2 class="text-xl font-bold text-brown">Tags</h2>
+          <h2 class="text-xl font-bold text-header-grey">Tags</h2>
           <button type="button" id="add-tag-btn" class="inline-flex items-center px-3 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:opacity-80">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -81,12 +82,12 @@
         </div>
         
         <div class="overflow-y-auto max-h-96">
-          <table class="text-sm table-bg w-full" id="tags-table">
+          <table class="text-sm w-full" id="tags-table">
             <tbody>
               {% for tag in tags %}
                 <tr class="text-brown" data-id="{{ tag.id }}">
                   <td class="px-6 py-4">
-                    <span class="editable-name text-brown font-semibold">{{ tag.name }}</span>
+                    <span class="editable-name text-brown font-normal">{{ tag.name }}</span>
                     <input type="text" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ tag.name }}">
                   </td>
                   <td class="px-6 py-4 pr-0 text-right flex justify-end">
@@ -105,7 +106,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                       </svg>
                     </button>
-                    <button type="button" class="cancel-btn hidden text-gray hover:opacity-80">
+                    <button type="button" class="cancel-btn hidden text-red hover:opacity-80">
                       <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                       </svg>
@@ -114,7 +115,7 @@
                 </tr>
               {% empty %}
                 <tr>
-                  <td colspan="2" class="py-4 text-center text-gray-500">No tags found.</td>
+                  <td colspan="2" class="py-4 text-center text-header-grey">No tags found.</td>
                 </tr>
               {% endfor %}
             </tbody>

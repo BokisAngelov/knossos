@@ -32,13 +32,13 @@
                 </svg>
                 Back to Dashboard
             </a>
-            <h1 class="text-2xl font-bold">Bookings</h1>
-            <p class="text-sm text-brown">Manage your bookings</p>
+            <h1 class="text-3xl font-bold page-header-color">Bookings</h1>
+            <p class="text-md font-semibold text-purple">Manage your bookings</p>
         </div>
     </div>
 
     <!-- Search and Filter Section -->
-    <div class="bg-white rounded-lg shadow-md p-4 mb-6">
+    <div class="bg-white p-4 mb-6">
         <form method="get" class="flex flex-wrap gap-4">
             <div class="flex-1 min-w-[200px]">
                 <label for="search" class="sr-only">Search</label>
@@ -91,17 +91,17 @@
     </div>
 
     <!-- Bookings Table -->
-    <div class="bg-white rounded-lg shadow-md p-6">
+    <div class="bg-white p-6">
         {% if bookings %}
             <div class="overflow-x-auto">
-                <table class="min-w-full text-sm table-bg">
+                <table class="min-w-full text-sm">
                     <thead class="text-base">
                         <tr>
-                            <th class="px-4 py-3 text-left font-medium text-black-600 tracking-wider">
+                            <th class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">
                                 <input type="checkbox" id="select-all-checkbox" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
                             </th>
-                            <th class="px-4 py-3 text-left font-medium text-black-600 tracking-wider">ID</th>
-                            <th class="px-4 py-3 text-left font-medium text-black-600 tracking-wider">
+                            <th class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">ID</th>
+                            <th class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">
                                 <a href="?sort_by=created_at&sort_order={% if current_sort_by == 'created_at' and current_sort_order == 'desc' %}asc{% else %}desc{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}" class="sortable-header group inline-flex items-center hover:text-gray-700">
                                     Date
                                     <span class="ml-2 flex-none rounded text-gray-400 sort-indicator {% if current_sort_by == 'created_at' %}active{% else %}inactive{% endif %} group-hover:visible group-focus:visible">
@@ -123,7 +123,7 @@
                                     </span>
                                 </a>
                             </th>
-                            <th class="px-4 py-3 text-left font-medium text-black-600 tracking-wider">
+                            <th class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">
                                 <a href="?sort_by=guest_name&sort_order={% if current_sort_by == 'guest_name' and current_sort_order == 'desc' %}asc{% else %}desc{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}" class="sortable-header group inline-flex items-center hover:text-gray-700">
                                     Client
                                     <span class="ml-2 flex-none rounded text-gray-400 sort-indicator {% if current_sort_by == 'guest_name' %}active{% else %}inactive{% endif %} group-hover:visible group-focus:visible">
@@ -145,8 +145,8 @@
                                     </span>
                                 </a>
                             </th>
-                            <th class="px-4 py-3 text-left font-medium text-black-600 tracking-wider">Excursion</th>
-                            <th class="px-4 py-3 text-left font-medium text-black-600 tracking-wider">
+                            <th class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">Excursion</th>
+                            <th class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">
                                 <a href="?sort_by=price&sort_order={% if current_sort_by == 'price' and current_sort_order == 'desc' %}asc{% else %}desc{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}" class="sortable-header group inline-flex items-center hover:text-gray-700">
                                     Amount
                                     <span class="ml-2 flex-none rounded text-gray-400 sort-indicator {% if current_sort_by == 'price' %}active{% else %}inactive{% endif %} group-hover:visible group-focus:visible">
@@ -168,7 +168,7 @@
                                     </span>
                                 </a>
                             </th>
-                            <th class="px-4 py-3 text-left font-medium text-black-600 tracking-wider">
+                            <th class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">
                                 <a href="?sort_by=payment_status&sort_order={% if current_sort_by == 'payment_status' and current_sort_order == 'desc' %}asc{% else %}desc{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}" class="sortable-header group inline-flex items-center hover:text-gray-700">
                                     Status
                                     <span class="ml-2 flex-none rounded text-gray-400 sort-indicator {% if current_sort_by == 'payment_status' %}active{% else %}inactive{% endif %} group-hover:visible group-focus:visible">
@@ -190,7 +190,7 @@
                                     </span>
                                 </a>
                             </th>
-                            <th class="px-4 py-3 text-right font-medium text-black-600 tracking-wider">Actions</th>
+                            <th class="px-4 py-3 text-right font-semibold text-header-grey tracking-wider text-lg">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -202,23 +202,23 @@
                                 </div>
                             </td>
                             <td class="px-4 py-4 whitespace-nowrap">
-                                <span class="editable-id text-sm table-text font-semibold">#{{ booking.id }}</span>
+                                <span class="editable-id text-sm font-normal">#{{ booking.id }}</span>
                             </td>
                             <td class="px-4 py-4 whitespace-nowrap">
-                                <span class="editable-date text-sm table-text font-semibold">{{ booking.created_at|date:"d/m/Y" }}</span>
+                                <span class="editable-date text-sm font-normal">{{ booking.created_at|date:"d/m/Y" }}</span>
                             </td>
                             <td class="px-4 py-4 whitespace-nowrap">
-                                <span class="editable-guest-name text-sm table-text font-semibold">{{ booking.guest_name }}</span>
+                                <span class="editable-guest-name text-sm font-normal">{{ booking.guest_name }}</span>
                             </td>
                             <td class="px-4 py-4 whitespace-nowrap">
-                                <span class="editable-excursion text-sm table-text font-semibold">{{ booking.excursion_availability.excursion.title }}</span>
+                                <span class="editable-excursion text-sm font-normal">{{ booking.excursion_availability.excursion.title }}</span>
                             </td>
                             <td class="px-4 py-4 whitespace-nowrap">
-                                <span class="editable-amount text-sm table-text font-semibold">€{{ booking.price }}</span>
+                                <span class="editable-amount text-sm font-normal">€{{ booking.price }}</span>
                                 <input type="number" step="0.01" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ booking.price }}">
                             </td>
                             <td class="px-4 py-4 whitespace-nowrap">
-                                <span class="editable-status px-2 inline-flex text-xs table-text font-semibold rounded-full {% if booking.payment_status == 'pending' %}bg-yellow-100 text-yellow-800{% elif booking.payment_status == 'completed' %}bg-green-100 text-green-800{% else %}bg-red-100 text-red-800{% endif %}">{{ booking.payment_status|title }}</span>
+                                <span class="editable-status px-2 inline-flex text-xs leading-5 font-semibold rounded-full text-white {% if booking.payment_status == 'pending' %}bg-yellow{% elif booking.payment_status == 'completed' %}bg-green{% else %}bg-red{% endif %}">{{ booking.payment_status|title }}</span>
                                 <select class="edit-input hidden w-full border rounded px-2 py-1">
                                     <option value="pending" {% if booking.payment_status == 'pending' %}selected{% endif %}>Pending</option>
                                     <option value="completed" {% if booking.payment_status == 'completed' %}selected{% endif %}>Completed</option>
@@ -312,8 +312,8 @@
                 <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
-                <h3 class="mt-2 text-sm font-medium text-black-600">No bookings found</h3>
-                <p class="mt-1 text-sm text-black-600">Get started by adding a new booking.</p>
+                <h3 class="mt-2 text-sm font-medium text-header-grey">No bookings found</h3>
+                <p class="mt-1 text-sm text-header-grey">Get started by adding a new booking.</p>
             </div>
         {% endif %}
     </div>

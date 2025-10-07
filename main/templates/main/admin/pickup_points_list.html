@@ -15,8 +15,8 @@
                 </svg>
                 Back to Dashboard
             </a>
-            <h1 class="text-2xl font-bold">Pickup Points</h1>
-            <p class="text-sm text-brown">Manage your pickup point locations</p>
+            <h1 class="text-3xl font-bold page-header-color mb-1">Pickup Points</h1>
+            <p class="text-md font-semibold text-purple">Manage your pickup point locations</p>
         </div>
         <button type="button" id="add-point-btn" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -27,7 +27,7 @@
     </div>
 
     <!-- Search and Filter Section -->
-    <div class="bg-white rounded-lg shadow-md p-4 mb-6">
+    <div class="bg-white p-4 mb-6">
         <form method="get" class="flex flex-wrap gap-4">
             <div class="flex-1 min-w-[200px]">
                 <label for="search" class="sr-only">Search</label>
@@ -54,34 +54,34 @@
     </div>
 
     <!-- Pickup Points Table -->
-    <div class="bg-white rounded-lg shadow-md p-6">
+    <div class="bg-white p-6">
         {% if pickup_points %}
             <div class="overflow-x-auto">
-                <table class="min-w-full text-sm table-bg">
+                <table class="min-w-full text-sm">
                     <thead class="text-base">
                         <tr>
-                            <th class="px-4 py-3 text-left font-medium text-black-600 tracking-wider">Name</th>
-                            <th class="px-4 py-3 text-left font-medium text-black-600 tracking-wider">Address</th>
+                            <th class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">Name</th>
+                            <th class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">Address</th>
                             <!-- <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th> -->
-                            <th class="px-4 py-3 text-left font-medium text-black-600 tracking-wider">Pickup Group</th>
-                            <th class="px-4 py-3 text-left font-medium text-black-600 tracking-wider">Map link</th>
+                            <th class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">Pickup Group</th>
+                            <th class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">Map link</th>
                             <!-- <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Priority</th> -->
-                            <th class="px-4 py-3 text-right font-medium text-black-600 tracking-wider">Actions</th>
+                            <th class="px-4 py-3 text-right font-semibold text-header-grey tracking-wider text-lg">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for point in pickup_points %}
                         <tr data-id="{{ point.id }}">
                             <td class="px-4 py-4 whitespace-nowrap">
-                                <span class="editable-name text-sm table-text font-semibold">{{ point.name }}</span>
+                                <span class="editable-name text-sm font-normal">{{ point.name }}</span>
                                 <input type="text" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ point.name }}">
                             </td>
                             <td class="px-4 py-4 whitespace-nowrap">
-                                <span class="editable-address text-sm table-text font-semibold">{{ point.address }}</span>
+                                <span class="editable-address text-sm font-normal">{{ point.address }}</span>
                                 <input type="text" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ point.address }}">
                             </td>
                             <td class="px-4 py-4 whitespace-nowrap">
-                                <span class="editable-group text-sm table-text font-semibold">{% if point.pickup_group %}{{ point.pickup_group.name }}{% endif %}</span>
+                                <span class="editable-group text-sm font-normal">{% if point.pickup_group %}{{ point.pickup_group.name }}{% endif %}</span>
                                 <select class="edit-input hidden w-full border rounded px-2 py-1 bg-white">
                                     {% for group in pickup_groups %}
                                         <option value="{{ group.id }}" {% if point.pickup_group and point.pickup_group.id == group.id %}selected{% endif %}>{{ group.name }}</option>
@@ -89,7 +89,7 @@
                                 </select>
                             </td>
                             <td class="px-4 py-4 whitespace-nowrap">
-                                <span class="editable-link text-sm table-text font-semibold">
+                                <span class="editable-link text-sm font-normal">
                                     {% if point.google_maps_link %}
                                         <a href="{{ point.google_maps_link }}" target="_blank" class="text-blue-600 hover:text-blue-800">View on map</a>
                                     {% endif %}
@@ -112,7 +112,7 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                                     </svg>
                                 </button>
-                                <button type="button" class="cancel-btn hidden text-gray hover:opacity-80 font-semibold">
+                                <button type="button" class="cancel-btn hidden text-red hover:opacity-80 font-semibold">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                                     </svg>
@@ -187,12 +187,12 @@
             {% endif %}
         {% else %}
             <div class="text-center py-12">
-                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="mx-auto h-12 w-12 text-header-grey" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
-                <h3 class="mt-2 text-sm font-medium text-gray-900">No pickup points found</h3>
-                <p class="mt-1 text-sm text-gray-500">Get started by adding a new pickup point.</p>
+                <h3 class="mt-2 text-sm font-medium text-header-grey">No pickup points found</h3>
+                <p class="mt-1 text-sm text-header-grey">Get started by adding a new pickup point.</p>
             </div>
         {% endif %}
     </div>

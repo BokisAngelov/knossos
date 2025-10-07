@@ -14,8 +14,8 @@
                 </svg>
                 Back to Dashboard
             </a>
-            <h1 class="text-2xl font-bold text-gray-900">Reservations</h1>
-            <p class="text-sm text-gray-500">Manage your reservation information</p>
+            <h1 class="text-3xl font-bold text-header-grey">Reservations</h1>
+            <p class="text-md text-header-grey">Manage your reservation information</p>
         </div>
         <button type="button" id="add-reservation-btn" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -26,7 +26,7 @@
     </div>
 
     <!-- Search and Filter Section -->
-    <div class="bg-white rounded-lg shadow-md p-4 mb-6">
+    <div class="bg-white p-4 mb-6">
         <form method="get" class="flex flex-wrap gap-4">
             <div class="flex-1 min-w-[200px]">
                 <label for="search" class="sr-only">Search</label>
@@ -53,37 +53,37 @@
     </div>
 
     <!-- Reservations Table -->
-    <div class="bg-white rounded-lg shadow-md p-6">
+    <div class="bg-white p-6">
         {% if reservations %}
             <div class="overflow-x-auto">
-                <table class="min-w-full text-sm table-bg">
+                <table class="min-w-full text-sm">
                     <thead class="text-base">
                         <tr>
-                            <th scope="col" class="px-4 py-3 text-left font-medium text-black-600 tracking-wider">
+                            <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">
                                 Reservation ID
                             </th>
-                            <th scope="col" class="px-4 py-3 text-left font-medium text-black-600 tracking-wider">
+                            <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">
                                 Customer
                             </th>
-                            <th scope="col" class="px-4 py-3 text-left font-medium text-black-600 tracking-wider">
+                            <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">
                                 Email
                             </th>
-                            <th scope="col" class="px-4 py-3 text-left font-medium text-black-600 tracking-wider">
+                            <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">
                                 Phone
                             </th>
-                            <th scope="col" class="px-4 py-3 text-left font-medium text-black-600 tracking-wider">
+                            <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">
                                 Check-in
                             </th>
-                            <th scope="col" class="px-4 py-3 text-left font-medium text-black-600 tracking-wider">
+                            <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">
                                 Check-out
                             </th>
-                            <th scope="col" class="px-4 py-3 text-left font-medium text-black-600 tracking-wider">
+                            <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">
                                 Pickup Point
                             </th>
-                            <th scope="col" class="px-4 py-3 text-left font-medium text-black-600 tracking-wider">
+                            <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">
                                 Departure Time
                             </th>
-                            <th scope="col" class="px-4 py-3 text-right font-medium text-black-600 tracking-wider">
+                            <th scope="col" class="px-4 py-3 text-right font-semibold text-header-grey tracking-wider text-lg">
                                 Actions
                             </th>
                         </tr>
@@ -92,30 +92,30 @@
                         {% for reservation in reservations %}
                             <tr data-id="{{ reservation.id }}">
                                 <td class="px-4 py-4 whitespace-nowrap">
-                                    <span class="voucher_id text-sm table-text font-semibold">{{ reservation.voucher_id }}</span>
+                                    <span class="voucher_id text-sm font-normal">{{ reservation.voucher_id }}</span>
                                 </td>
                                 <td class="px-4 py-4 whitespace-nowrap">
-                                    <span class="client_name text-sm table-text font-semibold">{{ reservation.client_name }}</span>
+                                    <span class="client_name text-sm font-normal">{{ reservation.client_name }}</span>
                                 </td>
                                 <td class="px-4 py-4 whitespace-nowrap">
-                                    <span class="editable-email text-sm table-text font-semibold">{{ reservation.client_email }}</span>
+                                    <span class="editable-email text-sm font-normal">{{ reservation.client_email }}</span>
                                     <input type="email" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ reservation.email }}">
                                 </td>
                                 <td class="px-4 py-4 whitespace-nowrap">
-                                    <span class="editable-phone text-sm table-text font-semibold">{{ reservation.client_phone }}</span>
+                                    <span class="editable-phone text-sm font-normal">{{ reservation.client_phone }}</span>
                                     <input type="tel" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ reservation.phone }}">
                                 </td>
                                 <td class="px-4 py-4 whitespace-nowrap">
-                                    <span class="text-sm table-text font-semibold">{{ reservation.check_in|date:"d M Y" }}</span>
+                                    <span class="text-sm font-normal">{{ reservation.check_in|date:"d M Y" }}</span>
                                 </td>
                                 <td class="px-4 py-4 whitespace-nowrap">
-                                    <span class="text-sm table-text font-semibold">{{ reservation.check_out|date:"d M Y" }}</span>
+                                    <span class="text-sm font-normal">{{ reservation.check_out|date:"d M Y" }}</span>
                                 </td>
                                 <td class="px-4 py-4 whitespace-nowrap">
-                                    <span class="text-sm table-text font-semibold">{{ reservation.pickup_point.name }}</span>
+                                    <span class="text-sm font-normal">{{ reservation.pickup_point.name }}</span>
                                 </td>
                                 <td class="px-4 py-4 whitespace-nowrap">
-                                    <span class="editable-departure-time text-sm table-text font-semibold text-center">{{ reservation.departure_time|time:"H:i" }}</span>
+                                    <span class="editable-departure-time text-sm font-normal text-center">{{ reservation.departure_time|time:"H:i" }}</span>
                                     <input type="time" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ reservation.departure_time }}">
                                 </td>
 
@@ -141,7 +141,7 @@
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                                         </svg>
                                     </button>
-                                    <button type="button" class="cancel-btn hidden text-gray hover:opacity-80 font-semibold">
+                                    <button type="button" class="cancel-btn hidden text-red hover:opacity-80 font-semibold">
                                         <svg class="w-6 h-6 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                                         </svg>
@@ -221,8 +221,8 @@
                 <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
-                <h3 class="mt-2 text-sm font-medium text-gray-900">No reservations found</h3>
-                <p class="mt-1 text-sm text-gray-500">Get started by adding a new reservation.</p>
+                <h3 class="mt-2 text-sm font-medium text-header-grey">No reservations found</h3>
+                <p class="mt-1 text-sm text-header-grey">Get started by adding a new reservation.</p>
                 <div class="mt-6">
                     <button type="button" id="add-reservation-btn-empty" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
