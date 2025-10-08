@@ -4,7 +4,7 @@
 {% block content %}
 <div class="container mx-auto px-4 py-8">
     <div class="flex justify-between items-center mb-6">
-        <h1 class="text-2xl font-bold text-gray-800">Excursions</h1>
+        <h1 class="text-3xl font-bold text-header-grey">Excursions</h1>
         {% if user.is_staff %}
         <a href="{% url 'excursion_create' %}" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
@@ -25,186 +25,147 @@
     {% endif %}
 
     <!-- Search and Filter Section -->
-    <div class="mb-6">
-        <div class="flex flex-col lg:flex-row gap-4 items-start lg:items-end">
-            <!-- Search Form -->
-            <div class="flex-1">
-                <form method="GET" id="search-form" class="flex gap-2 items-center">
-                    <div class="form-control flex-1">
-                        <div class="input-group">
-                            <input 
-                                type="text" 
-                                name="search" 
-                                value="{{ search_query }}" 
-                                placeholder="Search excursions..." 
-                                class="input input-bordered flex-1"
-                                hx-get="{% url 'excursion_list' %}"
-                                hx-target="#excursion-list-container"
-                                hx-trigger="keyup changed delay:500ms"
-                                hx-include="#search-form"
-                            />
-                            <button type="submit" class="btn btn-primary">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                </svg>
-                            </button>
-                        </div>
+    <div class="mb-6 bg-white rounded-lg shadow-sm p-4">
+        <form method="GET" id="filter-form" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+            <!-- Search Input -->
+            <div class="lg:col-span-2">
+                <div class="relative">
+                    <input 
+                        type="text" 
+                        name="search" 
+                        value="{{ search_query }}" 
+                        placeholder="Search excursions..." 
+                        class="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        hx-get="{% url 'excursion_list' %}"
+                        hx-target="#excursion-list-container"
+                        hx-trigger="keyup changed delay:500ms"
+                        hx-include="#filter-form"
+                    />
+                    <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
                     </div>
-                </form>
+                </div>
             </div>
-
-            <!-- Filter Form -->
-            <div class="flex-1">
-                <form method="GET" id="filter-form" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
-                    <!-- Category Filter -->
-                    <div class="form-control">
-                        <label class="label">
-                            <span class="label-text">Category</span>
-                        </label>
-                        <select name="category" class="select select-bordered">
-                            <option value="">All Categories</option>
-                            {% for category in categories %}
-                                <option value="{{ category.id }}" {% if category.id|stringformat:"s" == category_query %}selected{% endif %}>
-                                    {{ category.name }}
-                                </option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    
-                    <!-- Tag Filter -->
-                    <div class="form-control">
-                        <label class="label">
-                            <span class="label-text">Tag</span>
-                        </label>
-                        <select name="tag" class="select select-bordered">
-                            <option value="">All Tags</option>
-                            {% for tag in tags %}
-                                <option value="{{ tag.id }}" {% if tag.id|stringformat:"s" == tag_query %}selected{% endif %}>
-                                    {{ tag.name }}
-                                </option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    
-                    <!-- Date Range Filter -->
-                    <div class="form-control">
-                        <label class="label">
-                            <span class="label-text">Date Range</span>
-                        </label>
-                        <div class="input-group">
-                            <input 
-                                type="date" 
-                                name="date_from" 
-                                value="{{ date_from_query }}" 
-                                class="input input-bordered"
-                            />
-                            <span class="input-group-text">to</span>
-                            <input 
-                                type="date" 
-                                name="date_to" 
-                                value="{{ date_to_query }}" 
-                                class="input input-bordered"
-                            />
-                        </div>
-                    </div>
-                    <!-- Clear Filters Button -->
-                    <div class="form-control">
-                        <button 
-                            type="button"
-                            id="clear-filters-btn"
-                            hx-get="{% url 'excursion_list' %}"
-                            hx-target="#excursion-list-container"
-                            onclick="clearAllFilters();"
-                            class="btn btn-outline btn-sm{% if not search_query and not category_query and not tag_query and not date_from_query and not date_to_query %} btn-disabled{% endif %}"
-                            {% if not search_query and not category_query and not tag_query and not date_from_query and not date_to_query %}disabled{% endif %}>
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                            Clear
-                        </button>
-                    </div>
-                </form>
+            
+            <!-- Category Filter -->
+            <div>
+                <select 
+                    name="category" 
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    hx-get="{% url 'excursion_list' %}"
+                    hx-target="#excursion-list-container"
+                    hx-trigger="change"
+                    hx-include="#filter-form"
+                >
+                    <option value="">All Categories</option>
+                    {% for category in categories %}
+                        <option value="{{ category.id }}" {% if category.id|stringformat:"s" == category_query %}selected{% endif %}>
+                            {{ category.name }}
+                        </option>
+                    {% endfor %}
+                </select>
             </div>
-        </div>
+            
+            <!-- Tag Filter -->
+            <div>
+                <select 
+                    name="tag" 
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    hx-get="{% url 'excursion_list' %}"
+                    hx-target="#excursion-list-container"
+                    hx-trigger="change"
+                    hx-include="#filter-form"
+                >
+                    <option value="">All Tags</option>
+                    {% for tag in tags %}
+                        <option value="{{ tag.id }}" {% if tag.id|stringformat:"s" == tag_query %}selected{% endif %}>
+                            {{ tag.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <!-- Date From Filter -->
+            <div>
+                <input 
+                    type="date" 
+                    name="date_from" 
+                    value="{{ date_from_query }}" 
+                    placeholder="From Date"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    hx-get="{% url 'excursion_list' %}"
+                    hx-target="#excursion-list-container"
+                    hx-trigger="change"
+                    hx-include="#filter-form"
+                />
+            </div>
+            
+            <!-- Date To Filter -->
+            <div>
+                <input 
+                    type="date" 
+                    name="date_to" 
+                    value="{{ date_to_query }}" 
+                    placeholder="To Date"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    hx-get="{% url 'excursion_list' %}"
+                    hx-target="#excursion-list-container"
+                    hx-trigger="change"
+                    hx-include="#filter-form"
+                />
+            </div>
+            
+            <!-- Clear Filters Button -->
+            <div class="sm:col-span-2 lg:col-span-6">
+                <button 
+                    type="button"
+                    id="clear-filters-btn"
+                    onclick="clearAllFilters();"
+                    class="w-full sm:w-auto px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    {% if not search_query and not category_query and not tag_query and not date_from_query and not date_to_query %}disabled{% endif %}>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    Clear Filters
+                </button>
+            </div>
+        </form>
     </div>
 
 
-    {% if excursions %}
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {% for excursion in excursions %}
-                <div class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300">
-                    <a href="{% url 'excursion_detail' excursion.pk %}" class="block">
-                        <div class="relative">
-                            <img src="{% if excursion.intro_image %}{{ excursion.intro_image.url }}{% else %}{% static 'main/media/excursions/98_LawaxTO.jpg' %}{% endif %}" alt="{{ excursion.title }}" class="w-full h-48 object-cover">
-                            <div class="absolute top-2 right-2">
-                                <span class="px-2 py-1 text-xs font-semibold rounded-full {% if excursion.status == 'active' %}bg-green-100 text-green-800{% else %}bg-red-100 text-red-800{% endif %}">
-                                    {{ excursion.status|title }}
-                                </span>
-                            </div>
-                        </div>
-                        <div class="p-4">
-                            <h2 class="text-xl font-semibold text-gray-800 mb-2">{{ excursion.title }}</h2>
-                            
-                            <div class="flex flex-wrap gap-2 mb-3">
-                                {% for category in excursion.category.all %}
-                                    <span class="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
-                                        {{ category.name }}
-                                    </span>
-                                {% endfor %}
-                            </div>
-
-                            <div class="flex flex-wrap gap-2 mb-3">
-                                {% for tag in excursion.tags.all %}
-                                    <span class="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">
-                                        {{ tag.name }}
-                                    </span>
-                                {% endfor %}
-                            </div>
-
-                            <div class="flex items-center justify-between mt-4">
-                                <div class="flex items-center">
-                                    {% if excursion.overall_rating %}
-                                        <div class="flex items-center">
-                                            <svg class="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
-                                            </svg>
-                                            <span class="ml-1 text-sm font-medium text-gray-600">{{ excursion.overall_rating|floatformat:1 }}</span>
-                                        </div>
-                                    {% endif %}
-                                    <span class="mx-2 text-gray-300">|</span>
-                                    <span class="text-sm text-gray-600">{{ excursion.feedback_entries.count }} reviews</span>
-                                </div>
-                                <div class="text-sm text-gray-600">
-                                    {% if excursion.full_day %}
-                                        <span class="px-2 py-1 bg-purple-100 text-purple-800 rounded-full">Full Day</span>
-                                    {% endif %}
-                                </div>
-                            </div>
-                        </div>
-                    </a>
-                </div>
-            {% endfor %}
-        </div>
-    {% else %}
-        <div class="text-center py-12">
-            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <h3 class="mt-2 text-sm font-medium text-gray-900">No excursions found</h3>
-            <p class="mt-1 text-sm text-gray-500">Get started by creating a new excursion.</p>
-            {% if user.is_staff %}
-            <div class="mt-6">
-                <a href="{% url 'excursion_create' %}" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                    <svg class="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
-                    </svg>
-                    Add New Excursion
-                </a>
-            </div>
-            {% endif %}
-        </div>
-    {% endif %}
+    <div id="excursion-list-container">
+        {% include 'main/excursions/partials/_excursion_list_content.html' %}
+    </div>
+    
 </div>
+
+<script>
+    function clearAllFilters() {
+        // Clear all form inputs
+        document.querySelector('input[name="search"]').value = '';
+        document.querySelector('select[name="category"]').value = '';
+        document.querySelector('select[name="tag"]').value = '';
+        document.querySelector('input[name="date_from"]').value = '';
+        document.querySelector('input[name="date_to"]').value = '';
+        
+        // Fetch and update the list without filters
+        fetch('{% url "excursion_list" %}', {
+            headers: {
+                'HX-Request': 'true'
+            }
+        })
+        .then(response => response.text())
+        .then(html => {
+            document.getElementById('excursion-list-container').innerHTML = html;
+        })
+        .catch(error => {
+            console.error('Error clearing filters:', error);
+        });
+    }
+</script>
+
 {% endblock %}
 
 

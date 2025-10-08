@@ -383,7 +383,13 @@ def sync_providers(request):
 
 # ----- Excursion Views -----
 def excursion_list(request):
-    excursions = Excursion.objects.filter(availabilities__isnull=False).filter(status='active').distinct()
+
+    from django.db.models import Q
+
+    excursions = Excursion.objects.filter(availabilities__isnull=False, availabilities__is_active=True).filter(status='active').distinct()
+
+    categories = Category.objects.all()
+    tags = Tag.objects.all()
 
     search_query = request.GET.get('search', '')
     category_query = request.GET.get('category', '')
@@ -391,22 +397,35 @@ def excursion_list(request):
     date_from_query = request.GET.get('date_from', '')
     date_to_query = request.GET.get('date_to', '')
 
+
+
     if search_query:
-        excursions = excursions.filter(title__icontains=search_query)
+        excursions = excursions.filter(Q(title__icontains=search_query) | Q(description__icontains=search_query))
     if category_query:
-        excursions = excursions.filter(category__name__icontains=category_query)
+        excursions = excursions.filter(category__id=category_query)
     if tag_query:
-        excursions = excursions.filter(tags__name__icontains=tag_query)
+        excursions = excursions.filter(tags__id=tag_query)
     if date_from_query:
         excursions = excursions.filter(availabilities__start_date__gte=date_from_query)
     if date_to_query:
         excursions = excursions.filter(availabilities__end_date__lte=date_to_query)
 
     
-
+    # If this is an HTMX request, return only the partial content
+    if request.headers.get("HX-Request"):
+        return render(request, "main/excursions/partials/_excursion_list_content.html", {
+            'excursions': excursions,
+        })
 
     return render(request, 'main/excursions/excursion_list.html', {
         'excursions': excursions,
+        'categories': categories,
+        'tags': tags,
+        'search_query': search_query,
+        'category_query': category_query,
+        'tag_query': tag_query,
+        'date_from_query': date_from_query,
+        'date_to_query': date_to_query,
     })
 
 def excursion_detail(request, pk):
