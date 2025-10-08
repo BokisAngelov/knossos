@@ -55,7 +55,7 @@
 
     <!-- Pickup Points Table -->
     <div class="bg-white p-6">
-        {% if pickup_points %}
+        {% if page_obj.object_list %}
             <div class="overflow-x-auto">
                 <table class="min-w-full text-sm">
                     <thead class="text-base">
@@ -70,7 +70,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% for point in pickup_points %}
+                        {% for point in page_obj %}
                         <tr data-id="{{ point.id }}">
                             <td class="px-4 py-4 whitespace-nowrap">
                                 <span class="editable-name text-sm font-normal">{{ point.name }}</span>
@@ -123,7 +123,7 @@
                     </tbody>
                 </table>
             </div>
-            {% if is_paginated %}   
+            {% if page_obj.paginator.num_pages > 1 %}   
             <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
                 <div class="flex-1 flex justify-between sm:hidden">
                     {% if page_obj.has_previous %}

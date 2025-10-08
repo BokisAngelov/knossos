@@ -1351,7 +1351,7 @@ def manage_categories_tags(request):
 # ----- Providers and Representatives Views -----
 @user_passes_test(is_staff)
 def providers_list(request):
-    providers = UserProfile.objects.filter(role='provider')
+    providers = UserProfile.objects.filter(role='provider').order_by('name')
     regions = Region.objects.all()
     
     # Convert pickup groups to JSON-serializable format
@@ -1365,9 +1365,14 @@ def providers_list(request):
             Q(email__icontains=search_query) |
             Q(phone__icontains=search_query)
         )
+
+    paginator = Paginator(providers, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
         
     return render(request, 'main/admin/providers.html', {
-        'providers': providers,
+        'providers': page_obj.object_list,
+        'page_obj': page_obj,
         'regions_json': regions_json,
         'regions_data': regions,
     })
@@ -1708,7 +1713,7 @@ def availability_list(request):
 
 @user_passes_test(is_staff)
 def admin_reservations(request):
-    reservations = Reservation.objects.all()
+    reservations = Reservation.objects.all().order_by('check_in')
 
     try:
         # Handle search
@@ -1721,8 +1726,13 @@ def admin_reservations(request):
                 Q(voucher_id__icontains=search_query)
             )
 
+        paginator = Paginator(reservations, 15)
+        page_number = request.GET.get('page')
+        page_obj = paginator.get_page(page_number)
+
         return render(request, 'main/admin/admin_reservations.html', {
             'reservations': reservations,
+            'page_obj': page_obj,
         })   
     except Reservation.DoesNotExist:
         messages.error(request, 'No reservations found')
@@ -1733,40 +1743,40 @@ def admin_reservations(request):
 
 @user_passes_test(is_staff)
 def bookings_list(request):
-    if request.method == 'POST':
-        action_type = request.POST.get('action_type')
+    # if request.method == 'POST':
+    #     action_type = request.POST.get('action_type')
         
-        if action_type == 'bulk_delete':
-            selected_ids = request.POST.getlist('selected_bookings')
-            if selected_ids:
-                bookings_to_delete = Booking.objects.filter(id__in=selected_ids)
-                count = bookings_to_delete.count()
-                bookings_to_delete.delete()
-                messages.success(request, f'{count} booking(s) deleted successfully.')
-            return redirect('bookings_list')
+    #     if action_type == 'bulk_delete':
+    #         selected_ids = request.POST.getlist('selected_bookings')
+    #         if selected_ids:
+    #             bookings_to_delete = Booking.objects.filter(id__in=selected_ids)
+    #             count = bookings_to_delete.count()
+    #             bookings_to_delete.delete()
+    #             messages.success(request, f'{count} booking(s) deleted successfully.')
+    #         return redirect('bookings_list')
     
-    # Get sorting parameters
-    sort_by = request.GET.get('sort_by', 'created_at')
-    sort_order = request.GET.get('sort_order', 'desc')
+    # # Get sorting parameters
+    # sort_by = request.GET.get('sort_by', 'created_at')
+    # sort_order = request.GET.get('sort_order', 'desc')
     search_query = request.GET.get('search', '')
     
-    # Validate sort_by parameter
-    valid_sort_fields = ['created_at', 'payment_status', 'price', 'guest_name', 'date']
-    if sort_by not in valid_sort_fields:
-        sort_by = 'created_at'
+    # # Validate sort_by parameter
+    # valid_sort_fields = ['created_at', 'payment_status', 'price', 'guest_name', 'date']
+    # if sort_by not in valid_sort_fields:
+    #     sort_by = 'created_at'
     
-    # Validate sort_order parameter
-    if sort_order not in ['asc', 'desc']:
-        sort_order = 'desc'
+    # # Validate sort_order parameter
+    # if sort_order not in ['asc', 'desc']:
+    #     sort_order = 'desc'
     
-    # Apply sorting
-    if sort_order == 'desc':
-        sort_field = f'-{sort_by}'
-    else:
-        sort_field = sort_by
+    # # Apply sorting
+    # if sort_order == 'desc':
+    #     sort_field = f'-{sort_by}'
+    # else:
+    #     sort_field = sort_by
     
     # Start with all bookings
-    bookings = Booking.objects.all().order_by('created_at')
+    bookings = Booking.objects.all().order_by('-date')
     
     # Apply search filter if search query is provided
     if search_query:
@@ -1782,12 +1792,12 @@ def bookings_list(request):
     page_obj = paginator.get_page(page_number)
     
     # Apply sorting
-    bookings = bookings.order_by(sort_field)
+    # bookings = bookings.order_by(sort_field)
     
     return render(request, 'main/bookings/bookings_list.html', {
-        'bookings': bookings,
-        'current_sort_by': sort_by,
-        'current_sort_order': sort_order,
+        'bookings': page_obj.object_list,
+        # 'current_sort_by': sort_by,
+        # 'current_sort_order': sort_order,
         'search_query': search_query,
         'page_obj': page_obj,
     })
@@ -1936,7 +1946,8 @@ def manage_reservations(request):
             return redirect('admin_reservations')
         
     return render(request, 'main/admin/admin_reservations.html', {
-        'reservations': Reservation.objects.filter(status='active'),
+        'reservations': Reservation.objects.filter(status='active').order_by('check_in'),
+        'page_obj': page_obj,
     })
 
 def check_excursion_pickup_groups(request):
@@ -2171,10 +2182,15 @@ def pickup_points_list(request):
             Q(pickup_group__name__icontains=search_query)
         )
     
+    paginator = Paginator(pickup_points, 15)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
     context = {
-        'pickup_points': pickup_points,
+        'pickup_points': page_obj.object_list,
         'pickup_groups': pickup_groups,
         'pickup_groups_json': pickup_groups_json,
+        'page_obj': page_obj,
     }
     return render(request, 'main/admin/pickup_points_list.html', context)
 

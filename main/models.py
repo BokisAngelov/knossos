@@ -291,6 +291,7 @@ class Booking(models.Model):
         ('pending', 'Pending'),
         ('completed', 'Completed'),
         ('cancelled', 'Cancelled'),
+        ('expired', 'Expired'),
     ]
     PAYMENT_METHOD_CHOICES = [
         ('cash', 'Cash'),

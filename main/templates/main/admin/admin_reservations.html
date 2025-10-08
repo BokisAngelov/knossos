@@ -54,7 +54,7 @@
 
     <!-- Reservations Table -->
     <div class="bg-white p-6">
-        {% if reservations %}
+        {% if page_obj.object_list %}
             <div class="overflow-x-auto">
                 <table class="min-w-full text-sm">
                     <thead class="text-base">
@@ -89,7 +89,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% for reservation in reservations %}
+                        {% for reservation in page_obj %}
                             <tr data-id="{{ reservation.id }}">
                                 <td class="px-4 py-4 whitespace-nowrap">
                                     <span class="voucher_id text-sm font-normal">{{ reservation.voucher_id }}</span>
