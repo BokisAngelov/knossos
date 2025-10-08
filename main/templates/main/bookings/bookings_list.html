@@ -72,50 +72,18 @@
                     <thead class="text-base">
                         <tr>
                             <th class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">ID</th>
-                            <th class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">
-                                <a href="?sort_by=created_at&sort_order={% if current_sort_by == 'created_at' and current_sort_order == 'desc' %}asc{% else %}desc{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}" class="sortable-header group inline-flex items-center hover:text-gray-700">
-                                    Date
-                                    <span class="ml-2 flex-none rounded text-gray-400 sort-indicator {% if current_sort_by == 'created_at' %}active{% else %}inactive{% endif %} group-hover:visible group-focus:visible">
-                                            <svg class="h-5 w-5 text-gray-400 opacity-0 group-hover:opacity-100" viewBox="0 0 20 20" fill="currentColor">
-                                                <path fill-rule="evenodd" d="M10 3a1 1 0 01.707.293l3 3a1 1 0 01-1.414 1.414L10 5.414 7.707 7.707a1 1 0 01-1.414-1.414l3-3A1 1 0 0110 3zm-3.707 9.293a1 1 0 011.414 0L10 14.586l2.293-2.293a1 1 0 011.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
-                                            </svg>
-                                    </span>
-                                </a>
+                            <th class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">                                    Date
                             </th>
                             <th class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">
-                                <a href="?sort_by=guest_name&sort_order={% if current_sort_by == 'guest_name' and current_sort_order == 'desc' %}asc{% else %}desc{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}" class="sortable-header group inline-flex items-center hover:text-gray-700">
                                     Client
-                                    <span class="ml-2 flex-none rounded text-gray-400 sort-indicator {% if current_sort_by == 'guest_name' %}active{% else %}inactive{% endif %} group-hover:visible group-focus:visible">
-                                            <svg class="h-5 w-5 text-gray-400 opacity-0 group-hover:opacity-100" viewBox="0 0 20 20" fill="currentColor">
-                                                <path fill-rule="evenodd" d="M10 3a1 1 0 01.707.293l3 3a1 1 0 01-1.414 1.414L10 5.414 7.707 7.707a1 1 0 01-1.414-1.414l3-3A1 1 0 0110 3zm-3.707 9.293a1 1 0 011.414 0L10 14.586l2.293-2.293a1 1 0 011.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
-                                            </svg>
-                                    </span>
-                                </a>
                             </th>
                             <th class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">Excursion</th>
                             <th class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">
-                                <a href="?sort_by=price&sort_order={% if current_sort_by == 'price' and current_sort_order == 'desc' %}asc{% else %}desc{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}" class="sortable-header group inline-flex items-center hover:text-gray-700">
                                     Amount
-                                    <span class="ml-2 flex-none rounded text-gray-400 sort-indicator {% if current_sort_by == 'price' %}active{% else %}inactive{% endif %} group-hover:visible group-focus:visible">
-                                        
-                                            <svg class="h-5 w-5 text-gray-400 opacity-0 group-hover:opacity-100" viewBox="0 0 20 20" fill="currentColor">
-                                                <path fill-rule="evenodd" d="M10 3a1 1 0 01.707.293l3 3a1 1 0 01-1.414 1.414L10 5.414 7.707 7.707a1 1 0 01-1.414-1.414l3-3A1 1 0 0110 3zm-3.707 9.293a1 1 0 011.414 0L10 14.586l2.293-2.293a1 1 0 011.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
-                                            </svg>
-                                        
-                                    </span>
-                                </a>
+                                    
                             </th>
                             <th class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">
-                                <a href="?sort_by=payment_status&sort_order={% if current_sort_by == 'payment_status' and current_sort_order == 'desc' %}asc{% else %}desc{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}" class="sortable-header group inline-flex items-center hover:text-gray-700">
-                                    Status
-                                    <span class="ml-2 flex-none rounded text-gray-400 sort-indicator {% if current_sort_by == 'payment_status' %}active{% else %}inactive{% endif %} group-hover:visible group-focus:visible">
-                                        
-                                            <svg class="h-5 w-5 text-gray-400 opacity-0 group-hover:opacity-100" viewBox="0 0 20 20" fill="currentColor">
-                                                <path fill-rule="evenodd" d="M10 3a1 1 0 01.707.293l3 3a1 1 0 01-1.414 1.414L10 5.414 7.707 7.707a1 1 0 01-1.414-1.414l3-3A1 1 0 0110 3zm-3.707 9.293a1 1 0 011.414 0L10 14.586l2.293-2.293a1 1 0 011.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
-                                            </svg>
-                                        
-                                    </span>
-                                </a>
+                                    Payment Status
                             </th>
                             <th class="px-4 py-3 text-right font-semibold text-header-grey tracking-wider text-lg">Actions</th>
                         </tr>
@@ -145,6 +113,7 @@
                                     <option value="pending" {% if booking.payment_status == 'pending' %}selected{% endif %}>Pending</option>
                                     <option value="completed" {% if booking.payment_status == 'completed' %}selected{% endif %}>Completed</option>
                                     <option value="cancelled" {% if booking.payment_status == 'cancelled' %}selected{% endif %}>Cancelled</option>
+                                    <option value="expired" {% if booking.payment_status == 'expired' %}selected{% endif %}>Expired</option>
                                 </select>
                             </td>
                             <td class="px-4 py-4 whitespace-nowrap flex justify-end">

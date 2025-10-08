@@ -12,7 +12,7 @@ class Command(BaseCommand):
         expired_bookings.update(payment_status='expired')
 
         # TODO: Send email to user and admin
-            
+
 
         self.stdout.write(self.style.SUCCESS(f'Expired {expired_bookings.count()} bookings'))
 
