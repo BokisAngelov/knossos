@@ -22,7 +22,7 @@
 <div class="container mx-auto px-4 py-8">
     <!-- Back button and actions -->
     <div class="flex justify-between items-center mb-6">
-        <a href="{% url 'excursion_list' %}" class="inline-flex items-center text-gray-600 hover:text-gray-900">
+        <a href="{% url 'excursion_list' %}" class="inline-flex items-center text-blue font-semibold text-sm hover:opacity-80">
             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
@@ -60,90 +60,97 @@
         {% endif %}
     </div>
 
+    <!-- Image Gallery Section -->
+    <div class="grid grid-cols-1 {% if excursion.images.exists %}lg:grid-cols-5{% endif %} gap-4 p-4">
+        <!-- Main Image -->
+        <div class="{% if excursion.images.exists %}lg:col-span-2{% endif %} relative bg-gray-100 overflow-hidden">
+            <img src="{% if excursion.intro_image %}{{ excursion.intro_image.url }}{% else %}{% static 'main/images/excursion-default.jpg' %}{% endif %}" 
+                    alt="{{ excursion.title }}" 
+                    class="w-full h-96 object-cover object-center cursor-pointer main-image bg-gray-100 block" 
+                    data-image-url="{% if excursion.intro_image %}{{ excursion.intro_image.url }}{% else %}{% static 'main/images/excursion-default.jpg' %}{% endif %}"
+                    data-alt="{{ excursion.title }}">
+            <div class="absolute top-4 right-4">
+                {% if excursion.guide %}
+                <span class="px-3 py-1 text-sm font-semibold rounded-full bg-green-100 text-green-800">
+                    Guided Excursion
+                </span>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Gallery Thumbnails -->
+        {% if excursion.images.exists %}
+        <div class="{% if excursion.images.exists %}lg:col-span-3{% endif %} grid grid-cols-2 gap-2 h-96">
+            {% for image in excursion.images.all|slice:":4" %}
+            <div class="relative group cursor-pointer gallery-item bg-gray-100 overflow-hidden" 
+                    data-image-url="{{ image.image.url }}" 
+                    data-alt="{{ image.alt_text }}"
+                    data-gallery-index="{{ forloop.counter }}">
+                <div 
+                        class="w-full h-full bg-center bg-cover transition-transform duration-300 group-hover:scale-102"
+                        style="background-image: url('{{ image.image.url }}');">
+                </div>
+                
+                <!-- Overlay for "View All" on 4th image if more images exist -->
+                {% if forloop.counter == 4 and excursion.images.count > 4 %}
+                <div class="absolute inset-0 bg-opacity-60 flex items-center justify-center">
+                    <div class="text-center text-white">
+                        <svg class="w-8 h-8 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 002 2z"></path>
+                        </svg>
+                        <p class="text-sm font-medium">+{{ excursion.images.count|add:"-3" }} more</p>
+                    </div>
+                </div>
+                {% else %}
+                <!-- Regular hover overlay -->
+                <div class="absolute inset-0 bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-300 flex items-center justify-center">
+                    <div class="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"></path>
+                        </svg>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+            
+        </div>
+        {% endif %}
+    </div>
+
     <!-- Main content -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <!-- Left column - Main content -->
         <div class="lg:col-span-2 space-y-8">
             <!-- Hero section with Gallery -->
-            <div class="bg-white rounded-lg shadow-md overflow-hidden">
-                <!-- Image Gallery Section -->
-                <div class="grid grid-cols-1 {% if excursion.images.exists %}lg:grid-cols-3{% endif %} gap-4 p-4">
-                    <!-- Main Image -->
-                    <div class="{% if excursion.images.exists %}lg:col-span-1{% endif %} relative bg-gray-100 rounded-lg overflow-hidden">
-                        <img src="{% if excursion.intro_image %}{{ excursion.intro_image.url }}{% else %}{% static 'main/images/excursion-default.jpg' %}{% endif %}" 
-                             alt="{{ excursion.title }}" 
-                             class="w-full h-96 object-cover object-center rounded-lg cursor-pointer main-image bg-gray-100 block" 
-                             data-image-url="{% if excursion.intro_image %}{{ excursion.intro_image.url }}{% else %}{% static 'main/images/excursion-default.jpg' %}{% endif %}"
-                             data-alt="{{ excursion.title }}">
-                        <div class="absolute top-4 right-4">
-                            {% if excursion.guide %}
-                            <span class="px-3 py-1 text-sm font-semibold rounded-full bg-green-100 text-green-800">
-                                Guided Excursion
-                            </span>
-                            {% endif %}
-                        </div>
-                    </div>
-                    
-                    <!-- Gallery Thumbnails -->
-                    {% if excursion.images.exists %}
-                    <div class="{% if excursion.images.exists %}lg:col-span-2{% endif %} grid grid-cols-2 gap-2 h-96">
-                        {% for image in excursion.images.all|slice:":4" %}
-                        <div class="relative group cursor-pointer gallery-item bg-gray-100 rounded-lg overflow-hidden" 
-                             data-image-url="{{ image.image.url }}" 
-                             data-alt="{{ image.alt_text }}"
-                             data-gallery-index="{{ forloop.counter }}">
-                            <div 
-                                 class="w-full h-full bg-center bg-cover transition-transform duration-300 group-hover:scale-102"
-                                 style="background-image: url('{{ image.image.url }}');">
-                            </div>
-                            
-                            <!-- Overlay for "View All" on 4th image if more images exist -->
-                            {% if forloop.counter == 4 and excursion.images.count > 4 %}
-                            <div class="absolute inset-0 bg-opacity-60 flex items-center justify-center">
-                                <div class="text-center text-white">
-                                    <svg class="w-8 h-8 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 002 2z"></path>
-                                    </svg>
-                                    <p class="text-sm font-medium">+{{ excursion.images.count|add:"-3" }} more</p>
-                                </div>
-                            </div>
-                            {% else %}
-                            <!-- Regular hover overlay -->
-                            <div class="absolute inset-0 bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-300 flex items-center justify-center">
-                                <div class="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"></path>
-                                    </svg>
-                                </div>
-                            </div>
-                            {% endif %}
-                        </div>
-                        {% endfor %}
-                        
-                    </div>
-                    {% endif %}
-                </div>
+            <div class="bg-white overflow-hidden">
+
                 <div class="p-6">
-                    <h1 class="text-3xl font-bold text-gray-900 mb-4 excursion-title">{{ excursion.title }}</h1>
+                    <h1 class="text-4xl font-bold text-black mb-4 excursion-title">{{ excursion.title }}</h1>
                     
-                    <!-- Categories and Tags -->
+                    <!-- Time and Categories and Tags -->
+                    
                     <div class="flex flex-wrap mb-4">
-                        <svg class="w-6 h-6 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <span class="text-gray-600">{{ excursion_availability.start_time|time:"H:i" }} - {{ excursion_availability.end_time|time:"H:i" }}</span>
+                        <svg class="mr-1 mt-1" width="17" height="19" viewBox="0 0 17 19" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M15.7714 14.1792L8.20032 18.6521C7.00672 19.3579 5.46354 18.9652 4.75437 17.7774L0.419474 10.5114C0.0748795 9.9349 -0.0849324 9.00055 0.0449148 8.33955L1.39333 1.62022C1.49821 1.10832 1.89773 0.54175 2.3522 0.273375C2.80667 0.00499891 3.50085 -0.0745198 4.00026 0.0795477L10.5775 2.12218C11.2218 2.32098 11.9659 2.90743 12.3155 3.48891L16.6504 10.7549C17.3595 11.9427 16.965 13.4784 15.7714 14.1842V14.1792ZM2.99644 1.34688C2.85161 1.43137 2.66184 1.70471 2.62688 1.86375L1.27846 8.58805C1.20855 8.94091 1.31342 9.56712 1.49821 9.87526L5.83311 17.1413C6.18769 17.7327 6.96178 17.9315 7.55608 17.5786L15.1272 13.1057C15.7215 12.7528 15.9212 11.9825 15.5667 11.3911L11.2318 4.12506C11.047 3.81693 10.5476 3.4243 10.203 3.31497L3.6307 1.27233C3.47088 1.22263 3.14127 1.26239 2.99644 1.34688ZM3.96031 2.9621C3.66066 3.13605 3.56078 3.5237 3.74057 3.8219C3.92036 4.12009 4.3049 4.21949 4.60455 4.04057C4.9042 3.86166 5.00408 3.47897 4.82429 3.18078C4.6445 2.88258 4.25996 2.78318 3.96031 2.9621ZM13.3043 11.2718C13.1245 10.9736 12.74 10.8742 12.4403 11.0531L7.03169 14.2488C6.73205 14.4227 6.63216 14.8104 6.81195 15.1086C6.99174 15.4068 7.37629 15.5062 7.67594 15.3273L13.0846 12.1316C13.3842 11.9577 13.4841 11.57 13.3043 11.2718ZM11.6962 8.57811C11.5164 8.27991 11.1319 8.18052 10.8322 8.35943L5.42359 11.5551C5.12394 11.729 5.02406 12.1167 5.20385 12.4149C5.38363 12.7131 5.76818 12.8125 6.06783 12.6336L11.4765 9.43791C11.7761 9.26396 11.876 8.8763 11.6962 8.57811Z" fill="#8E24AA"/>
+                            </svg>
+                            
+                        <span class="font-normal text-purple lowercase">
+                            {% for category in excursion.category.all %}
+                                {{ category }}
+                                {% if not forloop.last %}, {% endif %}
+                            {% endfor %}
+                            {% if excursion.category.all and excursion.tags.all %}, {% endif %}
+                            {% for tag in excursion.tags.all %}{{ tag }}{% if not forloop.last %}, {% endif %}{% endfor %}
+                        </span>
                     </div>
-                    <div class="flex flex-wrap gap-2 mb-4">
-                        {% for category in excursion.category.all %}
-                            <span class="px-3 py-1 text-sm font-medium bg-blue-100 text-blue-800 rounded-full">
-                                {{ category.name }}
-                            </span>
-                        {% endfor %}
-                        {% for tag in excursion.tags.all %}
-                            <span class="px-3 py-1 text-sm font-medium bg-gray-100 text-gray-800 rounded-full">
-                                {{ tag.name }}
-                            </span>
-                        {% endfor %}
+
+                    <div class="flex flex-wrap mb-1">
+                        <svg class="mr-1" width="24" height="25" viewBox="0 0 24 25" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12.14 0.5C11.9516 0.5 11.7633 0.50515 11.575 0.513906L11.6157 1.43991C11.7888 1.43167 11.9618 1.42704 12.14 1.42704C18.1871 1.42704 23.0838 6.38155 23.0838 12.5C23.0838 18.6185 18.1871 23.573 12.14 23.573C7.57922 23.573 3.67253 20.7558 2.02842 16.7438L3.43483 16.3163L0.969671 14.5498L0 17.3567L1.14783 17.0116C2.91054 21.3996 7.172 24.5 12.14 24.5C18.6859 24.5 24 19.1232 24 12.5C24 5.87682 18.6859 0.5 12.14 0.5ZM10.5722 0.605064C9.89523 0.695193 9.24369 0.841974 8.60742 1.0418L8.89247 1.92197C9.47275 1.73966 10.0785 1.60524 10.6944 1.52283L10.5722 0.605064ZM7.67084 1.38378C7.03966 1.64386 6.43902 1.95648 5.86893 2.317L6.35249 3.10034C6.87678 2.76867 7.4316 2.48077 8.01188 2.2418L7.67084 1.38378ZM5.03415 2.89485C4.49979 3.30012 4.00005 3.75012 3.54019 4.24009L4.20445 4.87253C4.62694 4.42086 5.09014 4.00678 5.57879 3.63339L5.33446 3.29502L5.03415 2.89485ZM8.57179 3.33674L8.34783 4.23494L19.3934 7.09228L19.6174 6.19614L8.57179 3.33674ZM2.87949 5.00644C2.46261 5.53176 2.08848 6.09828 1.76271 6.69056L2.55932 7.14378C2.86015 6.5927 3.20526 6.07253 3.59058 5.58326L2.87949 5.00644ZM9.37603 5.45966C9.17752 6.79871 9.51856 8.30258 10.0988 9.53863C10.4246 10.2288 10.8216 10.8365 11.2136 11.2794C11.4274 11.5215 11.6411 11.7069 11.8346 11.8408L11.5597 12.9326C11.3256 12.9532 11.0507 13.015 10.7453 13.1232C10.1905 13.3189 9.55419 13.6588 8.94337 14.1069C7.8439 14.9103 6.83606 16.0588 6.37794 17.3309L14.9039 19.5403C15.1024 18.2013 14.7614 16.6974 14.1811 15.4614C13.8554 14.7712 13.4583 14.1635 13.0664 13.7206C12.8526 13.4785 12.6388 13.2931 12.4454 13.1592L12.7203 12.0674C12.9493 12.0416 13.2293 11.985 13.5347 11.8768C14.0895 11.6811 14.7258 11.3412 15.3366 10.8931C16.4361 10.0897 17.4439 8.9412 17.902 7.6691L9.37603 5.45966ZM1.3102 7.60215C1.0389 8.22017 0.816458 8.8588 0.648484 9.52318L1.53824 9.73948C1.69247 9.13176 1.89659 8.54464 2.14651 7.97811L1.3102 7.60215ZM0.442842 10.5172C0.336458 11.1609 0.279958 11.8253 0.279958 12.5V12.5464L1.19618 12.5361V12.5C1.19618 11.8768 1.2481 11.2639 1.34634 10.6665L0.442842 10.5172ZM4.88653 17.9077L4.66257 18.8039L15.7082 21.6622L15.9321 20.7661L4.88653 17.9077Z" fill="#8E24AA"/>
+                            </svg>
+                            
+                        <span class="text-header-grey">{{ excursion_availability.start_time|time:"H:i" }} - {{ excursion_availability.end_time|time:"H:i" }}</span>
                     </div>
 
                     <!-- Description -->
@@ -155,19 +162,20 @@
                         <p class="text-sm text-gray-500 mb-4">*Note: Pickup points and prices are based on the pickup group you have selected. <span class="text-sm text-gray-500 font-normal">(Selected Pickup Group: <span class="pickup-region font-semibold">{{ excursion_availability.pickup_groups.all.first.name }}</span>)</span></p>
                         <div class="grid grid-cols-2 gap-2">
                             <div class="flex flex-col gap-2">
-                                <h2 class="text-xl font-semibold text-gray-900">Pickup Points</h2>
+                                <h2 class="text-xl font-semibold text-purple">Pickup Points</h2>
                                 <div class="flex gap-6">
                                     {% for availability in excursion_availabilities %}
                                         {% for pick_group in availability.pickup_groups.all %}
                                             <div class="flex flex-col gap-2 group-{{ pick_group.id }} pickup-group">
-                                                <h2 class="text-lg font-semibold text-gray-900 mt-2">{{ pick_group.name }}</h2>
+                                                <h2 class="text-lg font-semibold text-gray-900 mt-1">{{ pick_group.name }}</h2>
                                                 <ul class="pickup-points-list">
                                                     {% for pickup_point in pick_group.pickup_points.all %}
                                                     <li>
-                                                        <div class="flex items-center py-2">
-                                                            <svg width="16" height="16" fill="#3B82F6" viewBox="0 0 16 16">
-                                                                <path d="M8 0C5.243 0 3 2.243 3 5c0 3.25 4.5 10.5 4.5 10.5s4.5-7.25 4.5-10.5c0-2.757-2.243-5-5-5zm0 7.5A2.5 2.5 0 1 1 8 2.5a2.5 2.5 0 0 1 0 5z"/>
-                                                            </svg>
+                                                        <div class="flex items-center py-1">
+                                                            <svg class="mr-2" width="17" height="19" viewBox="0 0 20 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                                <path d="M9.75 23C14.125 18.6 18.5 14.66 18.5 9.8C18.5 4.93989 14.5825 1 9.75 1C4.91751 1 1 4.93989 1 9.8C1 14.66 5.375 18.6 9.75 23Z" stroke="#8E24AA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                                                <path d="M9.75 13.2222C11.8211 13.2222 13.5 11.5806 13.5 9.55552C13.5 7.53048 11.8211 5.88885 9.75 5.88885C7.67887 5.88885 6 7.53048 6 9.55552C6 11.5806 7.67887 13.2222 9.75 13.2222Z" stroke="#8E24AA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                                                </svg>                                                                
                                                             <a href="{% if pickup_point.google_maps_link %}{{ pickup_point.google_maps_link }}{% else %}#{% endif %}">{{ pickup_point.name }}</a>
                                                         </div>
                                                     </li>
@@ -180,7 +188,7 @@
                             </div>
                             
                             <div class="flex flex-col gap-2">
-                                <h2 class="text-xl font-semibold text-gray-900">Price Details</h2>
+                                <h2 class="text-xl font-semibold text-purple">Price Details</h2>
                                     <div class="space-y-2 mt-4 w-60">
                                         <div class="flex justify-between items-center p-2 bg-gray-50 rounded-lg">
                                             <span class="text-sm font-medium text-gray-600">Adult</span>
@@ -207,9 +215,9 @@
 
 
             <!-- Feedback Section -->
-            <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="bg-white p-6">
                 <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-xl font-semibold text-gray-900">Reviews</h2>
+                    <h2 class="text-2xl font-semibold text-purple uppercase">Reviews</h2>
                     {% if excursion.overall_rating %}
                     <div class="flex items-center">
                         <svg class="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
@@ -229,7 +237,7 @@
                             <input type="hidden" name="feedback_submit" value="1">
                             <div class="space-y-4">
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700">Rating</label>
+                                    <label class="block text-sm font-semibold text-header-grey">Rating</label>
                                     <input type="hidden" name="excursion" value="{{ excursion.pk }}">
                                     <div class="mt-1">
                                         {{ feedback_form.rating }}
@@ -239,7 +247,7 @@
                                     {% endif %}
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700">Your Review</label>
+                                    <label class="block text-sm font-semibold text-header-grey">Your Review</label>
                                     <div class="mt-1">
                                         {{ feedback_form.comment }}
                                     </div>
@@ -247,7 +255,7 @@
                                         <div class="text-red-600 text-sm mt-1">{{ feedback_form.comment.errors.0 }}</div>
                                     {% endif %}
                                 </div>
-                                <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-normal rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 w-full">
                                     Submit Review
                                 </button>
                             </div>
@@ -289,8 +297,8 @@
 
         <!-- Right column - Booking section -->
         <div class="lg:col-span-1">
-            <div class="bg-white rounded-lg shadow-md p-6 sticky top-6">
-                <h2 class="text-xl font-semibold text-gray-900 mb-4">Book This Excursion</h2>
+            <div class="bg-white p-6 sticky top-6">
+                <h2 class="text-2xl font-bold text-purple mb-4">Book this Excursion</h2>
                 {% if not excursion.availabilities.exists %}
                     <p class="text-gray-500 text-center py-4 not-availability">The excursion is currently not available.</p>
                 {% else %}
@@ -309,8 +317,8 @@
                     {% endfor %}
                     <input type="hidden" name="availability_id" id="availability-id" value="">
                     <div class="flex flex-col gap-2 pickup-group-div" >
-                        <label class="block text-md font-medium text-gray-700">Pickup Group</label>
-                        <select name="pickup_group" id="pickup-group" class="mt-1 block w-full pl-3 pr-2 py-2 text-base border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md {% if form.pickup_group.errors %}border-red-500{% endif %}">
+                        <label class="block text-md font-semibold text-header-grey">Pickup Group</label>
+                        <select name="pickup_group" id="pickup-group" class="mt-1 block w-full pl-3 pr-2 py-2 text-base form-fields-border focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md {% if form.pickup_group.errors %}border-red-500{% endif %}">
                             {% for group_id, group_name in pickup_group_map.items %}
                                 <option value="{{ group_id }}">{{ group_name }}</option>
                             {% endfor %}
@@ -324,8 +332,8 @@
                     {{ pickup_points|json_script:"pickup-points-json" }}
 
                     <div class="flex flex-col gap-2">
-                        <label class="block text-md font-medium text-gray-700">Pickup Point</label>
-                        <select name="pickup_point" id="pickup-point" class="mt-1 block w-full pl-3 pr-2 py-2 text-base border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md {% if form.pickup_point.errors %}border-red-500{% endif %}">
+                        <label class="block text-md font-semibold text-header-grey">Pickup Point</label>
+                        <select name="pickup_point" id="pickup-point" class="mt-1 block w-full pl-3 pr-2 py-2 text-base form-fields-border focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md {% if form.pickup_point.errors %}border-red-500{% endif %}">
                             <option value="">Select a pickup point</option>
                             {% for pickup_point in pickup_points %}
                                 <option data-pickup_group="{{ pickup_point.pickup_group }}" value="{{ pickup_point.id }}">{{ pickup_point.name }}</option>
@@ -337,8 +345,8 @@
                     </div>
 
                     <div>
-                        <label class="block text-md font-medium text-gray-700">Date</label>
-                        <input type="text" id="date-picker" class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 {% if form.date.errors %}border-red-500{% endif %}" placeholder="Select a date">
+                        <label class="block text-md font-semibold text-header-grey">Date</label>
+                        <input type="text" id="date-picker" class="mt-1 block w-full form-fields-border rounded-md px-3 py-2 {% if form.date.errors %}border-red-500{% endif %}" placeholder="Select a date">
                         <!-- <span id="remaining-seats" class="text-sm text-gray-500">Remaining seats: <span id="remaining-seats-count">{{ remaining_seats }}</span></span> -->
                         
                         {% if form.date.errors %}
@@ -348,22 +356,22 @@
 
                     <div class="grid grid-cols-3 gap-4 py-4">
                         <div>
-                            <label class="block text-md font-medium text-gray-700">Adults</label>
-                            <input type="number" name="adults" min="0" value="0" class="mt-1 block w-full pl-3 pr-2 py-2 text-base border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md {% if form.adults.errors %}border-red-500{% endif %}">
+                            <label class="block text-md font-semibold text-header-grey">Adults</label>
+                            <input type="number" name="adults" min="0" value="0" class="mt-1 block w-full pl-3 pr-2 py-2 text-base form-fields-border focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md {% if form.adults.errors %}border-red-500{% endif %}">
                             {% if form.adults.errors %}
                             <p class="mt-1 text-sm text-red-600">{{ form.adults.errors.0 }}</p>
                             {% endif %}
                         </div>
                         <div>
-                            <label class="block text-md font-medium text-gray-700">Children</label>
-                            <input type="number" name="children" min="0" value="0" class="mt-1 block w-full pl-3 pr-2 py-2 text-base border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md {% if form.children.errors %}border-red-500{% endif %}">
+                            <label class="block text-md font-semibold text-header-grey">Children</label>
+                            <input type="number" name="children" min="0" value="0" class="mt-1 block w-full pl-3 pr-2 py-2 text-base form-fields-border focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md {% if form.children.errors %}border-red-500{% endif %}">
                             {% if form.children.errors %}
                             <p class="mt-1 text-sm text-red-600">{{ form.children.errors.0 }}</p>
                             {% endif %}
                         </div>
                         <div>
-                            <label class="block text-md font-medium text-gray-700">Infants</label>
-                            <input type="number" name="infants" min="0" value="0" class="mt-1 block w-full pl-3 pr-2 py-2 text-base border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md {% if form.infants.errors %}border-red-500{% endif %}">
+                            <label class="block text-md font-semibold text-header-grey">Infants</label>
+                            <input type="number" name="infants" min="0" value="0" class="mt-1 block w-full pl-3 pr-2 py-2 text-base form-fields-border focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md {% if form.infants.errors %}border-red-500{% endif %}">
                             {% if form.infants.errors %}
                             <p class="mt-1 text-sm text-red-600">{{ form.infants.errors.0 }}</p>
                             {% endif %}
@@ -372,14 +380,14 @@
                     </div>
                     {% comment %} {% if user.is_staff or user.userprofile.role == 'representative' %} {% endcomment %}
                     <div class="flex flex-col gap-2">
-                        <label class="block text-md font-medium text-gray-700">Guest Name</label>
-                        <input type="text" name="guest_name" id="guest-name" class="mt-1 block w-full pl-3 pr-2 py-2 text-base border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md {% if form.guest_name.errors %}border-red-500{% endif %}" value="{% if return_data.client_name is not None %}{{ return_data.client_name }}{% endif %}">
+                        <label class="block text-md font-semibold text-header-grey">Guest Name</label>
+                        <input type="text" name="guest_name" id="guest-name" class="mt-1 block w-full pl-3 pr-2 py-2 text-base form-fields-border focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md {% if form.guest_name.errors %}border-red-500{% endif %}" value="{% if return_data.client_name is not None %}{{ return_data.client_name }}{% endif %}">
                         {% if form.guest_name.errors %}
                         <p class="mt-1 text-sm text-red-600">{{ form.guest_name.errors.0 }}</p>
                         {% endif %}
 
-                        <label class="block text-md font-medium text-gray-700">Guest Email</label>
-                        <input type="email" name="guest_email" id="guest-email" class="mt-1 block w-full pl-3 pr-2 py-2 text-base border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md {% if form.guest_email.errors %}border-red-500{% endif %}">
+                        <label class="block text-md font-semibold text-header-grey">Guest Email</label>
+                        <input type="email" name="guest_email" id="guest-email" class="mt-1 block w-full pl-3 pr-2 py-2 text-base form-fields-border focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md {% if form.guest_email.errors %}border-red-500{% endif %}">
                         <span  id="guest-email-disabled" class="hidden text-sm text-gray-500">Your email is automatically filled in based on your profile. You cannot change it.</span>
                         {% if form.guest_email.errors %}
                         <p class="mt-1 text-sm text-red-600">{{ form.guest_email.errors.0 }}</p>
@@ -394,7 +402,7 @@
 
                     <div class="mt-4 pt-4 border-t border-gray-200">
                         <div class="flex justify-between items-center p-4 bg-blue-50 rounded-lg">
-                            <span class="text-base font-semibold text-gray-900">Total</span>
+                            <span class="text-base font-semibold text-header-grey">Total</span>
                             <span class="text-lg font-bold text-blue-600">€<span id="total-price">0.00</span></span>
                             <input type="number" id="total-price-input" name="total_price" min="0" value="0" class="hidden">
                         </div>
@@ -406,15 +414,15 @@
 
                     {% if user.is_staff or user.profile.role == 'representative' %}
                     <div class="flex flex-col gap-2">   
-                        <label class="block text-md font-medium text-gray-700">Partial Payment</label>
-                        <input type="number" name="partial_payment" id="partial-payment" class="mt-1 block w-full pl-3 pr-2 py-2 text-base border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
+                        <label class="block text-md font-semibold text-header-grey">Partial Payment</label>
+                        <input type="number" name="partial_payment" id="partial-payment" class="mt-1 block w-full pl-3 pr-2 py-2 text-base form-fields-border focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
                         <div class="hidden remaining-price-div">
-                            <span class="text-sm font-medium text-gray-600">Remaining</span>
-                            <span class="text-base font-semibold text-gray-900">€<span id="remaining-price">0.00</span>
+                            <span class="text-sm font-medium text-header-grey">Remaining</span>
+                            <span class="text-base font-semibold text-header-grey">€<span id="remaining-price">0.00</span>
                         </div>
                         <div class="flex flex-col gap-2 hidden" id="partial-paid-method-div">
-                            <label class="block text-md font-medium text-gray-700">Payment Method</label>
-                            <select name="partial_paid_method" id="partial-paid-method" class="mt-1 block w-full pl-3 pr-2 py-2 text-base border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md {% if form.partial_paid_method.errors %}border-red-500{% endif %}">
+                            <label class="block text-md font-semibold text-header-grey">Payment Method</label>
+                            <select name="partial_paid_method" id="partial-paid-method" class="mt-1 block w-full pl-3 pr-2 py-2 text-base form-fields-border focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md {% if form.partial_paid_method.errors %}border-red-500{% endif %}">
                                 <option value="" selected>Select a payment method</option>
                                 <option value="cash">Cash</option>
                                 <option value="card">Card</option>
@@ -422,8 +430,8 @@
                         </div>
                         
                         <div class="reservation-id-div">
-                            <label class="block text-md font-medium text-gray-700">Reservation ID</label>
-                            <input type="text" name="voucher_code" id="voucher_code" class="mt-1 block w-full pl-3 pr-2 py-2 text-base border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
+                            <label class="block text-md font-semibold text-header-grey">Reservation ID</label>
+                            <input type="text" name="voucher_code" id="voucher_code" class="mt-1 block w-full pl-3 pr-2 py-2 text-base form-fields-border focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
                         </div>
                     </div>
                     {% endif %}

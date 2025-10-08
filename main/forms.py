@@ -159,7 +159,7 @@ class WeekdayCapacityWidget(forms.CheckboxSelectMultiple):
                         {"checked" if is_checked else ""} 
                         
                         class="w-4 h-4">
-                    <label for="{checkbox_id}" class="min-w-[120px] bg-brown-light rounded-lg p-2 text-brown text-center font-semibold text-md">{weekday.get_code_display()}</label>
+                    <label for="{checkbox_id}" class="min-w-[120px] bg-blue-light rounded-lg p-2 text-center font-normal text-md">{weekday.get_code_display()}</label>
                     
                 </div>
             '''
@@ -206,7 +206,7 @@ class PickupGroupWidget(forms.CheckboxSelectMultiple):
                                 value="{group.id}" 
                                 {'checked' if is_checked else ''} 
                                 class="w-4 h-4">
-                            <label for="{checkbox_id}" class="px-3 py-1 bg-brown-light rounded-lg text-brown text-center font-semibold text-md flex-1">
+                            <label for="{checkbox_id}" class="px-3 py-1 bg-blue-light rounded-lg text-center font-normal text-md flex-1">
                                 {group.name} 
                             </label>
                             
@@ -250,7 +250,7 @@ class PickupPointWidget(forms.CheckboxSelectMultiple):
                                 value="{point.id}" 
                                 {'checked' if is_checked else ''} 
                                 class="w-4 h-4">
-                            <label for="{checkbox_id}" class="px-3 py-1 bg-gray-100 rounded text-center font-medium flex-1">
+                            <label for="{checkbox_id}" class="px-3 py-1 bg-blue-light rounded text-center font-normal flex-1">
                                 {point.name}
                             </label>
                         </div>
@@ -273,25 +273,25 @@ class ExcursionAvailabilityForm(forms.ModelForm):
             'excursion': forms.Select(attrs={'class': 'form-control'}),
             'start_time': forms.TimeInput(attrs={
                 'type': 'time',
-                'class': 'form-control text-brown font-semibold',
+                'class': 'form-control font-normal',
                 'inputmode': 'numeric',
                 'pattern': '[0-9]{2}:[0-9]{2}'
             }),
             'end_time': forms.TimeInput(attrs={
                 'type': 'time', 
-                'class': 'form-control text-brown font-semibold',    
+                'class': 'form-control font-normal',    
                 'inputmode': 'numeric',
                 'pattern': '[0-9]{2}:[0-9]{2}'
             }),
             'pickup_groups': PickupGroupWidget,
             'pickup_points': PickupPointWidget,
             'weekdays': WeekdayCapacityWidget,
-            'start_date': forms.DateInput(attrs={'type': 'date', 'class': 'text-brown font-semibold'}),
-            'end_date': forms.DateInput(attrs={'type': 'date' , 'class': 'text-brown font-semibold'}),
-            'adult_price': forms.NumberInput(attrs={'class': 'price-field text-brown font-semibold'}),
-            'child_price': forms.NumberInput(attrs={'class': 'price-field text-brown font-semibold'}),
-            'infant_price': forms.NumberInput(attrs={'class': 'price-field text-brown font-semibold'}),
-            'status': forms.Select(attrs={'class': 'form-control text-brown font-semibold'}),
+            'start_date': forms.DateInput(attrs={'type': 'date', 'class': 'font-normal'}),
+            'end_date': forms.DateInput(attrs={'type': 'date' , 'class': 'font-normal'}),
+            'adult_price': forms.NumberInput(attrs={'class': 'price-field font-normal'}),
+            'child_price': forms.NumberInput(attrs={'class': 'price-field font-normal'}),
+            'infant_price': forms.NumberInput(attrs={'class': 'price-field font-normal'}),
+            'status': forms.Select(attrs={'class': 'form-control font-normal'}),
         }
 
     def __init__(self, *args, **kwargs):

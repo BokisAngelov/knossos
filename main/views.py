@@ -386,7 +386,7 @@ def excursion_list(request):
 
     from django.db.models import Q
 
-    excursions = Excursion.objects.filter(availabilities__isnull=False, availabilities__is_active=True).filter(status='active').distinct()
+    excursions = Excursion.objects.filter(status='active')
 
     categories = Category.objects.all()
     tags = Tag.objects.all()
@@ -397,7 +397,24 @@ def excursion_list(request):
     date_from_query = request.GET.get('date_from', '')
     date_to_query = request.GET.get('date_to', '')
 
-
+    # Build availability filter
+    availability_filter = Q(availabilities__isnull=False, availabilities__is_active=True)
+    
+    # Date range filtering: check if availability overlaps with search range
+    if date_from_query and date_to_query:
+        # Both dates provided - availability must overlap the entire range
+        availability_filter &= Q(
+            availabilities__start_date__lte=date_to_query,
+            availabilities__end_date__gte=date_from_query
+        )
+    elif date_from_query:
+        # Only start date - availability must end on or after this date
+        availability_filter &= Q(availabilities__end_date__gte=date_from_query)
+    elif date_to_query:
+        # Only end date - availability must start on or before this date
+        availability_filter &= Q(availabilities__start_date__lte=date_to_query)
+    
+    excursions = excursions.filter(availability_filter)
 
     if search_query:
         excursions = excursions.filter(Q(title__icontains=search_query) | Q(description__icontains=search_query))
@@ -405,11 +422,16 @@ def excursion_list(request):
         excursions = excursions.filter(category__id=category_query)
     if tag_query:
         excursions = excursions.filter(tags__id=tag_query)
-    if date_from_query:
-        excursions = excursions.filter(availabilities__start_date__gte=date_from_query)
-    if date_to_query:
-        excursions = excursions.filter(availabilities__end_date__lte=date_to_query)
+    
+    # Apply distinct at the end to remove duplicates from availability joins
+    excursions = excursions.distinct()
 
+    print('excursions: ' + str(excursions))
+
+    excursions_with_availability = {}
+
+    # for excursion in excursions:
+        # excursion = 
     
     # If this is an HTMX request, return only the partial content
     if request.headers.get("HX-Request"):
@@ -481,8 +503,6 @@ def excursion_detail(request, pk):
         'remaining_seats': remaining_seats,
     })
 
-
-# Helper functions for better code organization
 
 def _render_excursion_without_availability(request, excursion, feedbacks, user_has_feedback):
     """Render excursion detail page when no availability exists."""
@@ -1516,7 +1536,7 @@ def manage_reps(request):
 
 @user_passes_test(is_staff)
 def clients_list(request):
-    clients = UserProfile.objects.filter(role='client')    
+    clients = UserProfile.objects.filter(role='client').order_by('name')    
     # Handle search
     search_query = request.GET.get('search', '').strip()
     if search_query:
@@ -1526,26 +1546,14 @@ def clients_list(request):
             Q(phone__icontains=search_query)
         )
     
-    # Handle sorting
-    sort_by = request.GET.get('sort', 'name')
-    sort_order = request.GET.get('order', 'asc')
-    
-    # Validate sort field
-    valid_sort_fields = ['name', 'email', 'phone', 'status', 'created_at']
-    if sort_by not in valid_sort_fields:
-        sort_by = 'name'
-    
-    # Apply sorting
-    if sort_order == 'desc':
-        sort_by = f'-{sort_by}'
-    
-    clients = clients.order_by(sort_by)
-
+    paginator = Paginator(clients, 15)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
 
     return render(request, 'main/admin/clients.html', {
-        'clients': clients,
-        'current_sort': request.GET.get('sort', 'name'),
-        'current_order': request.GET.get('order', 'asc'),
+        'clients': page_obj.object_list,
+        'page_obj': page_obj,
+        'search_query': search_query,
     })
 
 @user_passes_test(is_staff)
@@ -1617,9 +1625,14 @@ def manage_clients(request):
                 messages.success(request, f'{count} client(s) deleted successfully.')
             return redirect('clients_list')
         
+    paginator = Paginator(clients, 15)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
 
     return render(request, 'main/admin/clients.html', {
-        'clients': UserProfile.objects.filter(role='client'),
+        'clients': page_obj.object_list,
+        'page_obj': page_obj,
+        'search_query': search_query,
     })
     
 @user_passes_test(is_staff)
@@ -2283,8 +2296,13 @@ def staff_list(request):
             Q(name__icontains=search_query)
         )
 
+    paginator = Paginator(staff, 15)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
     return render(request, 'main/admin/staff.html', {
-        'staffs': staff,
+        'staffs': page_obj.object_list,
+        'page_obj': page_obj,
     })
 
 @user_passes_test(is_staff) 
@@ -2349,9 +2367,14 @@ def manage_staff(request):
             messages.success(request, 'Staff member deleted successfully.')
             return redirect('staff_list')
         
+    paginator = Paginator(staff, 15)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
 
     return render(request, 'main/admin/staff.html', {
         'staffs': User.objects.filter(is_staff=True),
+        'page_obj': page_obj,
     })
 
 @user_passes_test(is_staff)

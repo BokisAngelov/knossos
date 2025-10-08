@@ -2,10 +2,16 @@ from django.dispatch import receiver
 from django.db.models.signals import post_save, post_delete
 from django.db import transaction
 from django.conf import settings
-from .models import Feedback, Excursion, ExcursionImage
+from .models import Feedback, Excursion, ExcursionImage, ExcursionAvailability
 import os
 import shutil
 
+@receiver(post_save, sender=ExcursionAvailability)
+def update_excursion_status_on_availability_save(sender, instance, created, **kwargs):
+    """Update excursion status when availability is saved."""
+    if instance.excursion.status != 'active' and instance.is_active:
+        instance.excursion.status = 'active'
+        instance.excursion.save()
 
 @receiver(post_save, sender=Feedback)
 def update_excursion_rating_on_save(sender, instance, created, **kwargs):

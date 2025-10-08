@@ -80,12 +80,12 @@
 </div>
 
 <div class="flex justify-center items-center min-h-[80vh]">
-  <div class="bg-white rounded-lg shadow-md w-full max-w-4xl p-6">
+  <div class="bg-white rounded-lg w-full max-w-4xl p-6">
     <div class="mb-6">
-      <h1 class="text-2xl font-bold text-brown">
+      <h1 class="text-3xl font-bold page-header-color">
         {% if availability %}Edit{% else %}Add{% endif %} Availability
       </h1>
-      <p class="text-sm text-brown mt-2">
+      <p class="text-md font-semibold text-purple">
         {% if availability %}
           Update availability for {{ availability.excursion.title }}
         {% else %}
@@ -118,13 +118,13 @@
       <!-- Excursion & Status -->
       <div class="flex gap-4">
         <div class="flex-[4_4_0%] space-y-1">
-          <label for="{{ form.excursion.id_for_label }}" class="block text-md font-semibold text-brown-light">{{ form.excursion.label }}</label>
-          <div class="w-full auth-input-field rounded-lg border border-brown">{{ form.excursion }}</div>
+          <label for="{{ form.excursion.id_for_label }}" class="block text-md font-semibold text-header-grey">{{ form.excursion.label }}</label>
+          <div class="w-full auth-input-field rounded-lg border form-fields-border">{{ form.excursion }}</div>
           {% if form.excursion.errors %}<div class="text-red-500 text-xs mt-1">{{ form.excursion.errors }}</div>{% endif %}
         </div>
         <div class="flex-[1_1_0%] space-y-1">
-          <label for="{{ form.status.id_for_label }}" class="block text-md font-semibold text-brown-light">{{ form.status.label }}</label>
-          <div class="w-full auth-input-field rounded-lg border border-brown">{{ form.status }}</div>
+          <label for="{{ form.status.id_for_label }}" class="block text-md font-semibold text-header-grey">{{ form.status.label }}</label>
+          <div class="w-full auth-input-field rounded-lg border form-fields-border">{{ form.status }}</div>
           {% if form.status.errors %}<div class="text-red-500 text-xs mt-1">{{ form.status.errors }}</div>{% endif %}
         </div>
       </div>
@@ -132,13 +132,13 @@
       <!-- Dates: Start/End -->
       <div class="flex gap-4">
         <div class="flex-1 space-y-1">
-          <label for="{{ form.start_date.id_for_label }}" class="block text-md font-semibold text-brown-light">{{ form.start_date.label }}</label>
-          <div class="w-full auth-input-field rounded-lg border border-brown">{{ form.start_date }}</div>
+          <label for="{{ form.start_date.id_for_label }}" class="block text-md font-semibold text-header-grey">{{ form.start_date.label }}</label>
+          <div class="w-full auth-input-field rounded-lg border form-fields-border">{{ form.start_date }}</div>
           {% if form.start_date.errors %}<div class="text-red-500 text-xs mt-1">{{ form.start_date.errors }}</div>{% endif %}
         </div>
         <div class="flex-1 space-y-1">
-          <label for="{{ form.end_date.id_for_label }}" class="block text-md font-semibold text-brown-light">{{ form.end_date.label }}</label>
-          <div class="w-full auth-input-field rounded-lg border border-brown">{{ form.end_date }}</div>
+          <label for="{{ form.end_date.id_for_label }}" class="block text-md font-semibold text-header-grey">{{ form.end_date.label }}</label>
+          <div class="w-full auth-input-field rounded-lg border form-fields-border">{{ form.end_date }}</div>
           {% if form.end_date.errors %}<div class="text-red-500 text-xs mt-1">{{ form.end_date.errors }}</div>{% endif %}
         </div>
       </div>
@@ -146,13 +146,13 @@
       <!-- Times: Start/End -->
       <div class="flex gap-4">
         <div class="flex-1 space-y-1">
-          <label for="{{ form.start_time.id_for_label }}" class="block text-md font-semibold text-brown-light">{{ form.start_time.label }}</label>
-          <div class="w-full auth-input-field rounded-lg border border-brown">{{ form.start_time }}</div>
+          <label for="{{ form.start_time.id_for_label }}" class="block text-md font-semibold text-header-grey">{{ form.start_time.label }}</label>
+          <div class="w-full auth-input-field rounded-lg border form-fields-border">{{ form.start_time }}</div>
           {% if form.start_time.errors %}<div class="text-red-500 text-xs mt-1">{{ form.start_time.errors }}</div>{% endif %}
         </div>
         <div class="flex-1 space-y-1">
-          <label for="{{ form.end_time.id_for_label }}" class="block text-md font-semibold text-brown-light">{{ form.end_time.label }}</label>
-          <div class="w-full auth-input-field rounded-lg border border-brown">{{ form.end_time }}</div>
+          <label for="{{ form.end_time.id_for_label }}" class="block text-md font-semibold text-header-grey">{{ form.end_time.label }}</label>
+          <div class="w-full auth-input-field rounded-lg border form-fields-border">{{ form.end_time }}</div>
           {% if form.end_time.errors %}<div class="text-red-500 text-xs mt-1">{{ form.end_time.errors }}</div>{% endif %}
         </div>
       </div>
@@ -166,31 +166,31 @@
 
       <!-- Max Guests -->
       <div class="space-y-1">
-        <label for="{{ form.max_guests.id_for_label }}" class="block text-md font-semibold text-brown-light">{{ form.max_guests.label }}</label>
-        <div class="w-full auth-input-field rounded-lg border border-brown">{{ form.max_guests }}</div>
+        <label for="{{ form.max_guests.id_for_label }}" class="block text-md font-semibold text-header-grey">{{ form.max_guests.label }}</label>
+        <div class="w-full auth-input-field rounded-lg border form-fields-border">{{ form.max_guests }}</div>
         {% if form.max_guests.errors %}<div class="text-red-500 text-xs mt-1">{{ form.max_guests.errors }}</div>{% endif %}
       </div>
 
       <!-- Prices: 3 columns + Discount -->
       <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div class="space-y-1">
-          <label for="{{ form.adult_price.id_for_label }}" class="block text-md font-semibold text-brown-light">{{ form.adult_price.label }}</label>
-          <div class="w-full auth-input-field rounded-lg border border-brown">{{ form.adult_price }}</div>
+          <label for="{{ form.adult_price.id_for_label }}" class="block text-md font-semibold text-header-grey">{{ form.adult_price.label }}</label>
+          <div class="w-full auth-input-field rounded-lg border form-fields-border">{{ form.adult_price }}</div>
           {% if form.adult_price.errors %}<div class="text-red-500 text-xs mt-1">{{ form.adult_price.errors }}</div>{% endif %}
         </div>
         <div class="space-y-1">
-          <label for="{{ form.child_price.id_for_label }}" class="block text-md font-semibold text-brown-light">{{ form.child_price.label }}</label>
-          <div class="w-full auth-input-field rounded-lg border border-brown">{{ form.child_price }}</div>
+          <label for="{{ form.child_price.id_for_label }}" class="block text-md font-semibold text-header-grey">{{ form.child_price.label }}</label>
+          <div class="w-full auth-input-field rounded-lg border form-fields-border">{{ form.child_price }}</div>
           {% if form.child_price.errors %}<div class="text-red-500 text-xs mt-1">{{ form.child_price.errors }}</div>{% endif %}
         </div>
         <div class="space-y-1">
-          <label for="{{ form.infant_price.id_for_label }}" class="block text-md font-semibold text-brown-light">{{ form.infant_price.label }}</label>
-          <div class="w-full auth-input-field rounded-lg border border-brown">{{ form.infant_price }}</div>
+          <label for="{{ form.infant_price.id_for_label }}" class="block text-md font-semibold text-header-grey">{{ form.infant_price.label }}</label>
+          <div class="w-full auth-input-field rounded-lg border form-fields-border">{{ form.infant_price }}</div>
           {% if form.infant_price.errors %}<div class="text-red-500 text-xs mt-1">{{ form.infant_price.errors }}</div>{% endif %}
         </div>
         <div class="space-y-1">
-          <label for="{{ form.discount.id_for_label }}" class="block text-md font-semibold text-brown-light">{{ form.discount.label }}</label>
-          <div class="w-full auth-input-field rounded-lg border border-brown">{{ form.discount }}</div>
+          <label for="{{ form.discount.id_for_label }}" class="block text-md font-semibold text-header-grey">{{ form.discount.label }}</label>
+          <div class="w-full auth-input-field rounded-lg border form-fields-border">{{ form.discount }}</div>
           {% if form.discount.errors %}<div class="text-red-500 text-xs mt-1">{{ form.discount.errors }}</div>{% endif %}
         </div>
       </div>
@@ -199,7 +199,7 @@
       <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
         <!-- Weekdays -->
         <div class="md:col-span-1 space-y-1">
-          <label for="{{ form.weekdays.id_for_label }}" class="block text-md font-semibold text-brown-light">{{ form.weekdays.label }}</label>
+          <label for="{{ form.weekdays.id_for_label }}" class="block text-md font-semibold text-header-grey">{{ form.weekdays.label }}</label>
           <div class="w-full overflow-x-auto">
             <div class="flex flex-row flex-wrap gap-2">
               {{ form.weekdays }}
@@ -209,7 +209,7 @@
         </div>
         <!-- Pickup Groups -->
         <div class="md:col-span-2 space-y-1">
-          <label for="{{ form.pickup_groups.id_for_label }}" class="block text-md font-semibold text-brown-light">{{ form.pickup_groups.label }}</label>
+          <label for="{{ form.pickup_groups.id_for_label }}" class="block text-md font-semibold text-header-grey">{{ form.pickup_groups.label }}</label>
           <div class="w-full overflow-x-auto">
             {{ form.pickup_groups }}
           </div>

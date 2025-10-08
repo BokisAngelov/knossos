@@ -22,7 +22,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 .form-fields-border{
     border-color: #666666;
-    border-width: 2px;
+    border-width: 1px;
 }
 .bg-blue-nav{
     background-color: #1976d2;

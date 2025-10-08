@@ -12,8 +12,8 @@
                 </svg>
                 Back to Dashboard
             </a>
-            <h1 class="text-2xl font-bold">Staff</h1>
-            <p class="text-sm text-brown">Manage your staff information</p>
+            <h1 class="text-3xl font-bold page-header-color">Staff</h1>
+            <p class="text-md text-purple font-semibold">Manage your staff information</p>
         </div>
         <button type="button" id="add-staff-btn" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -24,7 +24,7 @@
     </div>
 
     <!-- Search and Filter Section -->
-    <div class="bg-white rounded-lg shadow-md p-4 mb-6">
+    <div class="bg-white rounded-lg p-4 mb-6">
         <form method="get" class="flex flex-wrap gap-4">
             <div class="flex-1 min-w-[200px]">
                 <label for="search" class="sr-only">Search</label>
@@ -51,39 +51,39 @@
     </div>
 
     <!-- Staff Table -->
-    <div class="bg-white rounded-lg shadow-md p-6">
-        {% if staffs %}
+    <div class="bg-white rounded-lg p-6">
+        {% if page_obj.object_list %}
             <div class="overflow-x-auto">
-                <table class="min-w-full text-sm table-bg">
+                <table class="min-w-full text-sm">
                     <thead class="text-base">
                         <tr>
-                            <th scope="col" class="px-4 py-3 text-left font-medium text-black-600 tracking-wider">
+                            <th scope="col" class="px-4 py-3 text-left text-header-grey font-semibold text-black-600 tracking-wider text-lg">
                                 Name
                             </th>
-                            <th scope="col" class="px-4 py-3 text-left font-medium text-black-600 tracking-wider">
+                            <th scope="col" class="px-4 py-3 text-left text-header-grey font-semibold text-black-600 tracking-wider text-lg">
                                 Email
                             </th>
-                            <th scope="col" class="px-4 py-3 text-left font-medium text-black-600 tracking-wider">
+                            <th scope="col" class="px-4 py-3 text-left text-header-grey font-semibold text-black-600 tracking-wider text-lg">
                                 Phone
                             </th>
-                            <th scope="col" class="px-4 py-3 text-right font-medium text-black-600 tracking-wider">
+                            <th scope="col" class="px-4 py-3 text-right text-header-grey font-semibold text-black-600 tracking-wider text-lg">
                                 Actions
                             </th>
                         </tr>
                     </thead>
                     <tbody>
-                        {% for staff in staffs %}
+                        {% for staff in page_obj %}
                             <tr data-id="{{ staff.id }}">
                                 <td class="px-4 py-4 whitespace-nowrap">
-                                    <span class="editable-name text-sm table-text font-semibold">{{ staff.name }}</span>
+                                    <span class="editable-name font-normal">{{ staff.name }}</span>
                                     <input type="text" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ staff.name }}">
                                 </td>
                                 <td class="px-4 py-4 whitespace-nowrap">
-                                    <span class="editable-email text-sm table-text font-semibold">{{ staff.email }}</span>
+                                    <span class="editable-email font-normal">{{ staff.email }}</span>
                                     <input type="email" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ staff.email }}">
                                 </td>
                                 <td class="px-4 py-4 whitespace-nowrap">
-                                    <span class="editable-phone text-sm table-text font-semibold">{{ staff.phone }}</span>
+                                    <span class="editable-phone font-normal">{{ staff.phone }}</span>
                                     <input type="text" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ staff.phone }}">
                                 </td>
                                 <td class="px-4 py-4 whitespace-nowrap flex justify-end">
@@ -115,7 +115,7 @@
             </div>
 
             <!-- Pagination -->
-            {% if is_paginated %}
+            {% if page_obj.paginator.num_pages > 1 %}
             <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
                 <div class="flex-1 flex justify-between sm:hidden">
                     {% if page_obj.has_previous %}
