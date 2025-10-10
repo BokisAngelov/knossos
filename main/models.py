@@ -77,6 +77,25 @@ class UserProfile(models.Model):
 
     def __str__(self):
         return self.name
+    
+    def get_total_bookings(self):
+        """Get total number of excursion bookings for this user"""
+        if self.user:
+            return self.user.bookings.count()
+        return 0
+    
+    def get_total_spent(self):
+        """Calculate total amount spent on bookings"""
+        from django.db.models import Sum
+        if self.user:
+            total = self.user.bookings.aggregate(total=Sum('total_price'))['total']
+            return total or 0
+        return 0
+    
+    @property
+    def needs_email_update(self):
+        """Check if client needs to update their email"""
+        return self.role == 'client' and not self.email
 
 class Group(models.Model):
     name = models.CharField(max_length=255)
@@ -276,15 +295,56 @@ class Reservation(models.Model):
     pickup_point = models.ForeignKey(PickupPoint, on_delete=models.SET_NULL, null=True, blank=True, related_name='reservations')
     departure_time = models.TimeField(null=True, blank=True)
     status = models.CharField(max_length=255, choices=STATUS_CHOICES, default='active')
+    
+    # Link to client UserProfile
+    client_profile = models.ForeignKey(
+        UserProfile, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        related_name='reservations',
+        limit_choices_to={'role': 'client'}
+    )
+    
+    # Tracking fields
+    first_used_at = models.DateTimeField(null=True, blank=True)
+    last_used_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
 
     def __str__(self):
         return self.voucher_id
     
+    @property
+    def is_valid(self):
+        """Check if reservation/voucher is currently valid"""
+        from django.utils import timezone
+        return (
+            self.status == 'active' and
+            self.check_out >= timezone.now().date()
+        )
+    
+    @property
+    def is_expired(self):
+        """Check if voucher has expired"""
+        from django.utils import timezone
+        return self.check_out < timezone.now().date()
+    
     def update_status(self):
+        """Update status based on checkout date"""
         if self.check_out < datetime.now().date():
             self.status = 'inactive'
             self.save()
         return True
+    
+    def get_bookings_count(self):
+        """Get total number of bookings made with this voucher"""
+        return self.bookings.count()
+    
+    def get_total_spent(self):
+        """Calculate total amount spent across all bookings"""
+        from django.db.models import Sum
+        total = self.bookings.aggregate(total=Sum('total_price'))['total']
+        return total or 0
 
 class Booking(models.Model):
     PAYMENT_STATUS_CHOICES = [

@@ -30,7 +30,7 @@ import json
 from django.db.models import Q, Sum, Count
 from django.apps import apps
 from .cyber_api import get_groups, get_hotels, get_pickup_points, get_excursions, get_excursion_description, get_providers, get_excursion_availabilities, get_reservation
-from .utils import FeedbackService, BookingService, ExcursionService, create_reservation
+from .utils import FeedbackService, BookingService, ExcursionService, VoucherService, create_reservation
 
 def is_staff(user):
     return user.is_staff
@@ -104,98 +104,137 @@ def check_voucher(request):
         return JsonResponse({'success': False, 'message': 'Invalid request method.'})
     
 def retrive_voucher(request):
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body)
-            action = data.get('action')
-            
-            if action == 'clear':
-                response = JsonResponse({
-                    'success': True,
-                    'message': 'Voucher cleared successfully.'
-                })
-                response.delete_cookie('voucher_code')
-                response.delete_cookie('pickup_group')
-                response.delete_cookie('pickup_point')
-                return response
-                
-            voucher_code = data.get('voucher_code')
-
-            # print('voucher_code from ajax: ' + str(voucher_code))
-            # vouchers = Reservation.objects.all()
-            # print('vouchers: ' + str(vouchers))
-            # for voucher in vouchers:
-            #     print('voucher in for: ' + str(voucher.client_name) + ' id: ' + str(voucher.voucher_id))
-                
-            voucher = Reservation.objects.filter(voucher_id=voucher_code).first()
-            
-            if voucher:
-                # pickup_group_id = voucher.pickup_group
-                # print('voucher: ' + str(voucher.client_name) + ' ' + str(voucher.voucher_id))
-                # Create response with cookie
-                response = JsonResponse({
-                    'success': True,
-                    'message': 'Voucher is valid.',
-                    'return_data': {
-                        'client_name': voucher.client_name,
-                        'pickup_group_id': voucher.pickup_group.id,
-                        'pickup_point_id': voucher.pickup_point.id,
-                    }
-                })
-                if request.COOKIES.get('voucher_code') is None:
-                    response.set_cookie(
-                        'voucher_code',
-                        voucher_code,
-                        max_age=86400,
-                        secure=True,
-                        httponly=False,
-                        samesite='None'
-                    )
-                if request.COOKIES.get('pickup_group') is None:
-                    response.set_cookie('pickup_group', voucher.pickup_group.id, max_age=86400, secure=True, httponly=False, samesite='None')
-                if request.COOKIES.get('pickup_point') is None:
-                    response.set_cookie('pickup_point', voucher.pickup_point.id, max_age=86400, secure=True, httponly=False, samesite='None')
-
-
-                print('response: ' + str(response))
-                return response
-            else:
-                booking_data = get_reservation(voucher_code)
-                # print(booking_data)
-                reservation_instance, reservation_response = create_reservation(booking_data)
-                print('reservation_response: ' + str(reservation_response))
-                if reservation_response.get('success') is not False:
-                    print('get success: ' + str(reservation_response.get('success')))
-                    return_data = reservation_response.get('return_data', {})
-                    print('return_data: ' + str(return_data))
-
-                    response = JsonResponse({
-                        'success': True,
-                        'message': 'Reservation created successfully.',
-                        'return_data': return_data
-                    })
-                    response.set_cookie('voucher_code', booking_data.get("Id"), max_age=86400, secure=True, httponly=False, samesite='None')
-                    response.set_cookie('pickup_group', return_data.get('pickup_group_id'), max_age=86400, secure=True, httponly=False, samesite='None')
-                    response.set_cookie('pickup_point', return_data.get('pickup_point_id'), max_age=86400, secure=True, httponly=False, samesite='None')
-
-
-                    return response
-                else:
-                    return JsonResponse({
-                        'success': False,
-                        'message': 'Reservation not created or found.'
-                    })
-
-                
-        except Exception as e:
-            return JsonResponse({
-                'success': False,
-                'message': str(e)
-            })
-    else:
+    """
+    Authenticate and retrieve voucher/reservation.
+    Auto-login the user and redirect to their profile.
+    """
+    import logging
+    import traceback
+    logger = logging.getLogger(__name__)
+    
+    if request.method != 'POST':
         return JsonResponse({
             'success': False,
             'message': 'Invalid request method.'
+        })
+    
+    try:
+        data = json.loads(request.body)
+        action = data.get('action')
+        
+        # Handle clear action
+        if action == 'clear':
+            # Logout user if authenticated
+            if request.user.is_authenticated:
+                logout(request)
+            return VoucherService.clear_voucher_cookies()
+        
+        # Get and validate voucher code
+        voucher_code = data.get('voucher_code')
+        
+        if not voucher_code:
+            return JsonResponse({
+                'success': False,
+                'message': 'Voucher code is required.'
+            })
+        
+        logger.info(f"Processing voucher: {voucher_code}")
+        
+        # Authenticate voucher using VoucherService
+        try:
+            reservation, created = VoucherService.authenticate_voucher(voucher_code)
+            logger.info(f"Voucher authenticated. Created: {created}, Has profile: {hasattr(reservation, 'client_profile')}")
+        except Exception as e:
+            logger.error(f"Error authenticating voucher: {str(e)}\n{traceback.format_exc()}")
+            raise
+        
+        # Get voucher data
+        try:
+            voucher_data = VoucherService.get_voucher_data(reservation)
+        except Exception as e:
+            logger.error(f"Error getting voucher data: {str(e)}\n{traceback.format_exc()}")
+            raise
+        
+        # Check if client_profile exists (might not if migrations haven't been run)
+        client_profile = getattr(reservation, 'client_profile', None)
+        
+        if client_profile and client_profile.user:
+            user = client_profile.user
+            
+            # Login user without password (voucher-based auth)
+            user.backend = 'django.contrib.auth.backends.ModelBackend'
+            login(request, user)
+            
+            logger.info(f"User {user.username} logged in successfully")
+            
+            # Get profile URL using User ID
+            profile_url = reverse('profile', kwargs={'pk': user.id})
+            
+            # Create response with cookies and redirect URL
+            response = JsonResponse({
+                'success': True,
+                'message': f'Welcome, {reservation.client_name}! Redirecting to your profile...',
+                'return_data': voucher_data,
+                'redirect_url': profile_url,
+                'is_new': created
+            })
+        else:
+            # Profile not created - might need migrations
+            logger.warning(f"No client profile for reservation {voucher_code}. Migrations may not be applied.")
+            
+            # Return success but without auto-login
+            response = JsonResponse({
+                'success': True,
+                'message': 'Voucher is valid.',
+                'return_data': voucher_data,
+                'redirect_url': None,
+                'is_new': created,
+                'warning': 'Profile creation pending. Please run migrations.'
+            })
+        
+        # Set cookies for voucher data
+        response.set_cookie(
+            'voucher_code',
+            voucher_code,
+            max_age=86400,
+            secure=True,
+            httponly=False,
+            samesite='None'
+        )
+        
+        if reservation.pickup_group:
+            response.set_cookie(
+                'pickup_group',
+                reservation.pickup_group.id,
+                max_age=86400,
+                secure=True,
+                httponly=False,
+                samesite='None'
+            )
+        
+        if reservation.pickup_point:
+            response.set_cookie(
+                'pickup_point',
+                reservation.pickup_point.id,
+                max_age=86400,
+                secure=True,
+                httponly=False,
+                samesite='None'
+            )
+        
+        return response
+        
+    except ValidationError as e:
+        logger.error(f"Validation error: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'message': str(e)
+        })
+    except Exception as e:
+        logger.error(f"Error in retrive_voucher: {str(e)}\n{traceback.format_exc()}")
+        return JsonResponse({
+            'success': False,
+            'message': f'An error occurred: {str(e)}'
         })
    
     
@@ -596,6 +635,15 @@ def _handle_ajax_booking_submission(request, excursion_availability):
                 'message': 'Please select a date.'
             })
         
+        # Get pickup point
+        pickup_point_id = request.POST.get('pickup_point')
+        pickup_point = None
+        if pickup_point_id:
+            try:
+                pickup_point = PickupPoint.objects.get(id=pickup_point_id)
+            except PickupPoint.DoesNotExist:
+                pass
+        
         # Create booking
         booking = BookingService.create_booking(
             user=request.user,
@@ -604,7 +652,8 @@ def _handle_ajax_booking_submission(request, excursion_availability):
             guest_data=guest_data,
             voucher_instance=voucher_instance,
             selected_date=selected_date,
-            availability_id=availability_id
+            availability_id=availability_id,
+            pickup_point=pickup_point
         )
         
         # Set partial payment method
@@ -1151,6 +1200,9 @@ def profile(request, pk):
     user = get_object_or_404(User, pk=pk)
     bookings = Booking.objects.filter(user=user, deleteByUser=False).order_by('-created_at')
     profile = UserProfile.objects.get(user=user)
+    
+    # Get reservations linked to this user profile
+    reservations = Reservation.objects.filter(client_profile=profile).order_by('-created_at')
 
     # Only allow users to view their own profile unless they're staff
     if request.user.id != user.id and not request.user.is_staff:
@@ -1160,6 +1212,7 @@ def profile(request, pk):
     return render(request, 'main/accounts/profile.html', {
         'bookings': bookings,
         'user_profile': profile,
+        'reservations': reservations,
     })    
 
 @login_required

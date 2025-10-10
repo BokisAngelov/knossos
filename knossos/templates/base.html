@@ -122,6 +122,9 @@
 
     // Auto-hide notifications after 4 seconds
     document.addEventListener('DOMContentLoaded', function() {
+      // Store user authentication status at the top to avoid template syntax issues
+      const isAuthenticated = {{ user.is_authenticated|lower }};
+      
       //  get csrf token for ajax requests
       function getCookie(name) {
           let cookieValue = null;
@@ -147,19 +150,23 @@
       });
 
       function checkVoucherOnLoad() {
-          // const voucherInput = document.getElementById('voucher');
-          const voucherCode = getCookie('voucher_code') ? getCookie('voucher_code') : "";
-
-          // console.log("code from cookie: " + voucherCode);
-
-          if (voucherCode) {
-              checkVoucher(voucherCode, false); 
+          // Don't check voucher if user is already authenticated
+          if (isAuthenticated) {
+              console.log('User already authenticated, skipping voucher check');
+              return;
           }
-          else return;
+
+          const storedVoucherCode = getCookie('voucher_code') ? getCookie('voucher_code') : "";
+
+          if (storedVoucherCode) {
+              console.log('Checking voucher on page load:', storedVoucherCode);
+              checkVoucher(storedVoucherCode, false); 
+          }
       }
       checkVoucherOnLoad();
       function checkVoucher(code, shouldReload = true) {
-        
+          let isRedirecting = false;
+          
           fetch('/retrive_voucher/', {
               method: 'POST',
               headers: {
@@ -170,37 +177,79 @@
                   voucher_code: code
               })
           })
-          .then(response => response.json())
+          .then(response => {
+              if (!response.ok) {
+                  throw new Error(`HTTP error! status: ${response.status}`);
+              }
+              return response.json();
+          })
           .then(data => {
-            // console.log(data);
+              console.log('Voucher response:', data);
               if (data.success) {
-                  // console.log(data);
                   document.getElementById('voucher-message').innerHTML = `Welcome, ${data.return_data.client_name}!`;
                   document.querySelector('.voucher-check').classList.add('hidden');
                   document.querySelector('.voucher-clear').classList.remove('hidden');
 
-                  // refresh the page only if shouldReload is true
-                  if (shouldReload) {
-                      window.location.reload();
+                  // Redirect to profile page if URL is provided
+                  if (data.redirect_url) {
+                      isRedirecting = true;
+                      
+                      // Show brief success message before redirect
+                      Swal.fire({
+                          title: 'Success!',
+                          text: data.message,
+                          icon: 'success',
+                          timer: 1500,
+                          showConfirmButton: false,
+                          allowOutsideClick: false
+                      }).then(() => {
+                          window.location.href = data.redirect_url;
+                      });
+                  } else {
+                      // No redirect, show success message for new users
+                      if (data.is_new) {
+                          Swal.fire({
+                              title: 'Welcome!',
+                              text: data.message,
+                              icon: 'success',
+                              timer: 2000,
+                              showConfirmButton: false
+                          });
+                      }
+                      
+                      if (shouldReload) {
+                          // Reload page to update context
+                          setTimeout(() => {
+                              window.location.reload();
+                          }, 1500);
+                      }
                   }
                   
               } else {
+                  // Show voucher input section and hide clear section
                   document.querySelector('.voucher-check').classList.remove('hidden');
-                  document.getElementById('voucher-message').textContent = data.message;
-                  // Hide the clear button
                   document.querySelector('.voucher-clear').classList.add('hidden');
 
+                  // Show error message in alert
                   Swal.fire({
-                    title: 'Voucher not found',
-                    text: "Please enter a valid voucher code.",
+                    title: 'Voucher Error',
+                    text: data.message,
                     icon: 'warning',
                     confirmButtonText: 'OK'
                   });
               }
           })
           .catch(error => {
-              console.error('Error:', error);
-              // document.getElementById('voucher-message').textContent = 'An error occurred while checking the voucher.';
+              // Don't show error if we're redirecting (expected behavior)
+              if (!isRedirecting) {
+                  console.error('Error:', error);
+                  Swal.fire({
+                      title: 'Error',
+                      text: 'An error occurred while processing your voucher. Please try again.',
+                      icon: 'error',
+                      confirmButtonText: 'OK'
+                  });
+              }
           });
       }
 
@@ -221,18 +270,25 @@
                   document.getElementById('voucher').value = '';
                   document.getElementById('voucher-message').textContent = '';
                   document.querySelector('.voucher-check').classList.remove('hidden');
-                  const clearButton = document.getElementById('clear-voucher-btn');
-                  if (clearButton) {
-                      clearButton.classList.add('hidden');
-                  }
+                  document.querySelector('.voucher-clear').classList.add('hidden');
                   window.location.reload();
               } else {
-                  document.getElementById('voucher-message').textContent = 'Error clearing voucher.';
+                  Swal.fire({
+                      title: 'Error',
+                      text: 'Error clearing voucher.',
+                      icon: 'error',
+                      confirmButtonText: 'OK'
+                  });
               }
           })
           .catch(error => {
               console.error('Error:', error);
-              // document.getElementById('voucher-message').textContent = 'An error occurred while clearing the voucher.';
+              Swal.fire({
+                  title: 'Error',
+                  text: 'An error occurred while clearing the voucher.',
+                  icon: 'error',
+                  confirmButtonText: 'OK'
+              });
           });
       }
 
@@ -246,14 +302,30 @@
       
       if (voucherBtn) {
         voucherBtn.addEventListener('click', function() {
+            // Don't allow voucher check if user is already authenticated
+            if (isAuthenticated) {
+                Swal.fire({
+                    title: 'Already Logged In',
+                    text: 'You are already logged in. Please logout first if you want to use a different voucher.',
+                    icon: 'info',
+                    confirmButtonText: 'OK'
+                });
+                return;
+            }
+
             const voucherInput = document.getElementById('voucher');
-            const voucherCode = voucherInput.value.trim();
+            const enteredVoucherCode = voucherInput.value.trim();
             
-            if (voucherCode) {
-                console.log('Checking voucher:', voucherCode);
-                checkVoucher(voucherCode);
+            if (enteredVoucherCode) {
+                console.log('Checking voucher:', enteredVoucherCode);
+                checkVoucher(enteredVoucherCode);
             } else {
-                document.getElementById('voucher-message').textContent = 'Please enter a voucher code.';
+                Swal.fire({
+                    title: 'Missing Voucher',
+                    text: 'Please enter a voucher code.',
+                    icon: 'warning',
+                    confirmButtonText: 'OK'
+                });
             }
         });
       }

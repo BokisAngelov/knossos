@@ -96,7 +96,7 @@
                 
                 <div class="bg-orange-light rounded-lg shadow-sm p-4 border-orange">
                     <h4 class="text-md font-semibold text-orange mb-1">Pickup Point</h4>
-                    <p class="text-lg font-bold text-orange">{{ booking.pickup_point }}</p>
+                    <p class="text-lg font-bold text-orange">{% if booking.pickup_point %}{{ booking.pickup_point.name }}{% else %}N/A{% endif %}</p>
                 </div>
             </div>
         </div>
