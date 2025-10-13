@@ -2359,6 +2359,9 @@ def manage_staff(request):
                 user = User.objects.create_user(
                     username=username,
                     password=password,
+                    first_name=name.split()[0],
+                    last_name=' '.join(name.split()[1:]),
+                    email=email,
                     is_staff=True,
                 )   
                 # Create UserProfile
