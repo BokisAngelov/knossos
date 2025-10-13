@@ -30,50 +30,148 @@
         Edit Profile
       </a>
       {% endif %}
+      
     </div>
   </div>
 
+  <!-- Reservations Section -->
+  {% if reservations %}
+  <div class="bg-white rounded-lg p-6 mb-8">
+    <h2 class="text-xl font-semibold text-purple mb-4">Your Reservations</h2>
+    
+    <div class="space-y-4">
+      {% for reservation in reservations %}
+      <div class="">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <!-- Voucher ID -->
+          <div>
+            <p class="text-sm font-semibold text-gray-600">Voucher ID</p>
+            <p class="text-base font-bold text-blue-600">{{ reservation.voucher_id }}</p>
+          </div>
+          
+          <!-- Stay Dates -->
+          <div>
+            <p class="text-sm font-semibold text-gray-600">Stay Period</p>
+            <p class="text-base text-gray-900">{{ reservation.check_in|date:"M d, Y" }} - {{ reservation.check_out|date:"M d, Y" }}</p>
+          </div>
+          
+          <!-- Status -->
+          <div>
+            <p class="text-sm font-semibold text-gray-600">Status</p>
+            <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full text-white
+              {% if reservation.status == 'active' %}bg-green
+              {% else %}bg-gray-400{% endif %}">
+              {{ reservation.status|title }}
+            </span>
+          </div>
+          
+          <!-- Hotel -->
+          {% if reservation.hotel %}
+          <div>
+            <p class="text-sm font-semibold text-gray-600">Hotel</p>
+            <p class="text-base text-gray-900">{{ reservation.hotel.name }}</p>
+          </div>
+          {% endif %}
+          
+          <!-- Pickup Group -->
+          {% if reservation.pickup_group %}
+          <div>
+            <p class="text-sm font-semibold text-gray-600">Pickup Group</p>
+            <p class="text-base text-gray-900">{{ reservation.pickup_group.name }}</p>
+          </div>
+          {% endif %}
+          
+          <!-- Pickup Point -->
+          {% if reservation.pickup_point %}
+          <div>
+            <p class="text-sm font-semibold text-gray-600">Pickup Point</p>
+            <p class="text-base text-gray-900">{{ reservation.pickup_point.name }}</p>
+          </div>
+          {% endif %}
+          
+          <!-- Guests -->
+          {% if reservation.total_adults or reservation.total_kids %}
+          <div>
+            <p class="text-sm font-semibold text-gray-600">Guests</p>
+            <p class="text-base text-gray-900">
+              {% if reservation.total_adults %}{{ reservation.total_adults }} Adult{% if reservation.total_adults != 1 %}s{% endif %}{% endif %}
+              {% if reservation.total_adults and reservation.total_kids %}, {% endif %}
+              {% if reservation.total_kids %}{{ reservation.total_kids }} Kid{% if reservation.total_kids != 1 %}s{% endif %}{% endif %}
+            </p>
+          </div>
+          {% endif %}
+          
+          <!-- Departure Time -->
+          {% if reservation.departure_time %}
+          <div>
+            <p class="text-sm font-semibold text-gray-600">Departure Time</p>
+            <p class="text-base text-gray-900">{{ reservation.departure_time|time:"H:i" }}</p>
+          </div>
+          {% endif %}
+          
+          <!-- Flight Number -->
+          {% if reservation.flight_number %}
+          <div>
+            <p class="text-sm font-semibold text-gray-600">Flight Number</p>
+            <p class="text-base text-gray-900">{{ reservation.flight_number }}</p>
+          </div>
+          {% endif %}
+          
+          <!-- Contact Phone -->
+          {% if reservation.client_phone %}
+          <div>
+            <p class="text-sm font-semibold text-gray-600">Contact Phone</p>
+            <p class="text-base text-gray-900">{{ reservation.client_phone }}</p>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
   <!-- Bookings Section -->
-  <div class="bg-white rounded-lg shadow-md p-6">
-    <h2 class="text-xl font-semibold text-gray-800 mb-4">Your Bookings</h2>
+  <div class="bg-white p-6">
+    <h2 class="text-xl font-semibold text-purple mb-4">Your Bookings</h2>
     
     {% if bookings %}
       <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
-          <thead class="bg-gray-50">
+        <table class="min-w-full text-sm">
+          <thead class="text-base">
             <tr>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Excursion</th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Guests</th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider text-right">Actions</th>
+              <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">Excursion</th>
+              <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">Date</th>
+              <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">Guests</th>
+              <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">Status</th>
+              <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">Price</th>
+              <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg text-right">Actions</th>
             </tr>
           </thead>
-          <tbody class="bg-white divide-y divide-gray-200">
+          <tbody class="">
             {% for booking in bookings %}
-              <tr class="hover:bg-gray-50">
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="text-sm font-medium text-gray-900">{{ booking.excursion_availability.excursion.title }}</div>
+              <tr class="">
+                <td class="px-4 py-4 whitespace-nowrap">
+                  <div class="text-sm font-normal">{{ booking.excursion_availability.excursion.title }}</div>
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="text-sm text-gray-500">{{ booking.date }}</div>
+                <td class="px-4 py-4 whitespace-nowrap">
+                  <div class="text-sm font-normal">{{ booking.date }}</div>
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="text-sm text-gray-500">{% if booking.total_adults %} {{ booking.total_adults }} adults {% endif %}{% if booking.total_kids %}, {{ booking.total_kids }} kids{% endif %}{% if booking.total_infants %}, {{ booking.total_infants }} infants{% endif %}</div>
+                <td class="px-4 py-4 whitespace-nowrap">
+                  <div class="text-sm font-normal">{% if booking.total_adults %} {{ booking.total_adults }} adults {% endif %}{% if booking.total_kids %}, {{ booking.total_kids }} kids{% endif %}{% if booking.total_infants %}, {{ booking.total_infants }} infants{% endif %}</div>
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                  {% if booking.payment_status == 'completed' %}bg-green-100 text-green-800
-                  {% elif booking.payment_status == 'pending' %}bg-yellow-100 text-yellow-800
-                  {% else %}bg-red-100 text-red-800{% endif %}">
+                <td class="px-4 py-4 whitespace-nowrap">
+                  <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full text-white
+                  {% if booking.payment_status == 'completed' %}bg-green
+                  {% elif booking.payment_status == 'pending' %}bg-yellow
+                  {% else %}bg-red{% endif %}">
                     {{ booking.payment_status|title }}
                   </span>
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  ${{ booking.total_price }}
+                <td class="px-4 py-4 whitespace-nowrap text-sm font-normal">
+                  €{{ booking.total_price }}
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex justify-end">
+                <td class="px-4 py-4 whitespace-nowrap text-right text-sm font-normal flex justify-end">
                   <a href="{% url 'booking_detail' booking.id %}" class="text-blue-600 hover:text-blue-800">
                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>

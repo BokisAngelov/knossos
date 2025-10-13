@@ -358,6 +358,7 @@ class BookingForm(forms.ModelForm):
                 'total_adults': self.fields['total_adults'],
                 'total_kids': self.fields['total_kids'],
                 'total_infants': self.fields['total_infants'],
+                'pickup_point': self.fields['pickup_point'],
             }
             
             # Make all fields optional for editing

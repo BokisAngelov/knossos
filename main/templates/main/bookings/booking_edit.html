@@ -115,6 +115,13 @@
             {% if form.total_infants.errors %}<div class="text-red-500 text-xs mt-1">{{ form.total_infants.errors }}</div>{% endif %}
           </div>
         </div>
+        <div class="grid grid-cols-1 gap-4 mt-2">
+          <div class="space-y-1">
+            <label for="{{ form.pickup_point.id_for_label }}" class="block text-md font-semibold text-brown-light">{{ form.pickup_point.label }}</label>
+            <div class="w-full auth-input-field rounded-lg border border-brown text-brown font-semibold">{{ form.pickup_point }}</div>
+            {% if form.pickup_point.errors %}<div class="text-red-500 text-xs mt-1">{{ form.pickup_point.errors }}</div>{% endif %}
+          </div>
+        </div>
       </div>
       <!-- Payment Information -->
       <div class="p-4 rounded-lg">
