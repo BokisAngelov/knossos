@@ -69,7 +69,7 @@
                         {% for excursion in page_obj %}
                             <tr class="font-medium">
                                 <td class="px-4 py-4 whitespace-nowrap">
-                                    <div class="text-sm font-normal">{{ excursion.title }}</div>
+                                    <div class="text-sm font-normal excursion-title">{{ excursion.title }}</div>
                                 </td>
                                 <td class="px-4 py-4 whitespace-nowrap">
                                     <div class="text-sm font-normal">{{ excursion.provider.name|default:"-" }}</div>
@@ -212,7 +212,7 @@
                 e.preventDefault();
                 const row = this.closest('tr');
                 const itemId = row.dataset.id;
-                const title = row.querySelector('.text-sm.font-medium').textContent.trim();
+                const title = row.querySelector('.excursion-title').textContent.trim();
                 
                 Swal.fire({
                     title: 'Are you sure?',

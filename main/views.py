@@ -1067,6 +1067,7 @@ def signup(request):
                     )
                     print(f'this is the user_profile: {user_profile}')
                     login(request, user)
+                    # TODO: Send email verification and remove login
                     messages.success(request, 'Account created successfully. Please verify your email to continue.')
                     return redirect('excursion_list')
                 else:
