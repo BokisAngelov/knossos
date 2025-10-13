@@ -2,6 +2,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.urls import reverse
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth import authenticate, login, logout
+from django.views.decorators.csrf import ensure_csrf_cookie
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.contrib import messages
@@ -48,6 +49,7 @@ def testmodels(request):
         'availability_days': availability_days,
     })
 
+@ensure_csrf_cookie
 def homepage(request):
     excursions = Excursion.objects.all().filter(availabilities__isnull=False).filter(status='active').distinct()
     return render(request, 'main/home.html', {
@@ -81,27 +83,27 @@ def manage_cookies(request, cookie_name, cookie_value, cookie_action):
         return response
     return None
 
-def check_voucher(request):
-    if request.method == 'POST':
-        data = json.loads(request.body)
-        return_data = {}
-        voucher_code = data.get('voucher_code')
-        if voucher_code:
-            voucher = Reservation.objects.filter(voucher_id=voucher_code).first()
-            if voucher:
-                return_data = {
-                    'client_name': voucher.client_name,
-                    'pickup_group_id': voucher.pickup_group.id,
-                    'pickup_point_id': voucher.pickup_point.id,
-                    'client_email': voucher.client_email,
-                }
-                return JsonResponse({'success': True, 'message': 'Voucher found in database.', 'return_data': return_data})
-            else:
-                return JsonResponse({'success': False, 'message': 'Voucher not found in database.', 'return_data': return_data})
-        else:
-            return JsonResponse({'success': False, 'message': 'Voucher code is required.', 'return_data': return_data})
-    else:
-        return JsonResponse({'success': False, 'message': 'Invalid request method.'})
+# def check_voucher(request):
+#     if request.method == 'POST':
+#         data = json.loads(request.body)
+#         return_data = {}
+#         voucher_code = data.get('voucher_code')
+#         if voucher_code:
+#             voucher = Reservation.objects.filter(voucher_id=voucher_code).first()
+#             if voucher:
+#                 return_data = {
+#                     'client_name': voucher.client_name,
+#                     'pickup_group_id': voucher.pickup_group.id,
+#                     'pickup_point_id': voucher.pickup_point.id,
+#                     'client_email': voucher.client_email,
+#                 }
+#                 return JsonResponse({'success': True, 'message': 'Voucher found in database.', 'return_data': return_data})
+#             else:
+#                 return JsonResponse({'success': False, 'message': 'Voucher not found in database.', 'return_data': return_data})
+#         else:
+#             return JsonResponse({'success': False, 'message': 'Voucher code is required.', 'return_data': return_data})
+#     else:
+#         return JsonResponse({'success': False, 'message': 'Invalid request method.'})
     
 def retrive_voucher(request):
     """
@@ -421,6 +423,7 @@ def sync_providers(request):
     return JsonResponse({'success': False, 'message': 'Invalid request method.'})
 
 # ----- Excursion Views -----
+@ensure_csrf_cookie
 def excursion_list(request):
 
     from django.db.models import Q
@@ -1080,6 +1083,7 @@ def signup(request):
 
     return render(request, 'main/accounts/signup.html', {'form': form})
 
+@ensure_csrf_cookie
 def login_view(request):
     if request.method == 'POST':
         form = AuthenticationForm(request, data=request.POST)
@@ -1781,6 +1785,11 @@ def availability_list(request):
 def admin_reservations(request):
     reservations = Reservation.objects.all().order_by('check_in')
 
+    client_users = User.objects.filter(username__icontains='client_')
+    updated_clients = UserProfile.objects.filter(role='client', user__in=client_users)
+
+    print('updated_clients: ' + str(updated_clients))
+
     try:
         # Handle search
         search_query = request.GET.get('search', '').strip()
@@ -1799,6 +1808,7 @@ def admin_reservations(request):
         return render(request, 'main/admin/admin_reservations.html', {
             'reservations': reservations,
             'page_obj': page_obj,
+            'updated_clients': updated_clients,
         })   
     except Reservation.DoesNotExist:
         messages.error(request, 'No reservations found')
@@ -1809,39 +1819,8 @@ def admin_reservations(request):
 
 @user_passes_test(is_staff)
 def bookings_list(request):
-    # if request.method == 'POST':
-    #     action_type = request.POST.get('action_type')
-        
-    #     if action_type == 'bulk_delete':
-    #         selected_ids = request.POST.getlist('selected_bookings')
-    #         if selected_ids:
-    #             bookings_to_delete = Booking.objects.filter(id__in=selected_ids)
-    #             count = bookings_to_delete.count()
-    #             bookings_to_delete.delete()
-    #             messages.success(request, f'{count} booking(s) deleted successfully.')
-    #         return redirect('bookings_list')
-    
-    # # Get sorting parameters
-    # sort_by = request.GET.get('sort_by', 'created_at')
-    # sort_order = request.GET.get('sort_order', 'desc')
+
     search_query = request.GET.get('search', '')
-    
-    # # Validate sort_by parameter
-    # valid_sort_fields = ['created_at', 'payment_status', 'price', 'guest_name', 'date']
-    # if sort_by not in valid_sort_fields:
-    #     sort_by = 'created_at'
-    
-    # # Validate sort_order parameter
-    # if sort_order not in ['asc', 'desc']:
-    #     sort_order = 'desc'
-    
-    # # Apply sorting
-    # if sort_order == 'desc':
-    #     sort_field = f'-{sort_by}'
-    # else:
-    #     sort_field = sort_by
-    
-    # Start with all bookings
     bookings = Booking.objects.all().order_by('-date')
     
     # Apply search filter if search query is provided
@@ -1856,14 +1835,10 @@ def bookings_list(request):
     paginator = Paginator(bookings, 15)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
-    
-    # Apply sorting
-    # bookings = bookings.order_by(sort_field)
+
     
     return render(request, 'main/bookings/bookings_list.html', {
         'bookings': page_obj.object_list,
-        # 'current_sort_by': sort_by,
-        # 'current_sort_order': sort_order,
         'search_query': search_query,
         'page_obj': page_obj,
     })

@@ -65,7 +65,7 @@ urlpatterns = [
     path('manage_pickup_points/', views.manage_pickup_points, name='manage_pickup_points'),
     # sync urls
     path('retrive_voucher/', views.retrive_voucher, name='retrive_voucher'),
-    path('check_voucher/', views.check_voucher, name='check_voucher'),
+    # path('check_voucher/', views.check_voucher, name='check_voucher'),
     path('manage_cookies/', views.manage_cookies, name='manage_cookies'),
     path('sync_pickup_groups/', views.sync_pickup_groups, name='sync_pickup_groups'),
     path('sync_pickup_points/', views.sync_pickup_points, name='sync_pickup_points'),

@@ -282,3 +282,29 @@ def update_client_profile_on_reservation_change(sender, instance, **kwargs):
         pass
     except Exception as e:
         logger.error(f"Error updating client profile from reservation {instance.voucher_id}: {str(e)}")
+
+@receiver(post_save, sender=UserProfile)
+def update_reservation_on_user_profile_save(sender, instance, created, **kwargs):
+    """
+    Update reservation when UserProfile is saved.
+    """
+    if instance.role == 'client' and not created:
+        try:
+            # Get all reservations linked to this profile
+            reservations = instance.reservations.all()
+            
+            # Update all reservations with the new profile data
+            count = reservations.update(
+                client_email=instance.email, 
+                client_phone=instance.phone, 
+                client_name=instance.name
+            )
+            
+            if count > 0:
+                voucher_ids = list(reservations.values_list('voucher_id', flat=True))
+                logger.info(f"Updated {count} reservation(s) {voucher_ids} from user profile {instance.id}")
+            
+        except Exception as e:
+            logger.error(f"Error updating reservation from user profile {instance.id}: {str(e)}")
+
+
