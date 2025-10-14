@@ -2373,10 +2373,10 @@ def manage_staff(request):
                     role='admin',
                 )   
                 messages.success(request, 'Staff member created successfully.')
-                return redirect('staff_list')
+                # return redirect('staff_list')
             
         elif action_type == 'edit_staff':
-            staff = get_object_or_404(UserProfile, pk=item_id)
+            staff_profile = get_object_or_404(UserProfile, pk=item_id)
             name = request.POST.get('name', '').strip()
             email = request.POST.get('email', '').strip()
             phone = request.POST.get('phone', '').strip()
@@ -2384,28 +2384,32 @@ def manage_staff(request):
             password = request.POST.get('password', '').strip()
 
             if name:
-                staff.name = name
-                staff.email = email
-                staff.phone = phone
-                staff.role = "admin"
-                staff.password = password
-                staff.save()
+                staff_profile.name = name
+                staff_profile.email = email
+                staff_profile.phone = phone
+                staff_profile.role = "admin"
+                staff_profile.password = password
+                staff_profile.save()
                 messages.success(request, 'Staff member updated successfully.')
-                return redirect('staff_list')
+                # return redirect('staff_list')
 
         elif action_type == 'delete_staff':
-            staff = get_object_or_404(User, pk=item_id)
-            staff.delete()
+            staff_profile = get_object_or_404(UserProfile, pk=item_id)
+            # Delete the user, which will cascade delete the UserProfile
+            staff_profile.user.delete()
             messages.success(request, 'Staff member deleted successfully.')
-            return redirect('staff_list')
-        
+            # return redirect('staff_list')
+    
+    # Get all staff profiles (UserProfile objects with role='admin')
+    staff = UserProfile.objects.filter(role='admin', user__is_staff=True).select_related('user')
+    
     paginator = Paginator(staff, 15)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
 
     return render(request, 'main/admin/staff.html', {
-        'staffs': User.objects.filter(is_staff=True),
+        'staffs': staff,
         'page_obj': page_obj,
     })
 
