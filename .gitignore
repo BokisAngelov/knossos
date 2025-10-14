@@ -1,5 +1,3 @@
-knossos/settings.py
-
 # Python
 __pycache__/
 *.py[cod]
@@ -20,6 +18,8 @@ staticfiles/
 venv/
 env/
 .venv/
+knossos/settings.py
+
 
 # IDE
 .vscode/
