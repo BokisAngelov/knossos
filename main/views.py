@@ -67,9 +67,9 @@ def manage_cookies(request, cookie_name, cookie_value, cookie_action):
             cookie_name, 
             cookie_value, 
             max_age=604800, # 7 days
-            secure=True,
+            secure=False,  # Set to True only if using HTTPS exclusively
             httponly=False,
-            samesite='None'
+            samesite='Lax'
         )
         return response
     elif cookie_action == 'get':
@@ -199,9 +199,9 @@ def retrive_voucher(request):
             'voucher_code',
             voucher_code,
             max_age=86400,
-            secure=True,
+            secure=False,  # Set to True only if using HTTPS exclusively
             httponly=False,
-            samesite='None'
+            samesite='Lax'
         )
         
         if reservation.pickup_group:
@@ -209,9 +209,9 @@ def retrive_voucher(request):
                 'pickup_group',
                 reservation.pickup_group.id,
                 max_age=86400,
-                secure=True,
+                secure=False,  # Set to True only if using HTTPS exclusively
                 httponly=False,
-                samesite='None'
+                samesite='Lax'
             )
         
         if reservation.pickup_point:
@@ -219,9 +219,9 @@ def retrive_voucher(request):
                 'pickup_point',
                 reservation.pickup_point.id,
                 max_age=86400,
-                secure=True,
+                secure=False,  # Set to True only if using HTTPS exclusively
                 httponly=False,
-                samesite='None'
+                samesite='Lax'
             )
         
         return response
