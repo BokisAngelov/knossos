@@ -1,1 +1,33 @@
+knossos/settings.py
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.sqlite3
+*.sqlite3-journal
+.DS_Store
+
+# Django
+*.log
+local_settings.py
 db.sqlite3
+media/
+staticfiles/
+.env
+venv/
+env/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+Thumbs.db
+ehthumbs.db
+Icon?
