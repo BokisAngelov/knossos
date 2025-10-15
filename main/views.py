@@ -10,6 +10,7 @@ from django.db import transaction
 from django.utils import timezone
 from django.core.serializers.json import DjangoJSONEncoder
 from django.core.paginator import Paginator
+from django.template.loader import render_to_string
 from datetime import date, datetime, time, timedelta
 from django.contrib.auth.models import User
 from django.http import JsonResponse, Http404, HttpResponse
@@ -1520,196 +1521,452 @@ def test_simple_pdf(request):
 
 @user_passes_test(is_staff)
 def group_export_pdf(request, pk):
-    """Export group details as PDF using fpdf2"""
-    from fpdf import FPDF
-    from django.http import HttpResponse
-    from datetime import datetime
+    from xhtml2pdf import pisa
+    from io import BytesIO
+    from collections import defaultdict
+
+    group = get_object_or_404(Group.objects.prefetch_related(
+        'bookings',
+        'bookings__pickup_point',
+        'bookings__pickup_point__pickup_group',
+        'bookings__voucher_id',
+        'bookings__voucher_id__hotel'
+    ), pk=pk)
+
+    # Get bookings for the group
+    bookings = group.bookings.all().order_by(
+        'pickup_point__pickup_group__name',
+        'pickup_point__name',
+        'guest_name'
+    )
+
+    # Organize bookings by pickup group and pickup point with subtotals
+    organized_data = []
+    current_pickup_group = None
+    pickup_group_data = None
+    
+    for booking in bookings:
+        # Get pickup group - handle None pickup_point case
+        if booking.pickup_point:
+            pickup_group = booking.pickup_point.pickup_group
+            pickup_point = booking.pickup_point
+        else:
+            pickup_group = None
+            pickup_point = None
+        
+        # Check if we need to start a new pickup group
+        if pickup_group != current_pickup_group:
+            if pickup_group_data:
+                organized_data.append(pickup_group_data)
+            
+            current_pickup_group = pickup_group
+            pickup_group_data = {
+                'pickup_group': pickup_group,
+                'pickup_points': []
+            }
+        
+        # Find or create pickup point in current group
+        pickup_point_data = None
+        for pp in pickup_group_data['pickup_points']:
+            if pp['pickup_point'] == pickup_point:
+                pickup_point_data = pp
+                break
+        
+        if not pickup_point_data:
+            pickup_point_data = {
+                'pickup_point': pickup_point,
+                'bookings': [],
+                'subtotal': {'adults': 0, 'kids': 0, 'infants': 0, 'total': 0}
+            }
+            pickup_group_data['pickup_points'].append(pickup_point_data)
+        
+        # Add booking and update subtotal
+        guest_total = (booking.total_adults or 0) + (booking.total_kids or 0) + (booking.total_infants or 0)
+        pickup_point_data['bookings'].append(booking)
+        pickup_point_data['subtotal']['adults'] += booking.total_adults or 0
+        pickup_point_data['subtotal']['kids'] += booking.total_kids or 0
+        pickup_point_data['subtotal']['infants'] += booking.total_infants or 0
+        pickup_point_data['subtotal']['total'] += guest_total
+    
+    # Don't forget to add the last pickup group
+    if pickup_group_data:
+        organized_data.append(pickup_group_data)
+
+    # HTML content to be converted.
+    html_content = render_to_string('main/groups/group_pdf.html', {
+        'group': group,
+        'bookings': bookings,
+        'organized_data': organized_data,
+    })
+
+    filename = f'transport_group_{group.name}_{group.date}.pdf'
+    
+    # Create a BytesIO buffer to receive PDF data
+    buffer = BytesIO()
+    
+    # Convert HTML to PDF
+    pisa_status = pisa.CreatePDF(html_content, dest=buffer)
+    
+    if pisa_status.err:
+        return HttpResponse(f'PDF generation error: {pisa_status.err}', status=500)
+    
+    # Get the PDF content from buffer
+    pdf_content = buffer.getvalue()
+    buffer.close()
+    
+    # Create the HTTP response with PDF
+    response = HttpResponse(pdf_content, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    
+    return response
+
+
+@user_passes_test(is_staff)
+def group_export_csv(request, pk):
+    import csv
+    from io import StringIO
     
     group = get_object_or_404(Group.objects.prefetch_related(
         'bookings',
         'bookings__pickup_point',
         'bookings__pickup_point__pickup_group',
-        'bookings__voucher_id'
+        'bookings__voucher_id',
+        'bookings__voucher_id__hotel'
     ), pk=pk)
     
+    # Get bookings for the group
     bookings = group.bookings.all().order_by(
         'pickup_point__pickup_group__name',
-        'pickup_point__name'
+        'pickup_point__name',
+        'guest_name'
     )
     
-    # Helper function to clean text for PDF (removes special characters that Arial can't handle)
-    def clean_text(text):
-        if not text:
-            return ''
-        # Replace common special characters with ASCII equivalents
-        replacements = {
-            'á': 'a', 'à': 'a', 'ä': 'a', 'â': 'a', 'ã': 'a', 'å': 'a',
-            'é': 'e', 'è': 'e', 'ë': 'e', 'ê': 'e',
-            'í': 'i', 'ì': 'i', 'ï': 'i', 'î': 'i',
-            'ó': 'o', 'ò': 'o', 'ö': 'o', 'ô': 'o', 'õ': 'o', 'ø': 'o',
-            'ú': 'u', 'ù': 'u', 'ü': 'u', 'û': 'u',
-            'ñ': 'n', 'ç': 'c', 'ß': 'ss',
-            'Á': 'A', 'À': 'A', 'Ä': 'A', 'Â': 'A', 'Ã': 'A', 'Å': 'A',
-            'É': 'E', 'È': 'E', 'Ë': 'E', 'Ê': 'E',
-            'Í': 'I', 'Ì': 'I', 'Ï': 'I', 'Î': 'I',
-            'Ó': 'O', 'Ò': 'O', 'Ö': 'O', 'Ô': 'O', 'Õ': 'O', 'Ø': 'O',
-            'Ú': 'U', 'Ù': 'U', 'Ü': 'U', 'Û': 'U',
-            'Ñ': 'N', 'Ç': 'C',
-            '€': 'EUR', '£': 'GBP', '¥': 'YEN',
-            '"': '"', '"': '"', ''': "'", ''': "'",
-            '–': '-', '—': '-', '…': '...',
-        }
-        for old, new in replacements.items():
-            text = text.replace(old, new)
-        # Remove any remaining non-ASCII characters
-        return text.encode('ascii', 'ignore').decode('ascii')
+    # Organize bookings by pickup group and pickup point with subtotals
+    organized_data = []
+    current_pickup_group = None
+    pickup_group_data = None
     
-    # Create PDF
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_auto_page_break(auto=True, margin=15)
-    
-    # Header
-    pdf.set_font('Arial', 'B', 24)
-    pdf.cell(0, 10, 'Transport Group', 0, 1, 'C')
-    pdf.set_font('Arial', '', 14)
-    pdf.cell(0, 8, clean_text(group.name), 0, 1, 'C')
-    pdf.ln(5)
-    
-    # Draw header line
-    pdf.set_draw_color(37, 99, 235)  # Blue color
-    pdf.set_line_width(0.5)
-    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
-    pdf.ln(10)
-    
-    # Group Information Section
-    pdf.set_fill_color(243, 244, 246)  # Light gray background
-    pdf.rect(10, pdf.get_y(), 190, 35, 'F')
-    
-    y_start = pdf.get_y() + 5
-    
-    # Excursion
-    pdf.set_xy(15, y_start)
-    pdf.set_font('Arial', 'B', 9)
-    pdf.cell(60, 5, 'EXCURSION', 0, 1)
-    pdf.set_xy(15, y_start + 5)
-    pdf.set_font('Arial', '', 11)
-    pdf.cell(60, 5, clean_text(group.excursion.title[:40]), 0, 1)
-    
-    # Date
-    pdf.set_xy(75, y_start)
-    pdf.set_font('Arial', 'B', 9)
-    pdf.cell(60, 5, 'DATE', 0, 1)
-    pdf.set_xy(75, y_start + 5)
-    pdf.set_font('Arial', '', 11)
-    pdf.cell(60, 5, group.date.strftime('%A, %B %d, %Y'), 0, 1)
-    
-    # Total Guests
-    pdf.set_xy(135, y_start)
-    pdf.set_font('Arial', 'B', 9)
-    pdf.cell(60, 5, 'TOTAL GUESTS', 0, 1)
-    pdf.set_xy(135, y_start + 5)
-    pdf.set_font('Arial', '', 11)
-    
-    # Add capacity badge if needed
-    guests_text = str(group.total_guests)
-    # if group.is_at_capacity:
-    #     guests_text += ' (At Capacity)'
-    # elif group.capacity_warning:
-    #     guests_text += ' (Near Capacity)'
-    pdf.cell(60, 5, guests_text, 0, 1)
-    
-    pdf.set_y(y_start + 25)
-    
-    # Description (if exists)
-    if group.description:
-        pdf.ln(5)
-        pdf.set_font('Arial', 'B', 9)
-        pdf.cell(0, 5, 'DESCRIPTION', 0, 1)
-        pdf.set_font('Arial', '', 11)
-        pdf.multi_cell(0, 5, clean_text(group.description))
-    
-    pdf.ln(10)
-    
-    # Guest List Header
-    pdf.set_font('Arial', 'B', 16)
-    pdf.cell(0, 8, 'Guest List', 0, 1)
-    pdf.ln(2)
-    
-    # Table Header
-    pdf.set_fill_color(249, 250, 251)  # Light gray
-    pdf.set_font('Arial', 'B', 9)
-    
-    # Column widths
-    col_widths = [10, 50, 30, 50, 12, 12, 15, 12]
-    
-    pdf.cell(col_widths[0], 8, '#', 1, 0, 'C', True)
-    pdf.cell(col_widths[1], 8, 'Guest Name', 1, 0, 'L', True)
-    pdf.cell(col_widths[2], 8, 'Phone', 1, 0, 'L', True)
-    pdf.cell(col_widths[3], 8, 'Pickup Point', 1, 0, 'L', True)
-    pdf.cell(col_widths[4], 8, 'Adults', 1, 0, 'C', True)
-    pdf.cell(col_widths[5], 8, 'Kids', 1, 0, 'C', True)
-    pdf.cell(col_widths[6], 8, 'Infants', 1, 0, 'C', True)
-    pdf.cell(col_widths[7], 8, 'Total', 1, 1, 'C', True)
-    
-    # Table Body
-    pdf.set_font('Arial', '', 9)
-    for idx, booking in enumerate(bookings, 1):
-        # Alternate row colors
-        if idx % 2 == 0:
-            pdf.set_fill_color(249, 250, 251)
-            fill = True
-        else:
-            pdf.set_fill_color(255, 255, 255)
-            fill = True
-        
-        # Get phone
-        phone = booking.voucher_id.client_phone if booking.voucher_id and booking.voucher_id.client_phone else '-'
-        
-        # Get pickup point
-        pickup_text = '-'
+    for booking in bookings:
+        # Get pickup group - handle None pickup_point case
         if booking.pickup_point:
-            pickup_text = booking.pickup_point.name[:25]  # Truncate if too long
-            if booking.pickup_point.pickup_group:
-                pickup_text += f" ({booking.pickup_point.pickup_group.name[:15]})"
+            pickup_group = booking.pickup_point.pickup_group
+            pickup_point = booking.pickup_point
+        else:
+            pickup_group = None
+            pickup_point = None
         
-        # Calculate total guests for this booking
-        booking_total = (booking.total_adults or 0) + (booking.total_kids or 0) + (booking.total_infants or 0)
+        # Check if we need to start a new pickup group
+        if pickup_group != current_pickup_group:
+            if pickup_group_data:
+                organized_data.append(pickup_group_data)
+            
+            current_pickup_group = pickup_group
+            pickup_group_data = {
+                'pickup_group': pickup_group,
+                'pickup_points': []
+            }
         
-        pdf.cell(col_widths[0], 8, str(idx), 1, 0, 'C', fill)
-        pdf.cell(col_widths[1], 8, clean_text(booking.guest_name[:30]), 1, 0, 'L', fill)  # Truncate if too long
-        pdf.cell(col_widths[2], 8, clean_text(phone), 1, 0, 'L', fill)
-        pdf.cell(col_widths[3], 8, clean_text(pickup_text), 1, 0, 'L', fill)
-        pdf.cell(col_widths[4], 8, str(booking.total_adults or 0), 1, 0, 'C', fill)
-        pdf.cell(col_widths[5], 8, str(booking.total_kids or 0), 1, 0, 'C', fill)
-        pdf.cell(col_widths[6], 8, str(booking.total_infants or 0), 1, 0, 'C', fill)
-        pdf.set_font('Arial', 'B', 9)
-        pdf.cell(col_widths[7], 8, str(booking_total), 1, 1, 'C', fill)
-        pdf.set_font('Arial', '', 9)
+        # Find or create pickup point in current group
+        pickup_point_data = None
+        for pp in pickup_group_data['pickup_points']:
+            if pp['pickup_point'] == pickup_point:
+                pickup_point_data = pp
+                break
+        
+        if not pickup_point_data:
+            pickup_point_data = {
+                'pickup_point': pickup_point,
+                'bookings': [],
+                'subtotal': {'adults': 0, 'kids': 0, 'infants': 0, 'total': 0}
+            }
+            pickup_group_data['pickup_points'].append(pickup_point_data)
+        
+        # Add booking and update subtotal
+        guest_total = (booking.total_adults or 0) + (booking.total_kids or 0) + (booking.total_infants or 0)
+        pickup_point_data['bookings'].append(booking)
+        pickup_point_data['subtotal']['adults'] += booking.total_adults or 0
+        pickup_point_data['subtotal']['kids'] += booking.total_kids or 0
+        pickup_point_data['subtotal']['infants'] += booking.total_infants or 0
+        pickup_point_data['subtotal']['total'] += guest_total
     
-    # Table Footer - Total
-    pdf.set_fill_color(229, 231, 235)  # Gray background
-    pdf.set_font('Arial', 'B', 10)
-    pdf.cell(sum(col_widths[:-1]), 8, 'Total Guests:', 1, 0, 'R', True)
-    pdf.set_font('Arial', 'B', 12)
-    pdf.cell(col_widths[-1], 8, str(group.total_guests), 1, 1, 'C', True)
+    # Don't forget to add the last pickup group
+    if pickup_group_data:
+        organized_data.append(pickup_group_data)
     
-    # Footer
-    pdf.ln(10)
-    pdf.set_font('Arial', 'I', 8)
-    pdf.set_text_color(156, 163, 175)  # Gray color
-    pdf.cell(0, 5, f'Generated on {datetime.now().strftime("%B %d, %Y at %H:%M")}', 0, 1, 'C')
+    # Create CSV content
+    output = StringIO()
+    writer = csv.writer(output)
     
-    # Output PDF
-    pdf_output = pdf.output()
+    # Header information
+    writer.writerow(['TRANSPORT GROUP MANIFEST'])
+    writer.writerow([])
+    writer.writerow(['Excursion:', group.excursion.title])
+    writer.writerow(['Group:', group.name])
+    writer.writerow(['Date:', group.date.strftime('%A, %B %d, %Y')])
+    writer.writerow(['Total Guests:', group.total_guests])
+    writer.writerow(['Total Bookings:', bookings.count()])
+    writer.writerow([])
+    writer.writerow([])
+    
+    # Column headers
+    headers = ['#', 'Pickup Group', 'Pickup Point', 'Guest Name', 'Phone', 'Hotel/Location', 'Adults', 'Kids', 'Infants', 'Total']
+    writer.writerow(headers)
+    
+    # Data rows
+    row_number = 1
+    for pg_data in organized_data:
+        pickup_group_name = pg_data['pickup_group'].name if pg_data['pickup_group'] else 'No Pickup Group'
+        
+        for pp_data in pg_data['pickup_points']:
+            pickup_point_name = pp_data['pickup_point'].name if pp_data['pickup_point'] else 'No Pickup Point'
+            
+            for booking in pp_data['bookings']:
+                phone = ''
+                if booking.voucher_id and booking.voucher_id.client_phone:
+                    phone = booking.voucher_id.client_phone
+                
+                hotel = ''
+                if booking.voucher_id and booking.voucher_id.hotel:
+                    hotel = booking.voucher_id.hotel.name
+                
+                adults = booking.total_adults or 0
+                kids = booking.total_kids or 0
+                infants = booking.total_infants or 0
+                total = adults + kids + infants
+                
+                writer.writerow([
+                    row_number,
+                    pickup_group_name,
+                    pickup_point_name,
+                    booking.guest_name,
+                    phone,
+                    hotel,
+                    adults,
+                    kids,
+                    infants,
+                    total
+                ])
+                row_number += 1
+            
+            # Subtotal row
+            writer.writerow([
+                '',
+                '',
+                f'SUBTOTAL - {pickup_point_name}',
+                f'{len(pp_data["bookings"])} booking(s)',
+                '',
+                '',
+                pp_data['subtotal']['adults'],
+                pp_data['subtotal']['kids'],
+                pp_data['subtotal']['infants'],
+                pp_data['subtotal']['total']
+            ])
+            writer.writerow([])  # Empty row for spacing
+    
+    # Grand total
+    writer.writerow([])
+    writer.writerow(['', '', 'GRAND TOTAL', f'{bookings.count()} bookings', '', '', '', '', '', group.total_guests])
     
     # Create response
-    response = HttpResponse(pdf_output, content_type='application/pdf')
-    safe_name = clean_text(group.name.replace(" ", "_"))
-    filename = f'transport_group_{safe_name}_{group.date}.pdf'
+    filename = f'transport_group_{group.name}_{group.date}.csv'
+    response = HttpResponse(output.getvalue(), content_type='text/csv')
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
     
     return response
+
+
+# @user_passes_test(is_staff)
+# def group_export_pdf(request, pk):
+#     """Export group details as PDF using fpdf2"""
+#     from fpdf import FPDF
+#     from django.http import HttpResponse
+#     from datetime import datetime
+    
+#     group = get_object_or_404(Group.objects.prefetch_related(
+#         'bookings',
+#         'bookings__pickup_point',
+#         'bookings__pickup_point__pickup_group',
+#         'bookings__voucher_id'
+#     ), pk=pk)
+    
+#     bookings = group.bookings.all().order_by(
+#         'pickup_point__pickup_group__name',
+#         'pickup_point__name'
+#     )
+    
+#     # Helper function to clean text for PDF (removes special characters that Arial can't handle)
+#     def clean_text(text):
+#         if not text:
+#             return ''
+#         # Replace common special characters with ASCII equivalents
+#         replacements = {
+#             'á': 'a', 'à': 'a', 'ä': 'a', 'â': 'a', 'ã': 'a', 'å': 'a',
+#             'é': 'e', 'è': 'e', 'ë': 'e', 'ê': 'e',
+#             'í': 'i', 'ì': 'i', 'ï': 'i', 'î': 'i',
+#             'ó': 'o', 'ò': 'o', 'ö': 'o', 'ô': 'o', 'õ': 'o', 'ø': 'o',
+#             'ú': 'u', 'ù': 'u', 'ü': 'u', 'û': 'u',
+#             'ñ': 'n', 'ç': 'c', 'ß': 'ss',
+#             'Á': 'A', 'À': 'A', 'Ä': 'A', 'Â': 'A', 'Ã': 'A', 'Å': 'A',
+#             'É': 'E', 'È': 'E', 'Ë': 'E', 'Ê': 'E',
+#             'Í': 'I', 'Ì': 'I', 'Ï': 'I', 'Î': 'I',
+#             'Ó': 'O', 'Ò': 'O', 'Ö': 'O', 'Ô': 'O', 'Õ': 'O', 'Ø': 'O',
+#             'Ú': 'U', 'Ù': 'U', 'Ü': 'U', 'Û': 'U',
+#             'Ñ': 'N', 'Ç': 'C',
+#             '€': 'EUR', '£': 'GBP', '¥': 'YEN',
+#             '"': '"', '"': '"', ''': "'", ''': "'",
+#             '–': '-', '—': '-', '…': '...',
+#         }
+#         for old, new in replacements.items():
+#             text = text.replace(old, new)
+#         # Remove any remaining non-ASCII characters
+#         return text.encode('ascii', 'ignore').decode('ascii')
+    
+#     # Create PDF
+#     pdf = FPDF()
+#     pdf.add_page()
+#     pdf.set_auto_page_break(auto=True, margin=15)
+    
+#     # Header
+#     pdf.set_font('Arial', 'B', 24)
+#     pdf.cell(0, 10, 'Transport Group', 0, 1, 'C')
+#     pdf.set_font('Arial', '', 14)
+#     pdf.cell(0, 8, clean_text(group.name), 0, 1, 'C')
+#     pdf.ln(5)
+    
+#     # Draw header line
+#     pdf.set_draw_color(37, 99, 235)  # Blue color
+#     pdf.set_line_width(0.5)
+#     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+#     pdf.ln(10)
+    
+#     # Group Information Section
+#     pdf.set_fill_color(243, 244, 246)  # Light gray background
+#     pdf.rect(10, pdf.get_y(), 190, 35, 'F')
+    
+#     y_start = pdf.get_y() + 5
+    
+#     # Excursion
+#     pdf.set_xy(15, y_start)
+#     pdf.set_font('Arial', 'B', 9)
+#     pdf.cell(60, 5, 'EXCURSION', 0, 1)
+#     pdf.set_xy(15, y_start + 5)
+#     pdf.set_font('Arial', '', 11)
+#     pdf.cell(60, 5, clean_text(group.excursion.title[:40]), 0, 1)
+    
+#     # Date
+#     pdf.set_xy(75, y_start)
+#     pdf.set_font('Arial', 'B', 9)
+#     pdf.cell(60, 5, 'DATE', 0, 1)
+#     pdf.set_xy(75, y_start + 5)
+#     pdf.set_font('Arial', '', 11)
+#     pdf.cell(60, 5, group.date.strftime('%A, %B %d, %Y'), 0, 1)
+    
+#     # Total Guests
+#     pdf.set_xy(135, y_start)
+#     pdf.set_font('Arial', 'B', 9)
+#     pdf.cell(60, 5, 'TOTAL GUESTS', 0, 1)
+#     pdf.set_xy(135, y_start + 5)
+#     pdf.set_font('Arial', '', 11)
+    
+#     # Add capacity badge if needed
+#     guests_text = str(group.total_guests)
+#     # if group.is_at_capacity:
+#     #     guests_text += ' (At Capacity)'
+#     # elif group.capacity_warning:
+#     #     guests_text += ' (Near Capacity)'
+#     pdf.cell(60, 5, guests_text, 0, 1)
+    
+#     pdf.set_y(y_start + 25)
+    
+#     # Description (if exists)
+#     if group.description:
+#         pdf.ln(5)
+#         pdf.set_font('Arial', 'B', 9)
+#         pdf.cell(0, 5, 'DESCRIPTION', 0, 1)
+#         pdf.set_font('Arial', '', 11)
+#         pdf.multi_cell(0, 5, clean_text(group.description))
+    
+#     pdf.ln(10)
+    
+#     # Guest List Header
+#     pdf.set_font('Arial', 'B', 16)
+#     pdf.cell(0, 8, 'Guest List', 0, 1)
+#     pdf.ln(2)
+    
+#     # Table Header
+#     pdf.set_fill_color(249, 250, 251)  # Light gray
+#     pdf.set_font('Arial', 'B', 9)
+    
+#     # Column widths
+#     col_widths = [10, 50, 30, 50, 12, 12, 15, 12]
+    
+#     pdf.cell(col_widths[0], 8, '#', 1, 0, 'C', True)
+#     pdf.cell(col_widths[1], 8, 'Guest Name', 1, 0, 'L', True)
+#     pdf.cell(col_widths[2], 8, 'Phone', 1, 0, 'L', True)
+#     pdf.cell(col_widths[3], 8, 'Pickup Point', 1, 0, 'L', True)
+#     pdf.cell(col_widths[4], 8, 'Adults', 1, 0, 'C', True)
+#     pdf.cell(col_widths[5], 8, 'Kids', 1, 0, 'C', True)
+#     pdf.cell(col_widths[6], 8, 'Infants', 1, 0, 'C', True)
+#     pdf.cell(col_widths[7], 8, 'Total', 1, 1, 'C', True)
+    
+#     # Table Body
+#     pdf.set_font('Arial', '', 9)
+#     for idx, booking in enumerate(bookings, 1):
+#         # Alternate row colors
+#         if idx % 2 == 0:
+#             pdf.set_fill_color(249, 250, 251)
+#             fill = True
+#         else:
+#             pdf.set_fill_color(255, 255, 255)
+#             fill = True
+        
+#         # Get phone
+#         phone = booking.voucher_id.client_phone if booking.voucher_id and booking.voucher_id.client_phone else '-'
+        
+#         # Get pickup point
+#         pickup_text = '-'
+#         if booking.pickup_point:
+#             pickup_text = booking.pickup_point.name[:25]  # Truncate if too long
+#             if booking.pickup_point.pickup_group:
+#                 pickup_text += f" ({booking.pickup_point.pickup_group.name[:15]})"
+        
+#         # Calculate total guests for this booking
+#         booking_total = (booking.total_adults or 0) + (booking.total_kids or 0) + (booking.total_infants or 0)
+        
+#         pdf.cell(col_widths[0], 8, str(idx), 1, 0, 'C', fill)
+#         pdf.cell(col_widths[1], 8, clean_text(booking.guest_name[:30]), 1, 0, 'L', fill)  # Truncate if too long
+#         pdf.cell(col_widths[2], 8, clean_text(phone), 1, 0, 'L', fill)
+#         pdf.cell(col_widths[3], 8, clean_text(pickup_text), 1, 0, 'L', fill)
+#         pdf.cell(col_widths[4], 8, str(booking.total_adults or 0), 1, 0, 'C', fill)
+#         pdf.cell(col_widths[5], 8, str(booking.total_kids or 0), 1, 0, 'C', fill)
+#         pdf.cell(col_widths[6], 8, str(booking.total_infants or 0), 1, 0, 'C', fill)
+#         pdf.set_font('Arial', 'B', 9)
+#         pdf.cell(col_widths[7], 8, str(booking_total), 1, 1, 'C', fill)
+#         pdf.set_font('Arial', '', 9)
+    
+#     # Table Footer - Total
+#     pdf.set_fill_color(229, 231, 235)  # Gray background
+#     pdf.set_font('Arial', 'B', 10)
+#     pdf.cell(sum(col_widths[:-1]), 8, 'Total Guests:', 1, 0, 'R', True)
+#     pdf.set_font('Arial', 'B', 12)
+#     pdf.cell(col_widths[-1], 8, str(group.total_guests), 1, 1, 'C', True)
+    
+#     # Footer
+#     pdf.ln(10)
+#     pdf.set_font('Arial', 'I', 8)
+#     pdf.set_text_color(156, 163, 175)  # Gray color
+#     pdf.cell(0, 5, f'Generated on {datetime.now().strftime("%B %d, %Y at %H:%M")}', 0, 1, 'C')
+    
+#     # Output PDF
+#     pdf_output = pdf.output()
+    
+#     # Create response
+#     response = HttpResponse(pdf_output, content_type='application/pdf')
+#     safe_name = clean_text(group.name.replace(" ", "_"))
+#     filename = f'transport_group_{safe_name}_{group.date}.pdf'
+#     response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    
+#     return response
 
 # ----- Category and Tag Management -----
 @user_passes_test(is_staff)

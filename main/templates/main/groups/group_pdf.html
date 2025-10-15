@@ -6,260 +6,224 @@
     <style>
         @page {
             size: A4;
-            margin: 2cm;
+            margin: 1.5cm;
         }
         
         body {
             font-family: 'DejaVu Sans', Arial, sans-serif;
-            font-size: 10pt;
-            line-height: 1.4;
+            font-size: 9pt;
+            line-height: 1.2;
             color: #333;
         }
         
         .header {
             text-align: center;
-            margin-bottom: 30px;
-            border-bottom: 2px solid #2563eb;
-            padding-bottom: 15px;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #000;
+            padding-bottom: 8px;
         }
         
         .header h1 {
-            margin: 0;
-            font-size: 24pt;
-            color: #1f2937;
+            margin: 0 0 5px 0;
+            font-size: 18pt;
+            color: #000;
         }
         
-        .header p {
-            margin: 5px 0;
-            color: #6b7280;
-            font-size: 11pt;
+        .header .info {
+            margin: 3px 0;
+            font-size: 10pt;
         }
         
-        .info-section {
-            margin-bottom: 25px;
-            background-color: #f3f4f6;
-            padding: 15px;
-            border-radius: 5px;
-        }
-        
-        .info-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 15px;
-        }
-        
-        .info-item {
-            margin-bottom: 10px;
-        }
-        
-        .info-label {
-            font-weight: bold;
-            color: #4b5563;
-            font-size: 9pt;
-            text-transform: uppercase;
-            margin-bottom: 3px;
-        }
-        
-        .info-value {
-            color: #1f2937;
-            font-size: 11pt;
-        }
-        
-        .description {
-            margin-top: 15px;
-            padding-top: 10px;
-            border-top: 1px solid #d1d5db;
-        }
-        
-        .guest-list {
-            margin-top: 20px;
-        }
-        
-        .guest-list h2 {
-            font-size: 16pt;
+        .info-bar {
             margin-bottom: 15px;
-            color: #1f2937;
-            border-bottom: 1px solid #e5e7eb;
-            padding-bottom: 5px;
+            padding: 8px;
+            background-color: #f0f0f0;
+            border: 1px solid #ccc;
+        }
+        
+        .info-bar strong {
+            margin-right: 15px;
+        }
+        
+        .pickup-group-section {
+            margin-bottom: 20px;
+            page-break-inside: avoid;
+        }
+        
+        .pickup-group-header {
+            background-color: #333;
+            color: white;
+            padding: 6px 10px;
+            font-weight: bold;
+            font-size: 11pt;
+            margin-top: 10px;
+        }
+        
+        .pickup-point-header {
+            background-color: #666;
+            color: white;
+            padding: 5px 10px;
+            font-weight: bold;
+            font-size: 10pt;
+            margin-top: 5px;
         }
         
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 10px;
-        }
-        
-        table thead {
-            background-color: #f9fafb;
+            margin-bottom: 5px;
         }
         
         table th {
             text-align: left;
-            padding: 10px 8px;
-            font-size: 9pt;
+            padding: 4px 6px;
+            font-size: 8pt;
             font-weight: bold;
-            color: #4b5563;
-            text-transform: uppercase;
-            border-bottom: 2px solid #e5e7eb;
+            background-color: #e0e0e0;
+            border: 1px solid #999;
         }
         
         table td {
-            padding: 10px 8px;
-            border-bottom: 1px solid #f3f4f6;
-            font-size: 10pt;
+            padding: 3px 6px;
+            border: 1px solid #ddd;
+            font-size: 9pt;
         }
         
         table tbody tr:nth-child(even) {
-            background-color: #f9fafb;
+            background-color: #f9f9f9;
         }
         
-        table tfoot {
-            background-color: #e5e7eb;
+        .subtotal-row {
+            background-color: #e8e8e8 !important;
             font-weight: bold;
+            border-top: 2px solid #666 !important;
         }
         
-        table tfoot td {
-            padding: 12px 8px;
-            border-top: 2px solid #9ca3af;
+        .grand-total {
+            background-color: #333;
+            color: white;
+            font-weight: bold;
+            font-size: 10pt;
+            padding: 8px;
+            text-align: right;
+            margin-top: 10px;
         }
         
         .footer {
-            margin-top: 30px;
+            margin-top: 15px;
             text-align: center;
-            font-size: 8pt;
-            color: #9ca3af;
-            border-top: 1px solid #e5e7eb;
-            padding-top: 15px;
+            font-size: 7pt;
+            color: #666;
+            border-top: 1px solid #ccc;
+            padding-top: 8px;
         }
         
-        .status-badge {
-            display: inline-block;
-            padding: 3px 8px;
-            border-radius: 3px;
-            font-size: 8pt;
-            font-weight: bold;
+        .text-center {
+            text-align: center;
         }
         
-        .status-at-capacity {
-            background-color: #fee2e2;
-            color: #991b1b;
-        }
-        
-        .status-warning {
-            background-color: #fef3c7;
-            color: #92400e;
-        }
-        
-        .pickup-group-badge {
-            font-size: 8pt;
-            color: #6b7280;
-            font-style: italic;
+        .text-right {
+            text-align: right;
         }
     </style>
 </head>
 <body>
     <!-- Header -->
     <div class="header">
-        <h1>Transport Group</h1>
-        <p>{{ group.name }}</p>
+        <h1>TRANSPORT MANIFEST</h1>
+        <div class="info">{{ group.name }} - {{ group.excursion.title }}</div>
+        <div class="info">{{ group.date|date:"l, F d, Y" }}</div>
     </div>
 
-    <!-- Group Information -->
-    <div class="info-section">
-        <div class="info-grid">
-            <div class="info-item">
-                <div class="info-label">Excursion</div>
-                <div class="info-value">{{ group.excursion.title }}</div>
+    <!-- Info Bar -->
+    <div class="info-bar">
+        <strong>Total Guests:</strong> {{ group.total_guests }}
+        <strong style="margin-left: 20px;">Total Bookings:</strong> {{ bookings|length }}
+    </div>
+
+    <!-- Pickup Groups and Points -->
+    {% for pg_data in organized_data %}
+        <div class="pickup-group-section">
+            <div class="pickup-group-header">
+                {% if pg_data.pickup_group %}
+                    PICKUP GROUP: {{ pg_data.pickup_group.name|upper }}
+                {% else %}
+                    NO PICKUP GROUP ASSIGNED
+                {% endif %}
             </div>
-            <div class="info-item">
-                <div class="info-label">Date</div>
-                <div class="info-value">{{ group.date|date:"l, F d, Y" }}</div>
-            </div>
-            <div class="info-item">
-                <div class="info-label">Total Guests</div>
-                <div class="info-value">
-                    {{ group.total_guests }}
-                    {% if group.is_at_capacity %}
-                        <span class="status-badge status-at-capacity">At Capacity</span>
-                    {% elif group.capacity_warning %}
-                        <span class="status-badge status-warning">Near Capacity</span>
+            
+            {% for pp_data in pg_data.pickup_points %}
+                <div class="pickup-point-header">
+                    {% if pp_data.pickup_point %}
+                        📍 {{ pp_data.pickup_point.name }}
+                    {% else %}
+                        📍 No Pickup Point
                     {% endif %}
                 </div>
-            </div>
+                
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 4%;">#</th>
+                            <th style="width: 28%;">Guest Name</th>
+                            <th style="width: 18%;">Phone</th>
+                            <th style="width: 18%;">Hotel/Location</th>
+                            <th style="width: 8%;">Adults</th>
+                            <th style="width: 8%;">Kids</th>
+                            <th style="width: 8%;">Infants</th>
+                            <th style="width: 8%;">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for booking in pp_data.bookings %}
+                        <tr>
+                            <td class="text-center">{{ forloop.counter }}</td>
+                            <td>{{ booking.guest_name }}</td>
+                            <td>
+                                {% if booking.voucher_id and booking.voucher_id.client_phone %}
+                                    {{ booking.voucher_id.client_phone }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if booking.voucher_id and booking.voucher_id.hotel %}
+                                    {{ booking.voucher_id.hotel.name }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td class="text-center">{{ booking.total_adults|default:"0" }}</td>
+                            <td class="text-center">{{ booking.total_kids|default:"0" }}</td>
+                            <td class="text-center">{{ booking.total_infants|default:"0" }}</td>
+                            <td class="text-center"><strong>{{ booking.total_adults|default:0|add:booking.total_kids|default:0|add:booking.total_infants|default:0 }}</strong></td>
+                        </tr>
+                        {% endfor %}
+                        <tr class="subtotal-row">
+                            <td colspan="4" class="text-right">Subtotal ({{ pp_data.bookings|length }} booking{{ pp_data.bookings|length|pluralize }}):</td>
+                            <td class="text-center">{{ pp_data.subtotal.adults }}</td>
+                            <td class="text-center">{{ pp_data.subtotal.kids }}</td>
+                            <td class="text-center">{{ pp_data.subtotal.infants }}</td>
+                            <td class="text-center"><strong>{{ pp_data.subtotal.total }}</strong></td>
+                        </tr>
+                    </tbody>
+                </table>
+            {% endfor %}
         </div>
-        
-        {% if group.description %}
-        <div class="description">
-            <div class="info-label">Description</div>
-            <div class="info-value">{{ group.description }}</div>
-        </div>
-        {% endif %}
-    </div>
+    {% endfor %}
+    
+    {% if not bookings %}
+        <p style="text-align: center; color: #666; padding: 20px;">No bookings assigned to this group</p>
+    {% endif %}
 
-    <!-- Guest List -->
-    <div class="guest-list">
-        <h2>Guest List</h2>
-        
-        {% if bookings %}
-        <table>
-            <thead>
-                <tr>
-                    <th style="width: 5%;">#</th>
-                    <th style="width: 25%;">Guest Name</th>
-                    <th style="width: 15%;">Phone</th>
-                    <th style="width: 25%;">Pickup Point</th>
-                    <th style="width: 8%;">Adults</th>
-                    <th style="width: 8%;">Kids</th>
-                    <th style="width: 8%;">Infants</th>
-                    <th style="width: 6%;">Total</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for booking in bookings %}
-                <tr>
-                    <td>{{ forloop.counter }}</td>
-                    <td>{{ booking.guest_name }}</td>
-                    <td>
-                        {% if booking.voucher_id and booking.voucher_id.client_phone %}
-                            {{ booking.voucher_id.client_phone }}
-                        {% else %}
-                            -
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if booking.pickup_point %}
-                            {{ booking.pickup_point.name }}
-                            {% if booking.pickup_point.pickup_group %}
-                                <br><span class="pickup-group-badge">({{ booking.pickup_point.pickup_group.name }})</span>
-                            {% endif %}
-                        {% else %}
-                            -
-                        {% endif %}
-                    </td>
-                    <td style="text-align: center;">{{ booking.total_adults|default:"0" }}</td>
-                    <td style="text-align: center;">{{ booking.total_kids|default:"0" }}</td>
-                    <td style="text-align: center;">{{ booking.total_infants|default:"0" }}</td>
-                    <td style="text-align: center; font-weight: bold;">
-                        {{ booking.total_adults|default:0|add:booking.total_kids|default:0|add:booking.total_infants|default:0 }}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-            <tfoot>
-                <tr>
-                    <td colspan="7" style="text-align: right;">Total Guests:</td>
-                    <td style="text-align: center; font-size: 12pt;">{{ group.total_guests }}</td>
-                </tr>
-            </tfoot>
-        </table>
-        {% else %}
-        <p style="text-align: center; color: #9ca3af; padding: 20px;">No bookings assigned to this group</p>
-        {% endif %}
+    <!-- Grand Total -->
+    <div class="grand-total">
+        GRAND TOTAL: {{ group.total_guests }} Guests across {{ bookings|length }} Bookings
     </div>
 
     <!-- Footer -->
     <div class="footer">
-        <p>Generated on {{ "now"|date:"F d, Y \a\t H:i" }}</p>
+        <p>Generated on {{ "now"|date:"F d, Y \a\t H:i" }} | Document for Transportation Company</p>
     </div>
 </body>
 </html>
