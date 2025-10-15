@@ -1226,9 +1226,6 @@ def profile_edit(request, pk):
     user = get_object_or_404(User, pk=pk)
     profile = get_object_or_404(UserProfile, user=user)
 
-    print(f'this is the profile: {profile}')
-    print(f'this is the user: {user}')
-    print(f'this is the pk: {pk}')
     
     if request.method == 'POST':
         form = UserProfileForm(request.POST, instance=profile)
@@ -1302,15 +1299,16 @@ def admin_dashboard(request, pk):
 # Only admins can manage groups
 @user_passes_test(is_staff)
 def group_list(request):
-    groups = Group.objects.all()
+    groups = Group.objects.select_related('excursion').prefetch_related('bookings').all()
 
-        # Handle search
+    # Handle search
     search_query = request.GET.get('search', '').strip()
     if search_query:
         groups = groups.filter(
-            Q(name__icontains=search_query)
+            Q(name__icontains=search_query) |
+            Q(excursion__title__icontains=search_query) |
+            Q(description__icontains=search_query)
         )
-
 
     return render(request, 'main/groups/group_list.html', {
         'groups': groups,
@@ -1321,20 +1319,47 @@ def group_create(request):
     if request.method == 'POST':
         form = GroupForm(request.POST)
         if form.is_valid():
-            form.save()
+            group = form.save()
+            
+            # Handle booking assignments
+            booking_ids = request.POST.getlist('selected_bookings')
+            if booking_ids:
+                from .utils import TransportGroupService
+                total_guests = TransportGroupService.calculate_total_guests(booking_ids)
+                
+                if total_guests > 50:
+                    messages.warning(request, f'Warning: Group has {total_guests} guests, exceeding the 50 guest limit.')
+                
+                group.bookings.set(booking_ids)
+            
             messages.success(request, 'Group created successfully.')
-            return redirect('group_list')
+            return redirect('group_detail', pk=group.pk)
     else:
         form = GroupForm()
+    
     return render(request, 'main/groups/group_form.html', {
         'form': form,
+        'is_update': False,
     })
 
 @user_passes_test(is_staff)
 def group_detail(request, pk):
-    group = get_object_or_404(Group, pk=pk)
+    group = get_object_or_404(Group.objects.prefetch_related(
+        'bookings', 
+        'bookings__pickup_point',
+        'bookings__pickup_point__pickup_group'
+    ), pk=pk)
+    
+    # Group bookings by pickup point for display
+    from .utils import TransportGroupService
+    bookings = group.bookings.all().order_by(
+        'pickup_point__pickup_group__name',
+        'pickup_point__name'
+    )
+    
     return render(request, 'main/groups/group_detail.html', {
         'group': group,
+        'bookings': bookings,
     })
 
 @user_passes_test(is_staff)
@@ -1343,14 +1368,34 @@ def group_update(request, pk):
     if request.method == 'POST':
         form = GroupForm(request.POST, instance=group)
         if form.is_valid():
-            form.save()
+            group = form.save()
+            
+            # Handle booking assignments
+            booking_ids = request.POST.getlist('selected_bookings')
+            if booking_ids:
+                from .utils import TransportGroupService
+                total_guests = TransportGroupService.calculate_total_guests(booking_ids)
+                
+                if total_guests > 50:
+                    messages.warning(request, f'Warning: Group has {total_guests} guests, exceeding the 50 guest limit.')
+                
+                group.bookings.set(booking_ids)
+            else:
+                group.bookings.clear()
+            
             messages.success(request, 'Group updated successfully.')
-            return redirect('group_detail', pk) 
+            return redirect('group_detail', pk=group.pk) 
     else:
         form = GroupForm(instance=group)
+    
+    # Get existing booking IDs for JavaScript
+    existing_booking_ids = list(group.bookings.values_list('id', flat=True))
+    
     return render(request, 'main/groups/group_form.html', {
         'form': form,
         'group': group,
+        'is_update': True,
+        'existing_booking_ids': existing_booking_ids,
     })
 
 @user_passes_test(is_staff)
@@ -1363,6 +1408,303 @@ def group_delete(request, pk):
     return render(request, 'main/groups/group_confirm_delete.html', {
         'group': group,
     })
+
+@user_passes_test(is_staff)
+def get_bookings_for_group(request):
+    """HTMX endpoint to fetch bookings filtered by excursion and date"""
+    from .utils import TransportGroupService
+    from django.template.loader import render_to_string
+    
+    excursion_id = request.GET.get('excursion') or request.GET.get('excursion_id')
+    date = request.GET.get('date')
+    group_id = request.GET.get('group_id')  # For editing existing groups
+    
+    if not excursion_id or not date:
+        return render(request, 'main/groups/partials/_bookings_selection.html', {
+            'pickup_groups': None,
+            'no_bookings': True,
+            'message': 'Please select both excursion and date'
+        })
+    
+    try:
+        excursion = Excursion.objects.get(id=excursion_id)
+        
+        # Get available bookings (excluding other groups, but not the current group)
+        bookings = TransportGroupService.get_completed_bookings_for_grouping(
+            excursion=excursion,
+            date=date,
+            exclude_group_id=group_id
+        )
+        
+        # If editing a group, also include its existing bookings
+        existing_booking_ids = []
+        if group_id:
+            try:
+                group = Group.objects.get(pk=group_id)
+                existing_bookings = group.bookings.all()
+                existing_booking_ids = list(existing_bookings.values_list('id', flat=True))
+                # Combine with available bookings (union to avoid duplicates)
+                bookings = bookings | existing_bookings
+            except Group.DoesNotExist:
+                pass
+        
+        # Get pickup group summary
+        pickup_summary = TransportGroupService.get_pickup_group_summary(bookings)
+        
+        if not pickup_summary:
+            return render(request, 'main/groups/partials/_bookings_selection.html', {
+                'pickup_groups': None,
+                'no_bookings': True,
+                'message': 'No available bookings found for the selected excursion and date',
+                'existing_booking_ids': existing_booking_ids
+            })
+        
+        return render(request, 'main/groups/partials/_bookings_selection.html', {
+            'pickup_groups': pickup_summary,
+            'no_bookings': False,
+            'existing_booking_ids': existing_booking_ids
+        })
+        
+    except Excursion.DoesNotExist:
+        return render(request, 'main/groups/partials/_bookings_selection.html', {
+            'pickup_groups': None,
+            'no_bookings': True,
+            'message': 'Excursion not found'
+        })
+    except Exception as e:
+        return render(request, 'main/groups/partials/_bookings_selection.html', {
+            'pickup_groups': None,
+            'no_bookings': True,
+            'message': f'Error: {str(e)}'
+        })
+
+@user_passes_test(is_staff)
+def test_simple_pdf(request):
+    """Test simple PDF generation"""
+    from fpdf import FPDF
+    from django.http import HttpResponse
+    import sys
+    
+    try:
+        # Create simplest possible PDF
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font('Arial', 'B', 16)
+        pdf.cell(0, 10, 'Test PDF', 0, 1, 'C')
+        pdf.set_font('Arial', '', 12)
+        pdf.cell(0, 10, 'This is a simple test.', 0, 1)
+        pdf.cell(0, 10, 'If you can see this, fpdf2 works!', 0, 1)
+        
+        # Output
+        pdf_bytes = pdf.output()
+        
+        # Debug info
+        print(f"PDF generated successfully!", file=sys.stderr)
+        print(f"Size: {len(pdf_bytes)} bytes", file=sys.stderr)
+        print(f"Type: {type(pdf_bytes)}", file=sys.stderr)
+        print(f"First 20 bytes: {pdf_bytes[:20]}", file=sys.stderr)
+        
+        response = HttpResponse(pdf_bytes, content_type='application/pdf')
+        response['Content-Disposition'] = 'attachment; filename="test.pdf"'
+        return response
+    except Exception as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        import traceback
+        traceback.print_exc(file=sys.stderr)
+        return HttpResponse(f"Error: {e}", status=500)
+
+@user_passes_test(is_staff)
+def group_export_pdf(request, pk):
+    """Export group details as PDF using fpdf2"""
+    from fpdf import FPDF
+    from django.http import HttpResponse
+    from datetime import datetime
+    
+    group = get_object_or_404(Group.objects.prefetch_related(
+        'bookings',
+        'bookings__pickup_point',
+        'bookings__pickup_point__pickup_group',
+        'bookings__voucher_id'
+    ), pk=pk)
+    
+    bookings = group.bookings.all().order_by(
+        'pickup_point__pickup_group__name',
+        'pickup_point__name'
+    )
+    
+    # Helper function to clean text for PDF (removes special characters that Arial can't handle)
+    def clean_text(text):
+        if not text:
+            return ''
+        # Replace common special characters with ASCII equivalents
+        replacements = {
+            'á': 'a', 'à': 'a', 'ä': 'a', 'â': 'a', 'ã': 'a', 'å': 'a',
+            'é': 'e', 'è': 'e', 'ë': 'e', 'ê': 'e',
+            'í': 'i', 'ì': 'i', 'ï': 'i', 'î': 'i',
+            'ó': 'o', 'ò': 'o', 'ö': 'o', 'ô': 'o', 'õ': 'o', 'ø': 'o',
+            'ú': 'u', 'ù': 'u', 'ü': 'u', 'û': 'u',
+            'ñ': 'n', 'ç': 'c', 'ß': 'ss',
+            'Á': 'A', 'À': 'A', 'Ä': 'A', 'Â': 'A', 'Ã': 'A', 'Å': 'A',
+            'É': 'E', 'È': 'E', 'Ë': 'E', 'Ê': 'E',
+            'Í': 'I', 'Ì': 'I', 'Ï': 'I', 'Î': 'I',
+            'Ó': 'O', 'Ò': 'O', 'Ö': 'O', 'Ô': 'O', 'Õ': 'O', 'Ø': 'O',
+            'Ú': 'U', 'Ù': 'U', 'Ü': 'U', 'Û': 'U',
+            'Ñ': 'N', 'Ç': 'C',
+            '€': 'EUR', '£': 'GBP', '¥': 'YEN',
+            '"': '"', '"': '"', ''': "'", ''': "'",
+            '–': '-', '—': '-', '…': '...',
+        }
+        for old, new in replacements.items():
+            text = text.replace(old, new)
+        # Remove any remaining non-ASCII characters
+        return text.encode('ascii', 'ignore').decode('ascii')
+    
+    # Create PDF
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_auto_page_break(auto=True, margin=15)
+    
+    # Header
+    pdf.set_font('Arial', 'B', 24)
+    pdf.cell(0, 10, 'Transport Group', 0, 1, 'C')
+    pdf.set_font('Arial', '', 14)
+    pdf.cell(0, 8, clean_text(group.name), 0, 1, 'C')
+    pdf.ln(5)
+    
+    # Draw header line
+    pdf.set_draw_color(37, 99, 235)  # Blue color
+    pdf.set_line_width(0.5)
+    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+    pdf.ln(10)
+    
+    # Group Information Section
+    pdf.set_fill_color(243, 244, 246)  # Light gray background
+    pdf.rect(10, pdf.get_y(), 190, 35, 'F')
+    
+    y_start = pdf.get_y() + 5
+    
+    # Excursion
+    pdf.set_xy(15, y_start)
+    pdf.set_font('Arial', 'B', 9)
+    pdf.cell(60, 5, 'EXCURSION', 0, 1)
+    pdf.set_xy(15, y_start + 5)
+    pdf.set_font('Arial', '', 11)
+    pdf.cell(60, 5, clean_text(group.excursion.title[:40]), 0, 1)
+    
+    # Date
+    pdf.set_xy(75, y_start)
+    pdf.set_font('Arial', 'B', 9)
+    pdf.cell(60, 5, 'DATE', 0, 1)
+    pdf.set_xy(75, y_start + 5)
+    pdf.set_font('Arial', '', 11)
+    pdf.cell(60, 5, group.date.strftime('%A, %B %d, %Y'), 0, 1)
+    
+    # Total Guests
+    pdf.set_xy(135, y_start)
+    pdf.set_font('Arial', 'B', 9)
+    pdf.cell(60, 5, 'TOTAL GUESTS', 0, 1)
+    pdf.set_xy(135, y_start + 5)
+    pdf.set_font('Arial', '', 11)
+    
+    # Add capacity badge if needed
+    guests_text = str(group.total_guests)
+    # if group.is_at_capacity:
+    #     guests_text += ' (At Capacity)'
+    # elif group.capacity_warning:
+    #     guests_text += ' (Near Capacity)'
+    pdf.cell(60, 5, guests_text, 0, 1)
+    
+    pdf.set_y(y_start + 25)
+    
+    # Description (if exists)
+    if group.description:
+        pdf.ln(5)
+        pdf.set_font('Arial', 'B', 9)
+        pdf.cell(0, 5, 'DESCRIPTION', 0, 1)
+        pdf.set_font('Arial', '', 11)
+        pdf.multi_cell(0, 5, clean_text(group.description))
+    
+    pdf.ln(10)
+    
+    # Guest List Header
+    pdf.set_font('Arial', 'B', 16)
+    pdf.cell(0, 8, 'Guest List', 0, 1)
+    pdf.ln(2)
+    
+    # Table Header
+    pdf.set_fill_color(249, 250, 251)  # Light gray
+    pdf.set_font('Arial', 'B', 9)
+    
+    # Column widths
+    col_widths = [10, 50, 30, 50, 12, 12, 15, 12]
+    
+    pdf.cell(col_widths[0], 8, '#', 1, 0, 'C', True)
+    pdf.cell(col_widths[1], 8, 'Guest Name', 1, 0, 'L', True)
+    pdf.cell(col_widths[2], 8, 'Phone', 1, 0, 'L', True)
+    pdf.cell(col_widths[3], 8, 'Pickup Point', 1, 0, 'L', True)
+    pdf.cell(col_widths[4], 8, 'Adults', 1, 0, 'C', True)
+    pdf.cell(col_widths[5], 8, 'Kids', 1, 0, 'C', True)
+    pdf.cell(col_widths[6], 8, 'Infants', 1, 0, 'C', True)
+    pdf.cell(col_widths[7], 8, 'Total', 1, 1, 'C', True)
+    
+    # Table Body
+    pdf.set_font('Arial', '', 9)
+    for idx, booking in enumerate(bookings, 1):
+        # Alternate row colors
+        if idx % 2 == 0:
+            pdf.set_fill_color(249, 250, 251)
+            fill = True
+        else:
+            pdf.set_fill_color(255, 255, 255)
+            fill = True
+        
+        # Get phone
+        phone = booking.voucher_id.client_phone if booking.voucher_id and booking.voucher_id.client_phone else '-'
+        
+        # Get pickup point
+        pickup_text = '-'
+        if booking.pickup_point:
+            pickup_text = booking.pickup_point.name[:25]  # Truncate if too long
+            if booking.pickup_point.pickup_group:
+                pickup_text += f" ({booking.pickup_point.pickup_group.name[:15]})"
+        
+        # Calculate total guests for this booking
+        booking_total = (booking.total_adults or 0) + (booking.total_kids or 0) + (booking.total_infants or 0)
+        
+        pdf.cell(col_widths[0], 8, str(idx), 1, 0, 'C', fill)
+        pdf.cell(col_widths[1], 8, clean_text(booking.guest_name[:30]), 1, 0, 'L', fill)  # Truncate if too long
+        pdf.cell(col_widths[2], 8, clean_text(phone), 1, 0, 'L', fill)
+        pdf.cell(col_widths[3], 8, clean_text(pickup_text), 1, 0, 'L', fill)
+        pdf.cell(col_widths[4], 8, str(booking.total_adults or 0), 1, 0, 'C', fill)
+        pdf.cell(col_widths[5], 8, str(booking.total_kids or 0), 1, 0, 'C', fill)
+        pdf.cell(col_widths[6], 8, str(booking.total_infants or 0), 1, 0, 'C', fill)
+        pdf.set_font('Arial', 'B', 9)
+        pdf.cell(col_widths[7], 8, str(booking_total), 1, 1, 'C', fill)
+        pdf.set_font('Arial', '', 9)
+    
+    # Table Footer - Total
+    pdf.set_fill_color(229, 231, 235)  # Gray background
+    pdf.set_font('Arial', 'B', 10)
+    pdf.cell(sum(col_widths[:-1]), 8, 'Total Guests:', 1, 0, 'R', True)
+    pdf.set_font('Arial', 'B', 12)
+    pdf.cell(col_widths[-1], 8, str(group.total_guests), 1, 1, 'C', True)
+    
+    # Footer
+    pdf.ln(10)
+    pdf.set_font('Arial', 'I', 8)
+    pdf.set_text_color(156, 163, 175)  # Gray color
+    pdf.cell(0, 5, f'Generated on {datetime.now().strftime("%B %d, %Y at %H:%M")}', 0, 1, 'C')
+    
+    # Output PDF
+    pdf_output = pdf.output()
+    
+    # Create response
+    response = HttpResponse(pdf_output, content_type='application/pdf')
+    safe_name = clean_text(group.name.replace(" ", "_"))
+    filename = f'transport_group_{safe_name}_{group.date}.pdf'
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    
+    return response
 
 # ----- Category and Tag Management -----
 @user_passes_test(is_staff)

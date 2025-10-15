@@ -453,6 +453,153 @@ class VoucherService:
         return response
 
 
+class TransportGroupService:
+    """Service class for handling transportation group operations."""
+    
+    @staticmethod
+    def get_completed_bookings_for_grouping(excursion=None, date=None, exclude_group_id=None):
+        """
+        Get completed bookings available for grouping.
+        
+        Args:
+            excursion: Excursion instance to filter by
+            date: Date to filter by
+            exclude_group_id: Group ID to exclude bookings from (for editing)
+            
+        Returns:
+            QuerySet of Booking objects ordered by pickup_group and pickup_point
+        """
+        from django.db.models import Q
+        
+        bookings = Booking.objects.filter(
+            payment_status='completed'
+        ).select_related(
+            'pickup_point', 
+            'pickup_point__pickup_group',
+            'excursion_availability',
+            'excursion_availability__excursion'
+        ).order_by(
+            'pickup_point__pickup_group__name',
+            'pickup_point__name'
+        )
+        
+        if excursion:
+            bookings = bookings.filter(excursion_availability__excursion=excursion)
+        
+        if date:
+            bookings = bookings.filter(date=date)
+        
+        # Exclude bookings already in other groups
+        if exclude_group_id:
+            bookings = bookings.filter(
+                Q(transport_groups__isnull=True) | Q(transport_groups__id=exclude_group_id)
+            )
+        else:
+            bookings = bookings.filter(transport_groups__isnull=True)
+        
+        return bookings
+    
+    @staticmethod
+    def group_bookings_by_pickup(bookings):
+        """
+        Group bookings by pickup group and pickup point.
+        
+        Args:
+            bookings: QuerySet of Booking objects
+            
+        Returns:
+            dict: Nested structure {pickup_group: {pickup_point: [bookings]}}
+        """
+        from collections import defaultdict
+        
+        grouped = defaultdict(lambda: defaultdict(list))
+        
+        for booking in bookings:
+            pickup_group = booking.pickup_point.pickup_group if booking.pickup_point else None
+            pickup_point = booking.pickup_point
+            
+            group_key = pickup_group.name if pickup_group else 'No Pickup Group'
+            point_key = pickup_point.name if pickup_point else 'No Pickup Point'
+            
+            grouped[group_key][point_key].append(booking)
+        
+        return dict(grouped)
+    
+    @staticmethod
+    def calculate_booking_guests(booking):
+        """Calculate total guests for a booking."""
+        return (booking.total_adults or 0) + (booking.total_kids or 0) + (booking.total_infants or 0)
+    
+    @staticmethod
+    def calculate_total_guests(booking_ids):
+        """Calculate total guests from a list of booking IDs."""
+        bookings = Booking.objects.filter(id__in=booking_ids)
+        total = 0
+        for booking in bookings:
+            total += TransportGroupService.calculate_booking_guests(booking)
+        return total
+    
+    @staticmethod
+    def get_pickup_group_summary(bookings):
+        """
+        Get summary of bookings grouped by pickup group with totals.
+        
+        Returns:
+            list: [{
+                'pickup_group': PickupGroup instance,
+                'pickup_point_summaries': [{
+                    'pickup_point': PickupPoint instance,
+                    'bookings': [Booking instances],
+                    'total_guests': int,
+                    'booking_count': int
+                }],
+                'total_guests': int,
+                'booking_count': int
+            }]
+        """
+        grouped = TransportGroupService.group_bookings_by_pickup(bookings)
+        summary = []
+        
+        for group_name, points in grouped.items():
+            group_total_guests = 0
+            group_booking_count = 0
+            point_summaries = []
+            
+            for point_name, point_bookings in points.items():
+                point_total = sum(
+                    TransportGroupService.calculate_booking_guests(b) 
+                    for b in point_bookings
+                )
+                
+                point_summaries.append({
+                    'pickup_point_name': point_name,
+                    'pickup_point': point_bookings[0].pickup_point if point_bookings else None,
+                    'bookings': point_bookings,
+                    'total_guests': point_total,
+                    'booking_count': len(point_bookings)
+                })
+                
+                group_total_guests += point_total
+                group_booking_count += len(point_bookings)
+            
+            # Get the actual pickup_group instance from first booking
+            first_booking = next(
+                (b for points in points.values() for b in points if b.pickup_point), 
+                None
+            )
+            pickup_group = first_booking.pickup_point.pickup_group if first_booking and first_booking.pickup_point else None
+            
+            summary.append({
+                'pickup_group_name': group_name,
+                'pickup_group': pickup_group,
+                'pickup_point_summaries': point_summaries,
+                'total_guests': group_total_guests,
+                'booking_count': group_booking_count
+            })
+        
+        return summary
+
+
 def create_reservation(booking_data):
     """Create a reservation from booking data."""
     if booking_data is not None:

@@ -27,7 +27,10 @@
             <thead class="bg-gray-50">
                 <tr>
                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Guide</th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Excursion</th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Guests</th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
             </thead>
@@ -35,10 +38,32 @@
                 {% for group in groups %}
                 <tr>
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ group.name }}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ group.guide.name }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ group.excursion.title }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ group.date|date:"d/m/Y" }}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <span class="{% if group.is_at_capacity %}text-red-600 font-semibold{% elif group.capacity_warning %}text-yellow-600 font-semibold{% endif %}">
+                            {{ group.total_guests }}
+                        </span>
+                        {% if group.is_at_capacity %}
+                            <span class="ml-1 text-xs text-red-600">(At Capacity)</span>
+                        {% elif group.capacity_warning %}
+                            <span class="ml-1 text-xs text-yellow-600">(Near Capacity)</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-500">
+                        <div class="max-w-xs truncate" title="{{ group.description }}">
+                            {{ group.description|truncatewords:10 }}
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <a href="{% url 'group_detail' group.pk %}" class="text-blue-600 hover:text-blue-900 mr-3">View</a>
+                        <a href="{% url 'group_update' group.pk %}" class="text-green-600 hover:text-green-900 mr-3">Edit</a>
                         <a href="{% url 'group_delete' group.pk %}" class="text-red-600 hover:text-red-900" onclick="return confirm('Are you sure you want to delete this group?')">Delete</a>
                     </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="px-6 py-4 text-center text-sm text-gray-500">No groups found</td>
                 </tr>
                 {% endfor %}
             </tbody>

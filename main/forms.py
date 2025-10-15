@@ -485,12 +485,60 @@ class TagForm(forms.ModelForm):
         model = Tag
         fields = ['name']
 
-class GroupForm(forms.ModelForm):
-    class Meta:
-        model = Group
-        fields = ['name', 'guide']
-
 class PaymentMethodForm(forms.ModelForm):
     class Meta:
         model = PaymentMethod
         fields = ['name']
+
+class GroupForm(forms.ModelForm):
+    class Meta:
+        model = Group
+        fields = ['name', 'description', 'excursion', 'date']
+        widgets = {
+            'name': forms.TextInput(attrs={
+                'class': 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500',
+                'placeholder': 'Enter group name'
+            }),
+            'description': forms.Textarea(attrs={
+                'class': 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500',
+                'rows': 3,
+                'placeholder': 'Enter group description'
+            }),
+            'excursion': forms.Select(attrs={
+                'class': 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500',
+                'id': 'id_excursion'
+            }),
+            'date': forms.DateInput(attrs={
+                'class': 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500',
+                'type': 'date',
+                'id': 'id_date'
+            }),
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Filter excursions to only show active ones
+        self.fields['excursion'].queryset = Excursion.objects.filter(status='active').order_by('title')
+    
+    # def clean(self):
+    #     cleaned_data = super().clean()
+    #     date = cleaned_data.get('date')
+    #     if date and date < datetime.now().date():
+    #         raise ValidationError({'date': 'Date cannot be in the past.'})
+    #     return cleaned_data
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        if commit:
+            booking_ids = self.data.getlist('selected_bookings')
+            if booking_ids:
+                from .utils import TransportGroupService
+                total_guests = TransportGroupService.calculate_total_guests(booking_ids)
+                if total_guests > 50:
+                    raise ValidationError({'selected_bookings': 'Total guests cannot exceed 50.'})
+                instance.bookings.set(booking_ids)
+                
+            instance.save()
+
+
+        return instance

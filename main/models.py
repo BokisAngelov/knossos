@@ -96,15 +96,7 @@ class UserProfile(models.Model):
     def needs_email_update(self):
         """Check if client needs to update their email"""
         return self.role == 'client' and not self.email
-
-class Group(models.Model):
-    name = models.CharField(max_length=255)
-    guide = models.ForeignKey(UserProfile, on_delete=models.CASCADE, related_name='groups', limit_choices_to={'role': 'guide'})
-
-    # booking 
-    def __str__(self):
-        return self.name  
-    
+   
 class DayOfWeek(models.Model):
     MON = 'MON'
     TUE = 'TUE'
@@ -394,4 +386,36 @@ class Transaction(models.Model):
     class Meta:
         ordering = ['created_at']
 
+class Group(models.Model):
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True, null=True)
+    excursion = models.ForeignKey(Excursion, on_delete=models.CASCADE, related_name='groups', null=True, blank=True)
+    date = models.DateField(null=True, blank=True)
+    bookings = models.ManyToManyField('Booking', related_name='transport_groups', blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.name} - {self.excursion.title} ({self.date})"
+    
+    @property
+    def total_guests(self):
+        """Calculate total number of guests from all bookings in this group"""
+        total = 0
+        for booking in self.bookings.all():
+            total += (booking.total_adults or 0) + (booking.total_kids or 0) + (booking.total_infants or 0)
+        return total
+    
+    @property
+    def is_at_capacity(self):
+        """Check if group has reached or exceeded 50 guests"""
+        return self.total_guests >= 50
+    
+    @property
+    def remaining_capacity(self):
+        """Get remaining capacity before hitting 50 guest limit"""
+        return max(0, 50 - self.total_guests)
+    
+    class Meta:
+        ordering = ['-date', 'name']  
+ 
 

@@ -84,8 +84,12 @@ urlpatterns = [
     # Group URLs
     path('groups/', views.group_list, name='group_list'),
     path('groups/add/', views.group_create, name='group_create'),
-    # path('groups/<int:pk>/edit/', views.group_update, name='group_update'),
+    path('groups/<int:pk>/', views.group_detail, name='group_detail'),
+    path('groups/<int:pk>/edit/', views.group_update, name='group_update'),
     path('groups/<int:pk>/delete/', views.group_delete, name='group_delete'),
+    path('groups/<int:pk>/export-pdf/', views.group_export_pdf, name='group_export_pdf'),
+    path('get_bookings_for_group/', views.get_bookings_for_group, name='get_bookings_for_group'),
+    path('test-pdf/', views.test_simple_pdf, name='test_simple_pdf'),  # Test PDF endpoint
     
     # Categories and Tags Management
     path('manage-categories-tags/', views.manage_categories_tags, name='manage_categories_tags'),
