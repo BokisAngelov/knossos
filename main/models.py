@@ -96,15 +96,7 @@ class UserProfile(models.Model):
     def needs_email_update(self):
         """Check if client needs to update their email"""
         return self.role == 'client' and not self.email
-
-class Group(models.Model):
-    name = models.CharField(max_length=255)
-    guide = models.ForeignKey(UserProfile, on_delete=models.CASCADE, related_name='groups', limit_choices_to={'role': 'guide'})
-
-    # booking 
-    def __str__(self):
-        return self.name  
-    
+   
 class DayOfWeek(models.Model):
     MON = 'MON'
     TUE = 'TUE'
@@ -393,5 +385,70 @@ class Transaction(models.Model):
     
     class Meta:
         ordering = ['created_at']
+
+class Bus(models.Model):
+    name = models.CharField(max_length=255)
+    capacity = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+
+    def __str__(self):
+        return self.name + " - " + str(self.capacity)
+    
+    class Meta:
+        verbose_name = 'Bus'
+        verbose_name_plural = 'Buses'
+        ordering = ['name']
+
+class Group(models.Model):
+    STATUS_CHOICES = [
+        ('sent', 'Sent'),
+        ('not_sent', 'Not Sent'),
+    ]
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True, null=True)
+    excursion = models.ForeignKey(Excursion, on_delete=models.CASCADE, related_name='groups', null=True, blank=True)
+    date = models.DateField(null=True, blank=True)
+    bookings = models.ManyToManyField('Booking', related_name='transport_groups', blank=True)
+    bus = models.ForeignKey(Bus, on_delete=models.SET_NULL, null=True, blank=True, related_name='groups')
+    status = models.CharField(max_length=255, choices=STATUS_CHOICES, default='not_sent')
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.name} - {self.excursion.title} ({self.date})"
+    
+    @property
+    def total_guests(self):
+        """Calculate total number of guests from all bookings in this group"""
+        total = 0
+        for booking in self.bookings.all():
+            total += (booking.total_adults or 0) + (booking.total_kids or 0) + (booking.total_infants or 0)
+        return total
+    
+    @property
+    def is_at_capacity(self):
+        """Check if group has reached or exceeded bus capacity"""
+        if not self.bus:
+            return False
+        return self.total_guests >= self.bus.capacity
+
+    @property
+    def capacity_warning(self):
+        """Check if group is approaching bus capacity"""
+        if not self.bus:
+            return False
+        return self.total_guests >= (self.bus.capacity - 5)
+    
+    @property
+    def remaining_capacity(self):
+        """Get remaining capacity before hitting bus capacity"""
+        if not self.bus:
+            return 0
+        return max(0, self.bus.capacity - self.total_guests)
+    
+    class Meta:
+        verbose_name = 'Transport Group'
+        verbose_name_plural = 'Transport Groups'
+        ordering = ['-date', 'status']  
+ 
 
 

@@ -485,12 +485,64 @@ class TagForm(forms.ModelForm):
         model = Tag
         fields = ['name']
 
-class GroupForm(forms.ModelForm):
-    class Meta:
-        model = Group
-        fields = ['name', 'guide']
-
 class PaymentMethodForm(forms.ModelForm):
     class Meta:
         model = PaymentMethod
         fields = ['name']
+
+class GroupForm(forms.ModelForm):
+    class Meta:
+        model = Group
+        fields = ['name', 'description', 'excursion', 'date', 'bus']
+        widgets = {
+            'name': forms.TextInput(attrs={
+                'class': 'mt-1 block w-full',
+                'placeholder': 'Enter group name'
+            }),
+            'description': forms.Textarea(attrs={
+                'class': 'mt-1 block w-full',
+                'rows': 3,
+                'placeholder': 'Enter group description'
+            }),
+            'excursion': forms.Select(attrs={
+                'class': 'mt-1 block w-full',
+                'id': 'id_excursion'
+            }),
+            'date': forms.DateInput(attrs={
+                'class': 'mt-1 block w-full',
+                'type': 'date',
+                'id': 'id_date'
+            }),
+            'bus': forms.Select(attrs={
+                'class': 'mt-1 block w-full',
+                'id': 'id_bus'
+            }),
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Filter excursions to only show active ones
+        self.fields['excursion'].queryset = Excursion.objects.filter(status='active').order_by('title')
+    
+    # def clean(self):
+    #     cleaned_data = super().clean()
+    #     date = cleaned_data.get('date')
+    #     if date and date < datetime.now().date():
+    #         raise ValidationError({'date': 'Date cannot be in the past.'})
+    #     return cleaned_data
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        if commit:
+            # Save instance first to get an ID
+            instance.save()
+            
+            # Now we can set the ManyToMany relationship
+            booking_ids = self.data.getlist('selected_bookings')
+            if booking_ids:
+                instance.bookings.set(booking_ids)
+            else:
+                # Clear bookings if none selected (important for updates)
+                instance.bookings.clear()
+
+        return instance

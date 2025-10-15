@@ -1,1 +1,599 @@
+{% extends 'base.html' %}
+{% load static %}
 
+{% block content %}
+<style>
+    .auth-input-field input,
+    .auth-input-field select,
+    .auth-input-field textarea{
+        padding: 0.5rem 0.75rem;
+    }
+    .auth-input-field input:focus,
+    .auth-input-field select:focus,
+    .auth-input-field textarea:focus {
+        border: 0!important;
+        /* box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25)!important; */
+        outline: none!important;
+    }
+</style>
+
+<div class="flex justify-center items-center">
+    <div class="w-full max-w-6xl p-6 pl-0">
+        <a href="{% url 'group_list' %}" class="inline-flex items-left text-sm font-semibold text-blue hover:opacity-80">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Back to Groups List
+        </a>
+    </div>
+</div>
+
+<div class="flex justify-center items-center">
+    <div class="bg-white rounded-lg w-full max-w-6xl p-6">
+        <div class="mb-6">
+            <h1 class="text-3xl font-bold page-header-color">
+                {% if is_update %}Edit Group{% else %}Create New Group{% endif %}
+            </h1>
+            <p class="text-md font-semibold text-purple">
+                {% if is_update %}Update transport group details{% else %}Create a new transport group for logistics{% endif %}
+            </p>
+        </div>
+
+        <form method="post" id="groupForm" class="space-y-6">
+            {% csrf_token %}
+            
+            <!-- Hidden field for group ID if editing -->
+            {% if is_update and group %}
+            <input type="hidden" name="group_id" id="id_group_id" value="{{ group.pk }}">
+            {% endif %}
+            
+            <!-- Basic Information -->
+            <div class="space-y-4">
+                <h2 class="text-lg font-semibold text-header-grey">Basic Information</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Name -->
+                    <div class="space-y-1">
+                        <label for="{{ form.name.id_for_label }}" class="block text-md font-semibold text-header-grey">
+                            Group Name <span class="text-red-500">*</span>
+                        </label>
+                        <div class="w-full auth-input-field rounded-lg border form-fields-border">
+                            {{ form.name }}
+                        </div>
+                        {% if form.name.errors %}
+                            <div class="text-red-500 text-xs mt-1">{{ form.name.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Excursion -->
+                    <div class="space-y-1">
+                        <label for="{{ form.excursion.id_for_label }}" class="block text-md font-semibold text-header-grey">
+                            Excursion <span class="text-red-500">*</span>
+                        </label>
+                        <div class="w-full auth-input-field rounded-lg border form-fields-border">
+                            <select name="excursion" id="id_excursion" class="w-full"
+                                hx-get="{% url 'get_bookings_for_group' %}"
+                                hx-target="#bookingsList"
+                                hx-trigger="change"
+                                hx-include="#groupForm"
+                                hx-indicator="#loadingIndicator">
+                                <option value="">---------</option>
+                                {% for excursion in form.excursion.field.queryset %}
+                                    <option value="{{ excursion.id }}" {% if form.excursion.value == excursion.id %}selected{% endif %}>{{ excursion.title }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% if form.excursion.errors %}
+                            <div class="text-red-500 text-xs mt-1">{{ form.excursion.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Date -->
+                    <div class="space-y-1">
+                        <label for="{{ form.date.id_for_label }}" class="block text-md font-semibold text-header-grey">
+                            Date <span class="text-red-500">*</span>
+                        </label>
+                        <div class="w-full auth-input-field rounded-lg border form-fields-border">
+                            <input type="date" name="date" id="id_date" class="w-full"
+                                value="{{ form.date.value|date:'Y-m-d' }}"
+                                hx-get="{% url 'get_bookings_for_group' %}"
+                                hx-target="#bookingsList"
+                                hx-trigger="change"
+                                hx-include="#groupForm"
+                                hx-indicator="#loadingIndicator">
+                        </div>
+                        {% if form.date.errors %}
+                            <div class="text-red-500 text-xs mt-1">{{ form.date.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Bus -->
+                    <div class="space-y-1">
+                        <label for="{{ form.bus.id_for_label }}" class="block text-md font-semibold text-header-grey">
+                            Bus <span class="text-red-500">*</span>
+                        </label>
+                        <div class="w-full auth-input-field rounded-lg border form-fields-border">
+                            <select name="bus" id="id_bus" class="w-full">
+                                <option value="">---------</option>
+                                {% for bus in form.bus.field.queryset %}
+                                    <option value="{{ bus.id }}" {% if form.bus.value == bus.id %}selected{% endif %} data-capacity="{{ bus.capacity }}">{{ bus.name }} ({{ bus.capacity }} seats)</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% if form.bus.errors %}
+                            <div class="text-red-500 text-xs mt-1">{{ form.bus.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Description -->
+                <div class="space-y-1">
+                    <label for="{{ form.description.id_for_label }}" class="block text-md font-semibold text-header-grey">
+                        Description
+                    </label>
+                    <div class="w-full auth-input-field rounded-lg border form-fields-border">
+                        {{ form.description }}
+                    </div>
+                    {% if form.description.errors %}
+                        <div class="text-red-500 text-xs mt-1">{{ form.description.errors.0 }}</div>
+                    {% endif %}
+                </div>
+            </div>
+
+        <!-- Booking Selection Section -->
+        <div class="space-y-4">
+            <div class="flex justify-between items-center">
+                <h2 class="text-lg font-semibold text-header-grey">Select Bookings</h2>
+                <div class="text-sm">
+                    <span class="text-header-grey">Selected Guests: </span>
+                    <span id="selectedCount" class="font-semibold text-blue">0</span>
+                    <span class="text-header-grey"> / <span id="busCapacity">{% if group and group.bus %}{{ group.bus.capacity }}{% else %}50 (Indicator){% endif %}</span></span>
+                    <span id="capacityWarning" class="ml-2 text-orange font-semibold hidden">⚠ Approaching Limit</span>
+                    <span id="capacityError" class="ml-2 text-red font-semibold hidden">❌ Exceeds Limit!</span>
+                </div>
+            </div>
+
+            <!-- Loading Indicator -->
+            <div id="loadingIndicator" class="htmx-indicator text-center py-4 hidden">
+                <svg class="animate-spin h-8 w-8 text-blue mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <p class="mt-2 text-sm text-header-grey">Loading bookings...</p>
+            </div>
+
+            <!-- Two Column Layout -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <!-- Left Column: Available Bookings -->
+                <div class="lg:col-span-6">
+                    <h3 class="text-md font-semibold text-header-grey mb-3">Available Bookings</h3>
+                    <div id="bookingsList" class="max-h-[600px] overflow-y-auto border border-gray-200 rounded-lg p-3">
+                        {% include 'main/groups/partials/_bookings_selection.html' with pickup_groups=None no_bookings=False %}
+                    </div>
+                    <div class="mt-3 flex items-center justify-between">
+                        <span class="text-sm text-header-grey">
+                            <span id="pendingCount">0</span> bookings selected
+                        </span>
+                        <button type="button" id="addToGroupBtn" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                            </svg>
+                            Add to Group
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Right Column: Selected Bookings in Group -->
+                <div class="lg:col-span-6">
+                    <h3 class="text-md font-semibold text-header-grey mb-3">Bookings in This Group</h3>
+                    <div id="selectedBookingsList" class="max-h-[600px] overflow-y-auto border border-gray-200 rounded-lg p-3">
+                        <div class="text-center py-8 text-gray-400">
+                            <svg class="mx-auto h-12 w-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                            </svg>
+                            <p class="mt-2 text-sm text-header-grey">No bookings in group yet</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Form Actions -->
+        <div class="mt-6 flex gap-4">
+            <button type="submit" class="flex-1 bg-blue-primary text-white font-medium py-2 px-4 rounded-md hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-blue-primary focus:ring-offset-2">
+                {% if is_update %}Update Group{% else %}Create Group{% endif %}
+            </button>
+            <a href="{% url 'group_list' %}" 
+               class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-4 rounded-md text-center focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2">
+                Cancel
+            </a>
+        </div>
+    </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Group form script initialized');
+    
+    const selectedCountSpan = document.getElementById('selectedCount');
+    const capacityWarning = document.getElementById('capacityWarning');
+    const capacityError = document.getElementById('capacityError');
+    const selectedBookingsList = document.getElementById('selectedBookingsList');
+    const addToGroupBtn = document.getElementById('addToGroupBtn');
+    const pendingCountSpan = document.getElementById('pendingCount');
+    
+    console.log('Elements found:', {
+        selectedCountSpan: !!selectedCountSpan,
+        addToGroupBtn: !!addToGroupBtn,
+        pendingCountSpan: !!pendingCountSpan,
+        bookingsList: !!document.getElementById('bookingsList')
+    });
+    
+    // Test: Log any checkbox in the page
+    setTimeout(() => {
+        const allCheckboxes = document.querySelectorAll('input[type="checkbox"]');
+        console.log('Total checkboxes found on page:', allCheckboxes.length);
+        const bookingCheckboxes = document.querySelectorAll('.booking-checkbox');
+        console.log('Booking checkboxes found:', bookingCheckboxes.length);
+    }, 2000); // Wait 2 seconds for HTMX to load content
+    
+    let totalGroupGuests = 0; // Total in the group (right side)
+    let pendingGuests = 0; // Currently checked (left side)
+    let groupBookings = new Map(); // Bookings in the group
+    let pendingBookings = new Map(); // Currently selected bookings
+
+    // Auto-load bookings on page load if excursion and date are set
+    const excursionSelect = document.getElementById('id_excursion');
+    const dateInput = document.getElementById('id_date');
+    const busSelect = document.getElementById('id_bus');
+    
+    if (excursionSelect.value && dateInput.value) {
+        // Trigger HTMX request
+        htmx.trigger(excursionSelect, 'change');
+    }
+    
+    // Update bus capacity when bus selection changes
+    if (busSelect) {
+        busSelect.addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            const capacity = selectedOption.dataset.capacity || '50';
+            document.getElementById('busCapacity').textContent = capacity;
+            updateGroupCounter(); // Recalculate warnings with new capacity
+        });
+    }
+
+    // Use event delegation for dynamically loaded checkboxes
+    // Listen on document instead of body for better compatibility
+    document.addEventListener('change', function(e) {
+        console.log('Change event detected on:', e.target);
+        console.log('Target classes:', e.target.className);
+        console.log('Has booking-checkbox:', e.target.classList.contains('booking-checkbox'));
+        
+        if (e.target.classList.contains('booking-checkbox')) {
+            console.log('Booking checkbox changed:', e.target.value);
+            handleBookingCheckbox(e.target);
+        } else if (e.target.classList.contains('select-all-group')) {
+            console.log('Group checkbox changed');
+            handleGroupCheckbox(e.target);
+        } else if (e.target.classList.contains('select-all-point')) {
+            console.log('Point checkbox changed');
+            handlePointCheckbox(e.target);
+        }
+    });
+
+    // Add to Group button click
+    addToGroupBtn.addEventListener('click', function() {
+        console.log('Add to Group clicked. Pending bookings:', pendingBookings.size);
+        
+        // Move pending bookings to group
+        pendingBookings.forEach((booking, bookingId) => {
+            if (!groupBookings.has(bookingId)) {
+                console.log('Adding booking to group:', bookingId);
+                groupBookings.set(bookingId, booking);
+                totalGroupGuests += booking.guests;
+            }
+        });
+
+        console.log('Total group bookings:', groupBookings.size, 'Total guests:', totalGroupGuests);
+
+        // Clear pending
+        pendingBookings.clear();
+        pendingGuests = 0;
+
+        // Uncheck all checkboxes
+        document.querySelectorAll('.booking-checkbox:checked').forEach(cb => cb.checked = false);
+        document.querySelectorAll('.select-all-group:checked').forEach(cb => cb.checked = false);
+        document.querySelectorAll('.select-all-point:checked').forEach(cb => cb.checked = false);
+
+        updatePendingCounter();
+        updateGroupCounter();
+        updateGroupList();
+    });
+
+    function handleBookingCheckbox(checkbox) {
+        const guests = parseInt(checkbox.dataset.guests || 0);
+        const bookingId = checkbox.value;
+        
+        // Skip if already in group
+        if (groupBookings.has(bookingId)) {
+            checkbox.checked = false;
+            return;
+        }
+        
+        if (checkbox.checked) {
+            pendingGuests += guests;
+            const row = checkbox.closest('tr');
+            const cells = row.querySelectorAll('td');
+            pendingBookings.set(bookingId, {
+                id: bookingId,
+                guestName: cells[1]?.textContent.trim() || '',
+                phone: cells[2]?.textContent.trim() || '',
+                breakdown: cells[3]?.textContent.trim() || '',
+                guests: guests
+            });
+        } else {
+            pendingGuests -= guests;
+            pendingBookings.delete(bookingId);
+        }
+        updatePendingCounter();
+    }
+
+    function handleGroupCheckbox(checkbox) {
+        const groupName = checkbox.dataset.groupName;
+        const groupCheckboxes = document.querySelectorAll(`.booking-checkbox[data-group="${groupName}"]`);
+        
+        groupCheckboxes.forEach(cb => {
+            // Skip if already in group
+            if (groupBookings.has(cb.value)) return;
+            
+            if (cb.checked !== checkbox.checked) {
+                cb.checked = checkbox.checked;
+                const guests = parseInt(cb.dataset.guests || 0);
+                const bookingId = cb.value;
+                
+                if (checkbox.checked) {
+                    pendingGuests += guests;
+                    const row = cb.closest('tr');
+                    const cells = row.querySelectorAll('td');
+                    pendingBookings.set(bookingId, {
+                        id: bookingId,
+                        guestName: cells[1]?.textContent.trim() || '',
+                        phone: cells[2]?.textContent.trim() || '',
+                        breakdown: cells[3]?.textContent.trim() || '',
+                        guests: guests
+                    });
+                } else {
+                    pendingGuests -= guests;
+                    pendingBookings.delete(bookingId);
+                }
+            }
+        });
+        updatePendingCounter();
+    }
+
+    function handlePointCheckbox(checkbox) {
+        const pointName = checkbox.dataset.pointName;
+        const pointCheckboxes = document.querySelectorAll(`.booking-checkbox[data-point="${pointName}"]`);
+        
+        pointCheckboxes.forEach(cb => {
+            // Skip if already in group
+            if (groupBookings.has(cb.value)) return;
+            
+            if (cb.checked !== checkbox.checked) {
+                cb.checked = checkbox.checked;
+                const guests = parseInt(cb.dataset.guests || 0);
+                const bookingId = cb.value;
+                
+                if (checkbox.checked) {
+                    pendingGuests += guests;
+                    const row = cb.closest('tr');
+                    const cells = row.querySelectorAll('td');
+                    pendingBookings.set(bookingId, {
+                        id: bookingId,
+                        guestName: cells[1]?.textContent.trim() || '',
+                        phone: cells[2]?.textContent.trim() || '',
+                        breakdown: cells[3]?.textContent.trim() || '',
+                        guests: guests
+                    });
+                } else {
+                    pendingGuests -= guests;
+                    pendingBookings.delete(bookingId);
+                }
+            }
+        });
+        updatePendingCounter();
+    }
+
+    function updatePendingCounter() {
+        // Check if any checkboxes are checked (including group/point selectors)
+        const hasChecked = document.querySelectorAll('.booking-checkbox:checked, .select-all-group:checked, .select-all-point:checked').length > 0;
+        pendingCountSpan.textContent = pendingBookings.size;
+        addToGroupBtn.disabled = !hasChecked;
+    }
+
+    function updateGroupCounter() {
+        selectedCountSpan.textContent = totalGroupGuests;
+
+        // Update capacity warnings based on bus capacity
+        const busCapacity = parseInt(document.getElementById('busCapacity').textContent) || 50;
+        
+        if (totalGroupGuests >= busCapacity) {
+            capacityError.classList.remove('hidden');
+            capacityWarning.classList.add('hidden');
+        } else if (totalGroupGuests >= (busCapacity - 5)) {
+            capacityWarning.classList.remove('hidden');
+            capacityError.classList.add('hidden');
+        } else {
+            capacityWarning.classList.add('hidden');
+            capacityError.classList.add('hidden');
+        }
+    }
+
+    function updateGroupList() {
+        if (groupBookings.size === 0) {
+            selectedBookingsList.innerHTML = `
+                <div class="text-center py-8 text-gray-400">
+                    <svg class="mx-auto h-12 w-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                    <p class="mt-2 text-sm">No bookings in group yet</p>
+                </div>
+            `;
+            // Re-enable all checkboxes in left column
+            document.querySelectorAll('.booking-checkbox').forEach(cb => {
+                cb.disabled = false;
+                const row = cb.closest('tr');
+                if (row) {
+                    row.classList.remove('opacity-50', 'bg-gray-100', 'line-through');
+                }
+            });
+            return;
+        }
+
+        let html = '<div class="space-y-2">';
+        let counter = 1;
+        groupBookings.forEach(booking => {
+            html += `
+                <div class="border border-green-200 rounded-lg p-3 bg-green-50">
+                    <div class="flex justify-between items-start">
+                        <div class="flex-1">
+                            <div class="flex items-center">
+                                <span class="text-xs font-semibold text-gray-500 mr-2">#${counter}</span>
+                                <span class="text-sm font-medium text-gray-900">${booking.guestName}</span>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1">${booking.breakdown}</p>
+                        </div>
+                            <div class="flex items-center space-x-2">
+                            <span class="text-sm font-semibold text-green">${booking.guests} guests</span>
+                            <button type="button" class="remove-booking text-red hover:opacity-80" data-booking-id="${booking.id}" data-guests="${booking.guests}">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <input type="hidden" name="selected_bookings" value="${booking.id}">
+                </div>
+            `;
+            counter++;
+        });
+        html += '</div>';
+        selectedBookingsList.innerHTML = html;
+
+        // Grey out bookings in left column that are in the group
+        groupBookings.forEach((booking, bookingId) => {
+            const checkbox = document.querySelector(`.booking-checkbox[value="${bookingId}"]`);
+            if (checkbox) {
+                checkbox.disabled = true;
+                const row = checkbox.closest('tr');
+                if (row) {
+                    row.classList.add('opacity-50', 'bg-gray-100');
+                    // Add a checkmark icon to the guest name cell
+                    const nameCell = row.cells[1];
+                    if (nameCell && !nameCell.querySelector('.in-group-badge')) {
+                        const badge = document.createElement('span');
+                        badge.className = 'in-group-badge ml-2 text-xs text-green font-semibold';
+                        badge.innerHTML = '✓ In Group';
+                        nameCell.appendChild(badge);
+                    }
+                }
+            }
+        });
+
+        // Add remove button listeners
+        document.querySelectorAll('.remove-booking').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const bookingId = this.dataset.bookingId;
+                const guests = parseInt(this.dataset.guests);
+                
+                // Re-enable the checkbox in left column
+                const checkbox = document.querySelector(`.booking-checkbox[value="${bookingId}"]`);
+                if (checkbox) {
+                    checkbox.disabled = false;
+                    const row = checkbox.closest('tr');
+                    if (row) {
+                        row.classList.remove('opacity-50', 'bg-gray-100');
+                        // Remove the badge
+                        const badge = row.querySelector('.in-group-badge');
+                        if (badge) badge.remove();
+                    }
+                }
+                
+                groupBookings.delete(bookingId);
+                totalGroupGuests -= guests;
+                updateGroupCounter();
+                updateGroupList();
+            });
+        });
+    }
+
+    // Recalculate totals after HTMX swaps content
+    document.body.addEventListener('htmx:afterSwap', function(e) {
+        if (e.detail.target.id === 'bookingsList') {
+            // First, disable checkboxes for bookings already in group
+            groupBookings.forEach((booking, bookingId) => {
+                const checkbox = document.querySelector(`.booking-checkbox[value="${bookingId}"]`);
+                if (checkbox) {
+                    checkbox.disabled = true;
+                    checkbox.closest('tr').classList.add('opacity-50');
+                }
+            });
+
+            // Auto-add pre-checked bookings (existing bookings from the group)
+            const preCheckedBoxes = document.querySelectorAll('.booking-checkbox[data-existing="true"]:checked');
+            preCheckedBoxes.forEach(checkbox => {
+                const bookingId = checkbox.value;
+                if (!groupBookings.has(bookingId)) {
+                    const row = checkbox.closest('tr');
+                    const cells = row.querySelectorAll('td');
+                    const guests = parseInt(checkbox.dataset.guests || 0);
+                    groupBookings.set(bookingId, {
+                        id: bookingId,
+                        guestName: cells[1]?.textContent.trim() || '',
+                        phone: cells[2]?.textContent.trim() || '',
+                        breakdown: cells[3]?.textContent.trim() || '',
+                        guests: guests
+                    });
+                    totalGroupGuests += guests;
+                    checkbox.disabled = true;
+                    row.classList.add('opacity-50', 'bg-gray-100');
+                    // Add badge
+                    const nameCell = row.cells[1];
+                    if (nameCell && !nameCell.querySelector('.in-group-badge')) {
+                        const badge = document.createElement('span');
+                        badge.className = 'in-group-badge ml-2 text-xs text-green font-semibold';
+                        badge.innerHTML = '✓ In Group';
+                        nameCell.appendChild(badge);
+                    }
+                }
+            });
+            
+            if (preCheckedBoxes.length > 0) {
+                updateGroupCounter();
+                updateGroupList();
+            }
+        }
+    });
+});
+</script>
+
+{% if is_update and group %}
+<script>
+// Auto-load bookings on page load if editing (excursion and date already selected)
+document.addEventListener('DOMContentLoaded', function() {
+    const excursionField = document.getElementById('id_excursion');
+    const dateField = document.getElementById('id_date');
+    
+    if (excursionField && excursionField.value && dateField && dateField.value) {
+        // Trigger HTMX to load bookings
+        setTimeout(() => {
+            htmx.trigger(dateField, 'change');
+        }, 100);
+    }
+});
+</script>
+{% endif %}
+{% endblock %}

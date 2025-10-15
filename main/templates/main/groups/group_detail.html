@@ -1,1 +1,180 @@
+{% extends 'base.html' %}
+{% load static %}
 
+{% block content %}
+<div class="flex justify-center items-center">
+    <div class="w-full p-6 pl-0 pb-0">
+        <a href="{% url 'group_list' %}" class="inline-flex items-left text-sm font-semibold text-blue hover:opacity-80">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Back to Groups List
+        </a>
+    </div>
+</div>
+<div class="container mx-auto">
+    <!-- Header Section -->
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">{{ group.name }}</h1>
+            <p class="text-sm text-gray-500">Transport Group Details</p>
+        </div>
+        <div class="flex space-x-3">
+            <a href="{% url 'group_update' group.pk %}" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                Edit
+            </a>
+            <a href="{% url 'group_export_pdf' group.pk %}" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Export PDF
+            </a>
+            <a href="{% url 'group_export_csv' group.pk %}" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Export CSV
+            </a>
+            <a href="{% url 'group_list' %}" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                Back to List
+            </a>
+        </div>
+    </div>
+
+    <!-- Group Information Card -->
+    <div class="bg-white shadow rounded-lg p-6 mb-6">
+        <h2 class="text-lg font-semibold text-gray-900 mb-4">Group Information</h2>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div>
+                <p class="text-sm font-medium text-gray-500">Excursion</p>
+                <p class="mt-1 text-sm text-gray-900">{{ group.excursion.title }}</p>
+            </div>
+            <div>
+                <p class="text-sm font-medium text-gray-500">Date</p>
+                <p class="mt-1 text-sm text-gray-900">{{ group.date|date:"l, F d, Y" }}</p>
+            </div>
+            <div>
+                <p class="text-sm font-medium text-gray-500">Total Guests</p>
+                <p class="mt-1 text-sm">
+                    <span class="{% if group.is_at_capacity %}text-red-600 font-semibold{% elif group.capacity_warning %}text-yellow-600 font-semibold{% else %}text-gray-900{% endif %}">
+                        {{ group.total_guests }}
+                    </span>
+                    {% if group.is_at_capacity %}
+                        <span class="ml-1 text-xs text-red-600">(At Capacity)</span>
+                    {% elif group.capacity_warning %}
+                        <span class="ml-1 text-xs text-yellow-600">(Near Capacity)</span>
+                    {% endif %}
+                </p>
+            </div>
+            <div>
+                <p class="text-sm font-medium text-gray-500">Bus</p>
+                <p class="mt-1 text-sm text-gray-900">{{ group.bus.name }} - {{ group.bus.capacity }}</p>
+            </div>
+        </div>
+        
+        {% if group.description %}
+        <div class="mt-6">
+            <p class="text-sm font-medium text-gray-500">Description</p>
+            <p class="mt-1 text-sm text-gray-900">{{ group.description }}</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Guest List Card -->
+    <div class="bg-white shadow rounded-lg overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h2 class="text-lg font-semibold text-gray-900">Guest List</h2>
+        </div>
+        
+        {% if pickup_groups %}
+        <div class="px-6 py-6">
+            {% for pickup_group in pickup_groups %}
+            <!-- Pickup Group Header -->
+            <div class="mb-6">
+                <div class="flex items-center mb-3">
+                    <h3 class="text-base font-semibold text-gray-900">{{ pickup_group.pickup_group_name }}</h3>
+                    <span class="ml-3 text-sm text-gray-500">({{ pickup_group.total_guests }} guests)</span>
+                </div>
+
+                {% for pickup_point in pickup_group.pickup_point_summaries %}
+                <!-- Pickup Point -->
+                <div class="ml-7 mb-4">
+                    <div class="flex items-center mb-2">
+                        <svg class="w-4 h-4 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                        <h4 class="text-sm font-medium text-gray-700">{{ pickup_point.pickup_point_name }}</h4>
+                        <span class="ml-2 text-xs text-gray-400">({{ pickup_point.booking_count }} bookings)</span>
+                    </div>
+
+                    <!-- Bookings Table -->
+                    <div class="ml-6 overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">#</th>
+                                    <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Guest Name</th>
+                                    <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Phone</th>
+                                    <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Adults</th>
+                                    <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Kids</th>
+                                    <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Infants</th>
+                                    <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-100">
+                                {% for booking in pickup_point.bookings %}
+                                <tr class="{% cycle 'bg-white' 'bg-gray-50' %}">
+                                    <td class="px-4 py-3 text-sm text-gray-500">{{ forloop.counter }}</td>
+                                    <td class="px-4 py-3 text-sm font-medium text-gray-900">{{ booking.guest_name }}</td>
+                                    <td class="px-4 py-3 text-sm text-gray-500 text-left">
+                                        {% if booking.voucher_id and booking.voucher_id.client_phone %}
+                                            {{ booking.voucher_id.client_phone }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td class="px-4 py-3 text-sm text-gray-500 text-left ">{{ booking.total_adults|default:"0" }}</td>
+                                    <td class="px-4 py-3 text-sm text-gray-500 text-left">{{ booking.total_kids|default:"0" }}</td>
+                                    <td class="px-4 py-3 text-sm text-gray-500 text-left">{{ booking.total_infants|default:"0" }}</td>
+                                    <td class="px-4 py-3 text-sm font-medium text-gray-900 text-left">
+                                        {{ booking.total_adults|default:0|add:booking.total_kids|default:0|add:booking.total_infants|default:0 }}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% if not forloop.last %}<hr class="my-6 border-gray-200">{% endif %}
+            {% endfor %}
+
+            <!-- Total Footer -->
+            <div class="mt-6 pt-4 border-t-2 border-gray-300">
+                <div class="flex justify-end items-center">
+                    <span class="text-base font-semibold text-gray-700 mr-4">Total Guests:</span>
+                    <span class="text-xl font-bold text-blue-600">{{ group.total_guests }}</span>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="px-6 py-8 text-center">
+            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+            <h3 class="mt-2 text-sm font-medium text-gray-900">No guests</h3>
+            <p class="mt-1 text-sm text-gray-500">No bookings have been assigned to this group yet.</p>
+            <div class="mt-6">
+                <a href="{% url 'group_update' group.pk %}" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    Add Bookings
+                </a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -10,6 +10,7 @@ from django.db import transaction
 from django.utils import timezone
 from django.core.serializers.json import DjangoJSONEncoder
 from django.core.paginator import Paginator
+from django.template.loader import render_to_string
 from datetime import date, datetime, time, timedelta
 from django.contrib.auth.models import User
 from django.http import JsonResponse, Http404, HttpResponse
@@ -17,7 +18,7 @@ from django.utils.text import slugify
 from .models import (
     Excursion, ExcursionImage, ExcursionAvailability,
     Booking, Feedback, UserProfile, Region, 
-        Group, Category, Tag, PickupPoint, AvailabilityDays, DayOfWeek, Hotel, PickupGroup, PickupGroupAvailability, Reservation
+        Group, Category, Tag, PickupPoint, AvailabilityDays, DayOfWeek, Hotel, PickupGroup, PickupGroupAvailability, Reservation, Bus
     )
 from .forms import (
     ExcursionForm, ExcursionImageFormSet,
@@ -1226,9 +1227,6 @@ def profile_edit(request, pk):
     user = get_object_or_404(User, pk=pk)
     profile = get_object_or_404(UserProfile, user=user)
 
-    print(f'this is the profile: {profile}')
-    print(f'this is the user: {user}')
-    print(f'this is the pk: {pk}')
     
     if request.method == 'POST':
         form = UserProfileForm(request.POST, instance=profile)
@@ -1302,18 +1300,26 @@ def admin_dashboard(request, pk):
 # Only admins can manage groups
 @user_passes_test(is_staff)
 def group_list(request):
-    groups = Group.objects.all()
+    groups = Group.objects.select_related('excursion').prefetch_related('bookings').all().order_by('-date')
 
-        # Handle search
+    # Handle search
     search_query = request.GET.get('search', '').strip()
     if search_query:
         groups = groups.filter(
-            Q(name__icontains=search_query)
+            Q(name__icontains=search_query) |
+            Q(excursion__title__icontains=search_query) |
+            Q(description__icontains=search_query)
         )
 
+    # Pagination
+    paginator = Paginator(groups, 15)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
 
     return render(request, 'main/groups/group_list.html', {
-        'groups': groups,
+        'groups': page_obj.object_list,
+        'search_query': search_query,
+        'page_obj': page_obj,
     })
 
 @user_passes_test(is_staff)
@@ -1321,20 +1327,50 @@ def group_create(request):
     if request.method == 'POST':
         form = GroupForm(request.POST)
         if form.is_valid():
-            form.save()
+            group = form.save()  # Form now handles bookings assignment
+            
+            # Check capacity and warn if exceeded
+            if group.bus:
+                from .utils import TransportGroupService
+                total_guests = TransportGroupService.calculate_total_guests(
+                    list(group.bookings.values_list('id', flat=True))
+                )
+                if total_guests > group.bus.capacity:
+                    messages.warning(request, f'Warning: Group has {total_guests} guests, exceeding the bus capacity of {group.bus.capacity}.')
+            
             messages.success(request, 'Group created successfully.')
-            return redirect('group_list')
+            return redirect('group_detail', pk=group.pk)
     else:
         form = GroupForm()
+    
     return render(request, 'main/groups/group_form.html', {
         'form': form,
+        'is_update': False,
     })
 
 @user_passes_test(is_staff)
 def group_detail(request, pk):
-    group = get_object_or_404(Group, pk=pk)
+    group = get_object_or_404(Group.objects.prefetch_related(
+        'bookings', 
+        'bookings__pickup_point',
+        'bookings__pickup_point__pickup_group',
+        'bookings__voucher_id'
+    ), pk=pk)
+    
+    # Group bookings by pickup point for display
+    from .utils import TransportGroupService
+    bookings = group.bookings.all().order_by(
+        'pickup_point__pickup_group__name',
+        'pickup_point__name'
+    )
+    
+    #     # Get pickup group summary (hierarchical structure)
+    pickup_summary = TransportGroupService.get_pickup_group_summary(bookings)
+    
     return render(request, 'main/groups/group_detail.html', {
         'group': group,
+        'bookings': bookings,
+        'pickup_groups': pickup_summary,
     })
 
 @user_passes_test(is_staff)
@@ -1343,26 +1379,502 @@ def group_update(request, pk):
     if request.method == 'POST':
         form = GroupForm(request.POST, instance=group)
         if form.is_valid():
-            form.save()
+            group = form.save()  # Form now handles bookings assignment
+            
+            # Check capacity and warn if exceeded
+            if group.bus:
+                from .utils import TransportGroupService
+                total_guests = TransportGroupService.calculate_total_guests(
+                    list(group.bookings.values_list('id', flat=True))
+                )
+                if total_guests > group.bus.capacity:
+                    messages.warning(request, f'Warning: Group has {total_guests} guests, exceeding the bus capacity of {group.bus.capacity}.')
+            
             messages.success(request, 'Group updated successfully.')
-            return redirect('group_detail', pk) 
+            return redirect('group_detail', pk=group.pk) 
     else:
         form = GroupForm(instance=group)
+    
+    # Get existing booking IDs for JavaScript
+    existing_booking_ids = list(group.bookings.values_list('id', flat=True))
+    
     return render(request, 'main/groups/group_form.html', {
         'form': form,
         'group': group,
+        'is_update': True,
+        'existing_booking_ids': existing_booking_ids,
     })
 
 @user_passes_test(is_staff)
 def group_delete(request, pk):
     group = get_object_or_404(Group, pk=pk)
     if request.method == 'POST':
+        group_name = group.name
         group.delete()
-        messages.success(request, 'Group deleted successfully.')
+        messages.success(request, f'Group "{group_name}" deleted successfully.')
         return redirect('group_list')
-    return render(request, 'main/groups/group_confirm_delete.html', {
+    
+    # If GET request, redirect to group detail instead
+    return redirect('group_detail', pk=pk)
+
+@user_passes_test(is_staff)
+def get_bookings_for_group(request):
+    """HTMX endpoint to fetch bookings filtered by excursion and date"""
+    from .utils import TransportGroupService
+    from django.template.loader import render_to_string
+    
+    excursion_id = request.GET.get('excursion') or request.GET.get('excursion_id')
+    date = request.GET.get('date')
+    group_id = request.GET.get('group_id')  # For editing existing groups
+    
+    if not excursion_id or not date:
+        return render(request, 'main/groups/partials/_bookings_selection.html', {
+            'pickup_groups': None,
+            'no_bookings': True,
+            'message': 'Please select both excursion and date'
+        })
+    
+    try:
+        excursion = Excursion.objects.get(id=excursion_id)
+        
+        # Get available bookings (excluding other groups, but not the current group)
+        bookings = TransportGroupService.get_completed_bookings_for_grouping(
+            excursion=excursion,
+            date=date,
+            exclude_group_id=group_id
+        )
+        
+        # If editing a group, also include its existing bookings
+        existing_booking_ids = []
+        if group_id:
+            try:
+                group = Group.objects.get(pk=group_id)
+                existing_bookings = group.bookings.all()
+                existing_booking_ids = list(existing_bookings.values_list('id', flat=True))
+                # Combine with available bookings (union to avoid duplicates)
+                bookings = bookings | existing_bookings
+            except Group.DoesNotExist:
+                pass
+        
+        # Get pickup group summary
+        pickup_summary = TransportGroupService.get_pickup_group_summary(bookings)
+        
+        if not pickup_summary:
+            return render(request, 'main/groups/partials/_bookings_selection.html', {
+                'pickup_groups': None,
+                'no_bookings': True,
+                'message': 'No available bookings found for the selected excursion and date',
+                'existing_booking_ids': existing_booking_ids
+            })
+        
+        return render(request, 'main/groups/partials/_bookings_selection.html', {
+            'pickup_groups': pickup_summary,
+            'no_bookings': False,
+            'existing_booking_ids': existing_booking_ids
+        })
+        
+    except Excursion.DoesNotExist:
+        return render(request, 'main/groups/partials/_bookings_selection.html', {
+            'pickup_groups': None,
+            'no_bookings': True,
+            'message': 'Excursion not found'
+        })
+    except Exception as e:
+        return render(request, 'main/groups/partials/_bookings_selection.html', {
+            'pickup_groups': None,
+            'no_bookings': True,
+            'message': f'Error: {str(e)}'
+        })
+
+@user_passes_test(is_staff)
+def test_simple_pdf(request):
+    """Test simple PDF generation"""
+    from fpdf import FPDF
+    from django.http import HttpResponse
+    import sys
+    
+    try:
+        # Create simplest possible PDF
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font('Arial', 'B', 16)
+        pdf.cell(0, 10, 'Test PDF', 0, 1, 'C')
+        pdf.set_font('Arial', '', 12)
+        pdf.cell(0, 10, 'This is a simple test.', 0, 1)
+        pdf.cell(0, 10, 'If you can see this, fpdf2 works!', 0, 1)
+        
+        # Output
+        pdf_bytes = pdf.output()
+        
+        # Debug info
+        print(f"PDF generated successfully!", file=sys.stderr)
+        print(f"Size: {len(pdf_bytes)} bytes", file=sys.stderr)
+        print(f"Type: {type(pdf_bytes)}", file=sys.stderr)
+        print(f"First 20 bytes: {pdf_bytes[:20]}", file=sys.stderr)
+        
+        response = HttpResponse(pdf_bytes, content_type='application/pdf')
+        response['Content-Disposition'] = 'attachment; filename="test.pdf"'
+        return response
+    except Exception as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        import traceback
+        traceback.print_exc(file=sys.stderr)
+        return HttpResponse(f"Error: {e}", status=500)
+
+@user_passes_test(is_staff)
+def group_export_pdf(request, pk):
+    from xhtml2pdf import pisa
+    from io import BytesIO
+    from collections import defaultdict
+
+    group = get_object_or_404(Group.objects.prefetch_related(
+        'bookings',
+        'bookings__pickup_point',
+        'bookings__pickup_point__pickup_group',
+        'bookings__voucher_id',
+        'bookings__voucher_id__hotel'
+    ), pk=pk)
+
+    # Get bookings for the group
+    bookings = group.bookings.all().order_by(
+        'pickup_point__pickup_group__name',
+        'pickup_point__name',
+        'guest_name'
+    )
+
+    # Organize bookings by pickup group and pickup point with subtotals
+    organized_data = []
+    current_pickup_group = None
+    pickup_group_data = None
+    
+    for booking in bookings:
+        # Get pickup group - handle None pickup_point case
+        if booking.pickup_point:
+            pickup_group = booking.pickup_point.pickup_group
+            pickup_point = booking.pickup_point
+        else:
+            pickup_group = None
+            pickup_point = None
+        
+        # Check if we need to start a new pickup group
+        if pickup_group != current_pickup_group:
+            if pickup_group_data:
+                organized_data.append(pickup_group_data)
+            
+            current_pickup_group = pickup_group
+            pickup_group_data = {
+                'pickup_group': pickup_group,
+                'pickup_points': []
+            }
+        
+        # Find or create pickup point in current group
+        pickup_point_data = None
+        for pp in pickup_group_data['pickup_points']:
+            if pp['pickup_point'] == pickup_point:
+                pickup_point_data = pp
+                break
+        
+        if not pickup_point_data:
+            pickup_point_data = {
+                'pickup_point': pickup_point,
+                'bookings': [],
+                'subtotal': {'adults': 0, 'kids': 0, 'infants': 0, 'total': 0}
+            }
+            pickup_group_data['pickup_points'].append(pickup_point_data)
+        
+        # Add booking and update subtotal
+        guest_total = (booking.total_adults or 0) + (booking.total_kids or 0) + (booking.total_infants or 0)
+        pickup_point_data['bookings'].append(booking)
+        pickup_point_data['subtotal']['adults'] += booking.total_adults or 0
+        pickup_point_data['subtotal']['kids'] += booking.total_kids or 0
+        pickup_point_data['subtotal']['infants'] += booking.total_infants or 0
+        pickup_point_data['subtotal']['total'] += guest_total
+    
+    # Don't forget to add the last pickup group
+    if pickup_group_data:
+        organized_data.append(pickup_group_data)
+
+    # HTML content to be converted.
+    html_content = render_to_string('main/groups/group_pdf.html', {
         'group': group,
+        'bookings': bookings,
+        'organized_data': organized_data,
     })
+
+    filename = f'transport_group_{group.name}_{group.date}.pdf'
+    
+    # Create a BytesIO buffer to receive PDF data
+    buffer = BytesIO()
+    
+    # Convert HTML to PDF
+    pisa_status = pisa.CreatePDF(html_content, dest=buffer)
+    
+    if pisa_status.err:
+        return HttpResponse(f'PDF generation error: {pisa_status.err}', status=500)
+    
+    # Get the PDF content from buffer
+    pdf_content = buffer.getvalue()
+    buffer.close()
+    
+    # Create the HTTP response with PDF
+    response = HttpResponse(pdf_content, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    
+    return response
+
+
+@user_passes_test(is_staff)
+def group_export_csv(request, pk):
+    import csv
+    from io import StringIO
+    
+    group = get_object_or_404(Group.objects.prefetch_related(
+        'bookings',
+        'bookings__pickup_point',
+        'bookings__pickup_point__pickup_group',
+        'bookings__voucher_id',
+        'bookings__voucher_id__hotel'
+    ), pk=pk)
+    
+    # Get bookings for the group
+    bookings = group.bookings.all().order_by(
+        'pickup_point__pickup_group__name',
+        'pickup_point__name',
+        'guest_name'
+    )
+    
+    # Organize bookings by pickup group and pickup point with subtotals
+    organized_data = []
+    current_pickup_group = None
+    pickup_group_data = None
+    
+    for booking in bookings:
+        # Get pickup group - handle None pickup_point case
+        if booking.pickup_point:
+            pickup_group = booking.pickup_point.pickup_group
+            pickup_point = booking.pickup_point
+        else:
+            pickup_group = None
+            pickup_point = None
+        
+        # Check if we need to start a new pickup group
+        if pickup_group != current_pickup_group:
+            if pickup_group_data:
+                organized_data.append(pickup_group_data)
+            
+            current_pickup_group = pickup_group
+            pickup_group_data = {
+                'pickup_group': pickup_group,
+                'pickup_points': []
+            }
+        
+        # Find or create pickup point in current group
+        pickup_point_data = None
+        for pp in pickup_group_data['pickup_points']:
+            if pp['pickup_point'] == pickup_point:
+                pickup_point_data = pp
+                break
+        
+        if not pickup_point_data:
+            pickup_point_data = {
+                'pickup_point': pickup_point,
+                'bookings': [],
+                'subtotal': {'adults': 0, 'kids': 0, 'infants': 0, 'total': 0}
+            }
+            pickup_group_data['pickup_points'].append(pickup_point_data)
+        
+        # Add booking and update subtotal
+        guest_total = (booking.total_adults or 0) + (booking.total_kids or 0) + (booking.total_infants or 0)
+        pickup_point_data['bookings'].append(booking)
+        pickup_point_data['subtotal']['adults'] += booking.total_adults or 0
+        pickup_point_data['subtotal']['kids'] += booking.total_kids or 0
+        pickup_point_data['subtotal']['infants'] += booking.total_infants or 0
+        pickup_point_data['subtotal']['total'] += guest_total
+    
+    # Don't forget to add the last pickup group
+    if pickup_group_data:
+        organized_data.append(pickup_group_data)
+    
+    # Create CSV content
+    output = StringIO()
+    writer = csv.writer(output)
+    
+    # Header information
+    writer.writerow(['TRANSPORT GROUP MANIFEST'])
+    writer.writerow([])
+    writer.writerow(['Excursion:', group.excursion.title])
+    writer.writerow(['Group:', group.name])
+    writer.writerow(['Date:', group.date.strftime('%A, %B %d, %Y')])
+    writer.writerow(['Total Guests:', group.total_guests])
+    writer.writerow(['Total Bookings:', bookings.count()])
+    writer.writerow([])
+    writer.writerow([])
+    
+    # Column headers
+    headers = ['#', 'Pickup Group', 'Pickup Point', 'Guest Name', 'Phone', 'Hotel/Location', 'Adults', 'Kids', 'Infants', 'Total']
+    writer.writerow(headers)
+    
+    # Data rows
+    row_number = 1
+    for pg_data in organized_data:
+        pickup_group_name = pg_data['pickup_group'].name if pg_data['pickup_group'] else 'No Pickup Group'
+        
+        for pp_data in pg_data['pickup_points']:
+            pickup_point_name = pp_data['pickup_point'].name if pp_data['pickup_point'] else 'No Pickup Point'
+            
+            for booking in pp_data['bookings']:
+                phone = ''
+                if booking.voucher_id and booking.voucher_id.client_phone:
+                    phone = booking.voucher_id.client_phone
+                
+                hotel = ''
+                if booking.voucher_id and booking.voucher_id.hotel:
+                    hotel = booking.voucher_id.hotel.name
+                
+                adults = booking.total_adults or 0
+                kids = booking.total_kids or 0
+                infants = booking.total_infants or 0
+                total = adults + kids + infants
+                
+                writer.writerow([
+                    row_number,
+                    pickup_group_name,
+                    pickup_point_name,
+                    booking.guest_name,
+                    phone,
+                    hotel,
+                    adults,
+                    kids,
+                    infants,
+                    total
+                ])
+                row_number += 1
+            
+            # Subtotal row
+            writer.writerow([
+                '',
+                '',
+                f'SUBTOTAL - {pickup_point_name}',
+                f'{len(pp_data["bookings"])} booking(s)',
+                '',
+                '',
+                pp_data['subtotal']['adults'],
+                pp_data['subtotal']['kids'],
+                pp_data['subtotal']['infants'],
+                pp_data['subtotal']['total']
+            ])
+            writer.writerow([])  # Empty row for spacing
+    
+    # Grand total
+    writer.writerow([])
+    writer.writerow(['', '', 'GRAND TOTAL', f'{bookings.count()} bookings', '', '', '', '', '', group.total_guests])
+    
+    # Create response
+    filename = f'transport_group_{group.name}_{group.date}.csv'
+    response = HttpResponse(output.getvalue(), content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    
+    return response
+
+@user_passes_test(is_staff)
+def buses_list(request):
+    buses = Bus.objects.all().order_by('capacity')
+
+    # Handle search
+    search_query = request.GET.get('search', '').strip()
+    if search_query:
+        buses = buses.filter(
+            Q(name__icontains=search_query) |
+            Q(capacity__icontains=search_query)
+        )
+
+    # Pagination
+    paginator = Paginator(buses, 15)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    return render(request, 'main/admin/buses.html', {
+        'buses': page_obj.object_list,
+        'search_query': search_query,
+        'page_obj': page_obj,
+    })
+
+@user_passes_test(is_staff)
+def manage_buses(request):
+    buses = Bus.objects.all().order_by('capacity')
+
+    # Handle search
+    search_query = request.GET.get('search', '').strip()
+    if search_query:
+        buses = buses.filter(
+            Q(name__icontains=search_query) |
+            Q(capacity__icontains=search_query)
+        )
+
+    if request.method == 'POST':
+        action_type = request.POST.get('action_type')
+        item_id = request.POST.get('item_id')
+        
+        if action_type == 'add_bus':
+            name = request.POST.get('name', '').strip()
+            capacity = request.POST.get('capacity', '').strip()
+            if name and capacity:
+                try:
+                    Bus.objects.create(name=name, capacity=int(capacity))
+                    messages.success(request, 'Bus added successfully.')
+                except ValueError:
+                    messages.error(request, 'Invalid capacity value.')
+            else:
+                messages.error(request, 'Please fill in all fields.')
+            return redirect('manage_buses')
+
+        elif action_type == 'edit_bus':
+            bus = get_object_or_404(Bus, pk=item_id)
+            name = request.POST.get('name', '').strip()
+            capacity = request.POST.get('capacity', '').strip()
+            if name and capacity:
+                try:
+                    bus.name = name
+                    bus.capacity = int(capacity)
+                    bus.save()
+                    messages.success(request, 'Bus updated successfully.')
+                except ValueError:
+                    messages.error(request, 'Invalid capacity value.')
+            else:
+                messages.error(request, 'Please fill in all fields.')
+            return redirect('manage_buses')
+
+        elif action_type == 'delete_bus':
+            bus = get_object_or_404(Bus, pk=item_id)
+            bus_name = bus.name
+            bus.delete()
+            messages.success(request, f'Bus "{bus_name}" deleted successfully.')
+            return redirect('manage_buses')
+
+    # Pagination
+    paginator = Paginator(buses, 15)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    return render(request, 'main/admin/buses.html', {
+        'buses': page_obj.object_list,
+        'search_query': search_query,
+        'page_obj': page_obj,
+    })
+
+@user_passes_test(is_staff)
+def group_send(request, pk):
+    if request.method == 'POST':
+        group = get_object_or_404(Group, pk=pk)
+        group_name = group.name
+        group.status = 'sent'
+        group.save()
+        messages.success(request, f'Group "{group_name}" sent successfully.')
+        return redirect('group_list')
+    else:
+        messages.error(request, 'Invalid request method.')
+        return redirect('group_list')
+
 
 # ----- Category and Tag Management -----
 @user_passes_test(is_staff)

@@ -1,0 +1,61 @@
+{% if pickup_groups %}
+    {% for pickup_group in pickup_groups %}
+    <div class="mb-6 border border-gray-200 rounded-lg p-4">
+        <!-- Pickup Group Header -->
+        <div class="flex justify-between items-center mb-3">
+            <div class="flex items-center">
+                <input type="checkbox" class="select-all-group mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" data-group-name="{{ pickup_group.pickup_group_name }}">
+                <h3 class="text-md font-semibold text-gray-800">{{ pickup_group.pickup_group_name }}</h3>
+            </div>
+            <span class="text-sm text-gray-600">{{ pickup_group.total_guests }} guests ({{ pickup_group.booking_count }} bookings)</span>
+        </div>
+
+        <!-- Pickup Points -->
+        {% for pickup_point in pickup_group.pickup_point_summaries %}
+        <div class="ml-6 mb-3">
+            <div class="flex items-center mb-2 bg-gray-50 p-2 rounded">
+                <input type="checkbox" class="select-all-point mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" data-point-name="{{ pickup_point.pickup_point_name }}">
+                <h4 class="text-sm font-medium text-gray-700">{{ pickup_point.pickup_point_name }}</h4>
+                <span class="ml-auto text-xs text-gray-500">{{ pickup_point.total_guests }} guests</span>
+            </div>
+
+            <!-- Bookings Table -->
+            <table class="min-w-full ml-8">
+                {% for booking in pickup_point.bookings %}
+                <tr class="border-b border-gray-100 booking-row">
+                    <td class="py-2 pr-4">
+                        <input type="checkbox" value="{{ booking.id }}" class="booking-checkbox h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" data-guests="{{ booking.total_adults|default:0|add:booking.total_kids|default:0|add:booking.total_infants|default:0 }}" data-group="{{ pickup_group.pickup_group_name }}" data-point="{{ pickup_point.pickup_point_name }}" {% if booking.id in existing_booking_ids %}checked data-existing="true"{% endif %}>
+                    </td>
+                    <td class="py-2 px-2 text-sm text-gray-900">{{ booking.guest_name }}</td>
+                    <td class="py-2 px-2 text-sm text-gray-500">
+                        {% if booking.voucher_id.client_phone %}
+                            {{ booking.voucher_id.client_phone }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    <td class="py-2 px-2 text-sm text-gray-500">A: {{ booking.total_adults|default:0 }} | K: {{ booking.total_kids|default:0 }} | I: {{ booking.total_infants|default:0 }}</td>
+                    <td class="py-2 px-2 text-sm text-gray-600 font-medium">Total: {{ booking.total_adults|default:0|add:booking.total_kids|default:0|add:booking.total_infants|default:0 }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+        {% endfor %}
+    </div>
+    {% endfor %}
+{% elif no_bookings %}
+    <div class="text-center py-8">
+        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+        </svg>
+        <p class="mt-2 text-sm text-gray-500">{{ message|default:"No available bookings found for the selected excursion and date." }}</p>
+    </div>
+{% else %}
+    <div class="text-center py-8">
+        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <p class="mt-2 text-sm text-gray-500">Select an excursion and date to load available bookings</p>
+    </div>
+{% endif %}
+
