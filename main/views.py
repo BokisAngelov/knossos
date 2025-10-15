@@ -32,7 +32,7 @@ import json
 from django.db.models import Q, Sum, Count
 from django.apps import apps
 from .cyber_api import get_groups, get_hotels, get_pickup_points, get_excursions, get_excursion_description, get_providers, get_excursion_availabilities, get_reservation
-from .utils import FeedbackService, BookingService, ExcursionService, VoucherService, create_reservation, ExcursionAnalyticsService
+from .utils import FeedbackService, BookingService, ExcursionService, VoucherService, create_reservation, ExcursionAnalyticsService, RevenueAnalyticsService
 
 def is_staff(user):
     return user.is_staff
@@ -2964,6 +2964,26 @@ def excursion_analytics(request):
     return render(request, 'main/admin/excursion_analytics.html', {
         'form': form,
         'analytics_data': analytics_data,
+    })
+
+@user_passes_test(is_staff)
+def revenue_dashboard(request):
+    """Display comprehensive revenue analytics dashboard."""
+    from .forms import ExcursionAnalyticsForm  # Reuse the same date range form
+    
+    revenue_data = None
+    form = ExcursionAnalyticsForm(request.GET or None)
+    
+    if form.is_valid():
+        start_date = form.cleaned_data['start_date']
+        end_date = form.cleaned_data['end_date']
+        
+        # Get revenue data from service
+        revenue_data = RevenueAnalyticsService.get_revenue_data(start_date, end_date)
+    
+    return render(request, 'main/admin/revenue_dashboard.html', {
+        'form': form,
+        'revenue_data': revenue_data,
     })
 
 @user_passes_test(is_staff)
