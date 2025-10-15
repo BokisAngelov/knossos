@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import UserProfile, Excursion, ExcursionAvailability, Booking, Transaction, Feedback, Category, Tag, Group, PaymentMethod, Reservation
+from .models import UserProfile, Excursion, ExcursionAvailability, Booking, Transaction, Feedback, Category, Tag, Group, PaymentMethod, Reservation, Bus
 
 # Register your models here.
 admin.site.register(UserProfile)
@@ -13,3 +13,4 @@ admin.site.register(Tag)
 admin.site.register(Group)
 admin.site.register(PaymentMethod)
 admin.site.register(Reservation)
+admin.site.register(Bus)

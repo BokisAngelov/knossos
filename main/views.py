@@ -1327,8 +1327,8 @@ def group_create(request):
                 from .utils import TransportGroupService
                 total_guests = TransportGroupService.calculate_total_guests(booking_ids)
                 
-                if total_guests > 50:
-                    messages.warning(request, f'Warning: Group has {total_guests} guests, exceeding the 50 guest limit.')
+                if group.bus and total_guests > group.bus.capacity:
+                    messages.warning(request, f'Warning: Group has {total_guests} guests, exceeding the bus capacity of {group.bus.capacity}.')
                 
                 group.bookings.set(booking_ids)
             
@@ -1347,7 +1347,8 @@ def group_detail(request, pk):
     group = get_object_or_404(Group.objects.prefetch_related(
         'bookings', 
         'bookings__pickup_point',
-        'bookings__pickup_point__pickup_group'
+        'bookings__pickup_point__pickup_group',
+        'bookings__voucher_id'
     ), pk=pk)
     
     # Group bookings by pickup point for display
@@ -1357,9 +1358,13 @@ def group_detail(request, pk):
         'pickup_point__name'
     )
     
+    #     # Get pickup group summary (hierarchical structure)
+    pickup_summary = TransportGroupService.get_pickup_group_summary(bookings)
+    
     return render(request, 'main/groups/group_detail.html', {
         'group': group,
         'bookings': bookings,
+        'pickup_groups': pickup_summary,
     })
 
 @user_passes_test(is_staff)
@@ -1376,8 +1381,8 @@ def group_update(request, pk):
                 from .utils import TransportGroupService
                 total_guests = TransportGroupService.calculate_total_guests(booking_ids)
                 
-                if total_guests > 50:
-                    messages.warning(request, f'Warning: Group has {total_guests} guests, exceeding the 50 guest limit.')
+                if group.bus and total_guests > group.bus.capacity:
+                    messages.warning(request, f'Warning: Group has {total_guests} guests, exceeding the bus capacity of {group.bus.capacity}.')
                 
                 group.bookings.set(booking_ids)
             else:

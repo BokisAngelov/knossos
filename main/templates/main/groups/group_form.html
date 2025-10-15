@@ -33,43 +33,60 @@
                     {% endif %}
                 </div>
 
-            <!-- Excursion -->
-            <div>
-                <label for="{{ form.excursion.id_for_label }}" class="block text-sm font-medium text-gray-700">
-                    Excursion <span class="text-red-500">*</span>
-                </label>
-                <select name="excursion" id="id_excursion" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                    hx-get="{% url 'get_bookings_for_group' %}"
-                    hx-target="#bookingsList"
-                    hx-trigger="change"
-                    hx-include="#groupForm"
-                    hx-indicator="#loadingIndicator">
-                    <option value="">---------</option>
-                    {% for excursion in form.excursion.field.queryset %}
-                        <option value="{{ excursion.id }}" {% if form.excursion.value == excursion.id %}selected{% endif %}>{{ excursion.title }}</option>
-                    {% endfor %}
-                </select>
-                {% if form.excursion.errors %}
-                    <p class="mt-1 text-sm text-red-600">{{ form.excursion.errors.0 }}</p>
-                {% endif %}
-            </div>
+                <!-- Excursion -->
+                <div>
+                    <label for="{{ form.excursion.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                        Excursion <span class="text-red-500">*</span>
+                    </label>
+                    <select name="excursion" id="id_excursion" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                        hx-get="{% url 'get_bookings_for_group' %}"
+                        hx-target="#bookingsList"
+                        hx-trigger="change"
+                        hx-include="#groupForm"
+                        hx-indicator="#loadingIndicator">
+                        <option value="">---------</option>
+                        {% for excursion in form.excursion.field.queryset %}
+                            <option value="{{ excursion.id }}" {% if form.excursion.value == excursion.id %}selected{% endif %}>{{ excursion.title }}</option>
+                        {% endfor %}
+                    </select>
+                    {% if form.excursion.errors %}
+                        <p class="mt-1 text-sm text-red-600">{{ form.excursion.errors.0 }}</p>
+                    {% endif %}
+                </div>
 
-            <!-- Date -->
-            <div>
-                <label for="{{ form.date.id_for_label }}" class="block text-sm font-medium text-gray-700">
-                    Date <span class="text-red-500">*</span>
-                </label>
-                <input type="date" name="date" id="id_date" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                    value="{{ form.date.value|date:'Y-m-d' }}"
-                    hx-get="{% url 'get_bookings_for_group' %}"
-                    hx-target="#bookingsList"
-                    hx-trigger="change"
-                    hx-include="#groupForm"
-                    hx-indicator="#loadingIndicator">
-                {% if form.date.errors %}
-                    <p class="mt-1 text-sm text-red-600">{{ form.date.errors.0 }}</p>
-                {% endif %}
-            </div>
+                <!-- Date -->
+                <div>
+                    <label for="{{ form.date.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                        Date <span class="text-red-500">*</span>
+                    </label>
+                    <input type="date" name="date" id="id_date" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                        value="{{ form.date.value|date:'Y-m-d' }}"
+                        hx-get="{% url 'get_bookings_for_group' %}"
+                        hx-target="#bookingsList"
+                        hx-trigger="change"
+                        hx-include="#groupForm"
+                        hx-indicator="#loadingIndicator">
+                    {% if form.date.errors %}
+                        <p class="mt-1 text-sm text-red-600">{{ form.date.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- Bus -->
+                <div>
+                    <label for="{{ form.bus.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                        Bus <span class="text-red-500">*</span>
+                    </label>
+                    <select name="bus" id="id_bus" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <option value="">---------</option>
+                        {% for bus in form.bus.field.queryset %}
+                            <option value="{{ bus.id }}" {% if form.bus.value == bus.id %}selected{% endif %} data-capacity="{{ bus.capacity }}">{{ bus.name }} - {{ bus.capacity }}</option>
+                        {% endfor %}
+                    </select>
+
+                    {% if form.bus.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ form.bus.errors.0 }}</p>
+                    {% endif %}
+                </div>
             </div>
 
             <!-- Description -->
@@ -91,7 +108,7 @@
                 <div class="text-sm">
                     <span class="text-gray-600">Selected Guests: </span>
                     <span id="selectedCount" class="font-semibold text-blue-600">0</span>
-                    <span class="text-gray-600"> / 50</span>
+                    <span class="text-gray-600"> / <span id="busCapacity">{% if group and group.bus %}{{ group.bus.capacity }}{% else %}50{% endif %}</span></span>
                     <span id="capacityWarning" class="ml-2 text-yellow-600 font-semibold hidden">⚠ Approaching Limit</span>
                     <span id="capacityError" class="ml-2 text-red-600 font-semibold hidden">❌ Exceeds Limit!</span>
                 </div>
@@ -190,10 +207,21 @@ document.addEventListener('DOMContentLoaded', function() {
     // Auto-load bookings on page load if excursion and date are set
     const excursionSelect = document.getElementById('id_excursion');
     const dateInput = document.getElementById('id_date');
+    const busSelect = document.getElementById('id_bus');
     
     if (excursionSelect.value && dateInput.value) {
         // Trigger HTMX request
         htmx.trigger(excursionSelect, 'change');
+    }
+    
+    // Update bus capacity when bus selection changes
+    if (busSelect) {
+        busSelect.addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            const capacity = selectedOption.dataset.capacity || '50';
+            document.getElementById('busCapacity').textContent = capacity;
+            updateGroupCounter(); // Recalculate warnings with new capacity
+        });
     }
 
     // Use event delegation for dynamically loaded checkboxes
@@ -348,11 +376,13 @@ document.addEventListener('DOMContentLoaded', function() {
     function updateGroupCounter() {
         selectedCountSpan.textContent = totalGroupGuests;
 
-        // Update capacity warnings
-        if (totalGroupGuests >= 50) {
+        // Update capacity warnings based on bus capacity
+        const busCapacity = parseInt(document.getElementById('busCapacity').textContent) || 50;
+        
+        if (totalGroupGuests >= busCapacity) {
             capacityError.classList.remove('hidden');
             capacityWarning.classList.add('hidden');
-        } else if (totalGroupGuests >= 45) {
+        } else if (totalGroupGuests >= (busCapacity - 5)) {
             capacityWarning.classList.remove('hidden');
             capacityError.classList.add('hidden');
         } else {
@@ -508,8 +538,13 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Auto-load bookings on page load if editing (excursion and date already selected)
-    {% if is_update and group %}
+});
+</script>
+
+{% if is_update and group %}
+<script>
+// Auto-load bookings on page load if editing (excursion and date already selected)
+document.addEventListener('DOMContentLoaded', function() {
     const excursionField = document.getElementById('id_excursion');
     const dateField = document.getElementById('id_date');
     
@@ -519,7 +554,7 @@ document.addEventListener('DOMContentLoaded', function() {
             htmx.trigger(dateField, 'change');
         }, 100);
     }
-    {% endif %}
 });
 </script>
+{% endif %}
 {% endblock %}

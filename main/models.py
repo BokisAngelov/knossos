@@ -386,12 +386,24 @@ class Transaction(models.Model):
     class Meta:
         ordering = ['created_at']
 
+class Bus(models.Model):
+    name = models.CharField(max_length=255)
+    capacity = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+
+    def __str__(self):
+        return self.name + " - " + str(self.capacity)
+    
+    class Meta:
+        ordering = ['name']
+
 class Group(models.Model):
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
     excursion = models.ForeignKey(Excursion, on_delete=models.CASCADE, related_name='groups', null=True, blank=True)
     date = models.DateField(null=True, blank=True)
     bookings = models.ManyToManyField('Booking', related_name='transport_groups', blank=True)
+    bus = models.ForeignKey(Bus, on_delete=models.SET_NULL, null=True, blank=True, related_name='groups')
     created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
 
     def __str__(self):
@@ -407,15 +419,21 @@ class Group(models.Model):
     
     @property
     def is_at_capacity(self):
-        """Check if group has reached or exceeded 50 guests"""
-        return self.total_guests >= 50
+        """Check if group has reached or exceeded bus capacity"""
+        return self.total_guests >= self.bus.capacity
+
+    @property
+    def capacity_warning(self):
+        """Check if group has reached or exceeded bus capacity"""
+        return self.total_guests - self.bus.capacity >= 5
     
     @property
     def remaining_capacity(self):
-        """Get remaining capacity before hitting 50 guest limit"""
-        return max(0, 50 - self.total_guests)
+        """Get remaining capacity before hitting bus capacity"""
+        return max(0, self.bus.capacity - self.total_guests)
     
     class Meta:
         ordering = ['-date', 'name']  
  
+
 

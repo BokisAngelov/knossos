@@ -31,7 +31,7 @@
     <!-- Group Information Card -->
     <div class="bg-white shadow rounded-lg p-6 mb-6">
         <h2 class="text-lg font-semibold text-gray-900 mb-4">Group Information</h2>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
             <div>
                 <p class="text-sm font-medium text-gray-500">Excursion</p>
                 <p class="mt-1 text-sm text-gray-900">{{ group.excursion.title }}</p>
@@ -53,6 +53,10 @@
                     {% endif %}
                 </p>
             </div>
+            <div>
+                <p class="text-sm font-medium text-gray-500">Bus</p>
+                <p class="mt-1 text-sm text-gray-900">{{ group.bus.name }} - {{ group.bus.capacity }}</p>
+            </div>
         </div>
         
         {% if group.description %}
@@ -69,59 +73,77 @@
             <h2 class="text-lg font-semibold text-gray-900">Guest List</h2>
         </div>
         
-        {% if bookings %}
-        <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50">
-                    <tr>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Guest Name</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pickup Point</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Adults</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kids</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Infants</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
-                    </tr>
-                </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
-                    {% for booking in bookings %}
-                    <tr class="{% cycle 'bg-white' 'bg-gray-50' %}">
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ forloop.counter }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ booking.guest_name }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {% if booking.voucher_id and booking.voucher_id.client_phone %}
-                                {{ booking.voucher_id.client_phone }}
-                            {% else %}
-                                -
-                            {% endif %}
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {% if booking.pickup_point %}
-                                {{ booking.pickup_point.name }}
-                                {% if booking.pickup_point.pickup_group %}
-                                    <span class="text-xs text-gray-400">({{ booking.pickup_point.pickup_group.name }})</span>
-                                {% endif %}
-                            {% else %}
-                                -
-                            {% endif %}
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ booking.total_adults|default:"0" }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ booking.total_kids|default:"0" }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ booking.total_infants|default:"0" }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            {{ booking.total_adults|default:0|add:booking.total_kids|default:0|add:booking.total_infants|default:0 }}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-                <tfoot class="bg-gray-100">
-                    <tr>
-                        <td colspan="7" class="px-6 py-4 text-right text-sm font-semibold text-gray-900">Total Guests:</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">{{ group.total_guests }}</td>
-                    </tr>
-                </tfoot>
-            </table>
+        {% if pickup_groups %}
+        <div class="px-6 py-6">
+            {% for pickup_group in pickup_groups %}
+            <!-- Pickup Group Header -->
+            <div class="mb-6">
+                <div class="flex items-center mb-3">
+                    <h3 class="text-base font-semibold text-gray-900">{{ pickup_group.pickup_group_name }}</h3>
+                    <span class="ml-3 text-sm text-gray-500">({{ pickup_group.total_guests }} guests)</span>
+                </div>
+
+                {% for pickup_point in pickup_group.pickup_point_summaries %}
+                <!-- Pickup Point -->
+                <div class="ml-7 mb-4">
+                    <div class="flex items-center mb-2">
+                        <svg class="w-4 h-4 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                        <h4 class="text-sm font-medium text-gray-700">{{ pickup_point.pickup_point_name }}</h4>
+                        <span class="ml-2 text-xs text-gray-400">({{ pickup_point.booking_count }} bookings)</span>
+                    </div>
+
+                    <!-- Bookings Table -->
+                    <div class="ml-6 overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">#</th>
+                                    <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Guest Name</th>
+                                    <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Phone</th>
+                                    <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Adults</th>
+                                    <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Kids</th>
+                                    <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Infants</th>
+                                    <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-100">
+                                {% for booking in pickup_point.bookings %}
+                                <tr class="{% cycle 'bg-white' 'bg-gray-50' %}">
+                                    <td class="px-4 py-3 text-sm text-gray-500">{{ forloop.counter }}</td>
+                                    <td class="px-4 py-3 text-sm font-medium text-gray-900">{{ booking.guest_name }}</td>
+                                    <td class="px-4 py-3 text-sm text-gray-500 text-left">
+                                        {% if booking.voucher_id and booking.voucher_id.client_phone %}
+                                            {{ booking.voucher_id.client_phone }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td class="px-4 py-3 text-sm text-gray-500 text-left ">{{ booking.total_adults|default:"0" }}</td>
+                                    <td class="px-4 py-3 text-sm text-gray-500 text-left">{{ booking.total_kids|default:"0" }}</td>
+                                    <td class="px-4 py-3 text-sm text-gray-500 text-left">{{ booking.total_infants|default:"0" }}</td>
+                                    <td class="px-4 py-3 text-sm font-medium text-gray-900 text-left">
+                                        {{ booking.total_adults|default:0|add:booking.total_kids|default:0|add:booking.total_infants|default:0 }}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% if not forloop.last %}<hr class="my-6 border-gray-200">{% endif %}
+            {% endfor %}
+
+            <!-- Total Footer -->
+            <div class="mt-6 pt-4 border-t-2 border-gray-300">
+                <div class="flex justify-end items-center">
+                    <span class="text-base font-semibold text-gray-700 mr-4">Total Guests:</span>
+                    <span class="text-xl font-bold text-blue-600">{{ group.total_guests }}</span>
+                </div>
+            </div>
         </div>
         {% else %}
         <div class="px-6 py-8 text-center">

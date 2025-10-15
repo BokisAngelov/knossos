@@ -493,7 +493,7 @@ class PaymentMethodForm(forms.ModelForm):
 class GroupForm(forms.ModelForm):
     class Meta:
         model = Group
-        fields = ['name', 'description', 'excursion', 'date']
+        fields = ['name', 'description', 'excursion', 'date', 'bus']
         widgets = {
             'name': forms.TextInput(attrs={
                 'class': 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500',
@@ -512,6 +512,10 @@ class GroupForm(forms.ModelForm):
                 'class': 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500',
                 'type': 'date',
                 'id': 'id_date'
+            }),
+            'bus': forms.Select(attrs={
+                'class': 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500',
+                'id': 'id_bus'
             }),
         }
     
@@ -534,8 +538,8 @@ class GroupForm(forms.ModelForm):
             if booking_ids:
                 from .utils import TransportGroupService
                 total_guests = TransportGroupService.calculate_total_guests(booking_ids)
-                if total_guests > 50:
-                    raise ValidationError({'selected_bookings': 'Total guests cannot exceed 50.'})
+                if total_guests > instance.bus.capacity:
+                    raise ValidationError({'selected_bookings': 'Total guests cannot exceed bus capacity.'})
                 instance.bookings.set(booking_ids)
                 
             instance.save()
