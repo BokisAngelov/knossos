@@ -600,6 +600,94 @@ class TransportGroupService:
         return summary
 
 
+class ExcursionAnalyticsService:
+    """Service class for handling excursion analytics operations."""
+    
+    @staticmethod
+    def get_analytics_data(start_date, end_date):
+        """
+        Process excursion analytics data for a date range.
+        
+        Args:
+            start_date: Starting date of the range
+            end_date: Ending date of the range
+            
+        Returns:
+            dict: {
+                'date_range': list of all date objects in range,
+                'availabilities': list of availability data with bookings per day
+            }
+        """
+        from datetime import timedelta
+        from django.db.models import Q
+        
+        # Generate full list of dates in range (all dates, not just availability days)
+        date_range = []
+        current_date = start_date
+        while current_date <= end_date:
+            date_range.append(current_date)
+            current_date += timedelta(days=1)
+        
+        # Get all AvailabilityDays within the date range
+        availability_days_in_range = AvailabilityDays.objects.filter(
+            date_day__gte=start_date,
+            date_day__lte=end_date
+        ).select_related('excursion_availability', 'excursion_availability__excursion')
+        
+        # Get unique availabilities that have days in this range
+        availability_ids = set(
+            av_day.excursion_availability_id for av_day in availability_days_in_range
+        )
+        
+        availabilities = ExcursionAvailability.objects.filter(
+            id__in=availability_ids
+        ).select_related('excursion').prefetch_related(
+            'availability_days',
+            'bookings'
+        ).order_by('excursion__title', 'start_time')
+        
+        analytics_data = []
+        
+        for availability in availabilities:
+            # Create display name for this availability
+            time_str = availability.start_time.strftime('%H:%M') if availability.start_time else 'No Time'
+            display_name = f"{availability.excursion.title} - {time_str}"
+            
+            # Build data for each date in the full date range
+            date_data = {}
+            for date in date_range:
+                # Try to get AvailabilityDays for this specific date and availability
+                try:
+                    day_availability = availability.availability_days.get(date_day=date)
+                    capacity = day_availability.capacity
+                    
+                    # Count completed bookings for this date
+                    bookings_count = availability.bookings.filter(
+                        date=date,
+                        payment_status='completed'
+                    ).count()
+                    
+                    date_data[date] = {
+                        'bookings': bookings_count,
+                        'capacity': capacity
+                    }
+                except AvailabilityDays.DoesNotExist:
+                    # This availability doesn't have a day for this date
+                    date_data[date] = None
+            
+            analytics_data.append({
+                'availability_id': availability.id,
+                'display_name': display_name,
+                'excursion': availability.excursion,
+                'date_data': date_data
+            })
+        
+        return {
+            'date_range': date_range,
+            'availabilities': analytics_data
+        }
+
+
 def create_reservation(booking_data):
     """Create a reservation from booking data."""
     if booking_data is not None:

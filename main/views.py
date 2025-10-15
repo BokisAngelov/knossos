@@ -32,7 +32,7 @@ import json
 from django.db.models import Q, Sum, Count
 from django.apps import apps
 from .cyber_api import get_groups, get_hotels, get_pickup_points, get_excursions, get_excursion_description, get_providers, get_excursion_availabilities, get_reservation
-from .utils import FeedbackService, BookingService, ExcursionService, VoucherService, create_reservation
+from .utils import FeedbackService, BookingService, ExcursionService, VoucherService, create_reservation, ExcursionAnalyticsService
 
 def is_staff(user):
     return user.is_staff
@@ -2944,6 +2944,26 @@ def admin_excursions(request):
     return render(request, 'main/admin/admin_excursions.html', {
         'excursions': excursions,
         'page_obj': page_obj,
+    })
+
+@user_passes_test(is_staff)
+def excursion_analytics(request):
+    """Display excursion analytics with bookings and capacity per date."""
+    from .forms import ExcursionAnalyticsForm
+    
+    analytics_data = None
+    form = ExcursionAnalyticsForm(request.GET or None)
+    
+    if form.is_valid():
+        start_date = form.cleaned_data['start_date']
+        end_date = form.cleaned_data['end_date']
+        
+        # Get analytics data from service
+        analytics_data = ExcursionAnalyticsService.get_analytics_data(start_date, end_date)
+    
+    return render(request, 'main/admin/excursion_analytics.html', {
+        'form': form,
+        'analytics_data': analytics_data,
     })
 
 @user_passes_test(is_staff)
