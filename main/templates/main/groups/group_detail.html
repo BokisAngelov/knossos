@@ -2,7 +2,17 @@
 {% load static %}
 
 {% block content %}
-<div class="container mx-auto px-4 py-8">
+<div class="flex justify-center items-center">
+    <div class="w-full p-6 pl-0 pb-0">
+        <a href="{% url 'group_list' %}" class="inline-flex items-left text-sm font-semibold text-blue hover:opacity-80">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Back to Groups List
+        </a>
+    </div>
+</div>
+<div class="container mx-auto">
     <!-- Header Section -->
     <div class="flex justify-between items-center mb-6">
         <div>

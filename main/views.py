@@ -18,7 +18,7 @@ from django.utils.text import slugify
 from .models import (
     Excursion, ExcursionImage, ExcursionAvailability,
     Booking, Feedback, UserProfile, Region, 
-        Group, Category, Tag, PickupPoint, AvailabilityDays, DayOfWeek, Hotel, PickupGroup, PickupGroupAvailability, Reservation
+        Group, Category, Tag, PickupPoint, AvailabilityDays, DayOfWeek, Hotel, PickupGroup, PickupGroupAvailability, Reservation, Bus
     )
 from .forms import (
     ExcursionForm, ExcursionImageFormSet,
@@ -1300,7 +1300,7 @@ def admin_dashboard(request, pk):
 # Only admins can manage groups
 @user_passes_test(is_staff)
 def group_list(request):
-    groups = Group.objects.select_related('excursion').prefetch_related('bookings').all()
+    groups = Group.objects.select_related('excursion').prefetch_related('bookings').all().order_by('-date')
 
     # Handle search
     search_query = request.GET.get('search', '').strip()
@@ -1311,8 +1311,15 @@ def group_list(request):
             Q(description__icontains=search_query)
         )
 
+    # Pagination
+    paginator = Paginator(groups, 15)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
     return render(request, 'main/groups/group_list.html', {
-        'groups': groups,
+        'groups': page_obj.object_list,
+        'search_query': search_query,
+        'page_obj': page_obj,
     })
 
 @user_passes_test(is_staff)
@@ -1320,18 +1327,16 @@ def group_create(request):
     if request.method == 'POST':
         form = GroupForm(request.POST)
         if form.is_valid():
-            group = form.save()
+            group = form.save()  # Form now handles bookings assignment
             
-            # Handle booking assignments
-            booking_ids = request.POST.getlist('selected_bookings')
-            if booking_ids:
+            # Check capacity and warn if exceeded
+            if group.bus:
                 from .utils import TransportGroupService
-                total_guests = TransportGroupService.calculate_total_guests(booking_ids)
-                
-                if group.bus and total_guests > group.bus.capacity:
+                total_guests = TransportGroupService.calculate_total_guests(
+                    list(group.bookings.values_list('id', flat=True))
+                )
+                if total_guests > group.bus.capacity:
                     messages.warning(request, f'Warning: Group has {total_guests} guests, exceeding the bus capacity of {group.bus.capacity}.')
-                
-                group.bookings.set(booking_ids)
             
             messages.success(request, 'Group created successfully.')
             return redirect('group_detail', pk=group.pk)
@@ -1374,20 +1379,16 @@ def group_update(request, pk):
     if request.method == 'POST':
         form = GroupForm(request.POST, instance=group)
         if form.is_valid():
-            group = form.save()
+            group = form.save()  # Form now handles bookings assignment
             
-            # Handle booking assignments
-            booking_ids = request.POST.getlist('selected_bookings')
-            if booking_ids:
+            # Check capacity and warn if exceeded
+            if group.bus:
                 from .utils import TransportGroupService
-                total_guests = TransportGroupService.calculate_total_guests(booking_ids)
-                
-                if group.bus and total_guests > group.bus.capacity:
+                total_guests = TransportGroupService.calculate_total_guests(
+                    list(group.bookings.values_list('id', flat=True))
+                )
+                if total_guests > group.bus.capacity:
                     messages.warning(request, f'Warning: Group has {total_guests} guests, exceeding the bus capacity of {group.bus.capacity}.')
-                
-                group.bookings.set(booking_ids)
-            else:
-                group.bookings.clear()
             
             messages.success(request, 'Group updated successfully.')
             return redirect('group_detail', pk=group.pk) 
@@ -1408,12 +1409,13 @@ def group_update(request, pk):
 def group_delete(request, pk):
     group = get_object_or_404(Group, pk=pk)
     if request.method == 'POST':
+        group_name = group.name
         group.delete()
-        messages.success(request, 'Group deleted successfully.')
+        messages.success(request, f'Group "{group_name}" deleted successfully.')
         return redirect('group_list')
-    return render(request, 'main/groups/group_confirm_delete.html', {
-        'group': group,
-    })
+    
+    # If GET request, redirect to group detail instead
+    return redirect('group_detail', pk=pk)
 
 @user_passes_test(is_staff)
 def get_bookings_for_group(request):
@@ -1774,199 +1776,105 @@ def group_export_csv(request, pk):
     
     return response
 
+@user_passes_test(is_staff)
+def buses_list(request):
+    buses = Bus.objects.all().order_by('capacity')
 
-# @user_passes_test(is_staff)
-# def group_export_pdf(request, pk):
-#     """Export group details as PDF using fpdf2"""
-#     from fpdf import FPDF
-#     from django.http import HttpResponse
-#     from datetime import datetime
-    
-#     group = get_object_or_404(Group.objects.prefetch_related(
-#         'bookings',
-#         'bookings__pickup_point',
-#         'bookings__pickup_point__pickup_group',
-#         'bookings__voucher_id'
-#     ), pk=pk)
-    
-#     bookings = group.bookings.all().order_by(
-#         'pickup_point__pickup_group__name',
-#         'pickup_point__name'
-#     )
-    
-#     # Helper function to clean text for PDF (removes special characters that Arial can't handle)
-#     def clean_text(text):
-#         if not text:
-#             return ''
-#         # Replace common special characters with ASCII equivalents
-#         replacements = {
-#             'á': 'a', 'à': 'a', 'ä': 'a', 'â': 'a', 'ã': 'a', 'å': 'a',
-#             'é': 'e', 'è': 'e', 'ë': 'e', 'ê': 'e',
-#             'í': 'i', 'ì': 'i', 'ï': 'i', 'î': 'i',
-#             'ó': 'o', 'ò': 'o', 'ö': 'o', 'ô': 'o', 'õ': 'o', 'ø': 'o',
-#             'ú': 'u', 'ù': 'u', 'ü': 'u', 'û': 'u',
-#             'ñ': 'n', 'ç': 'c', 'ß': 'ss',
-#             'Á': 'A', 'À': 'A', 'Ä': 'A', 'Â': 'A', 'Ã': 'A', 'Å': 'A',
-#             'É': 'E', 'È': 'E', 'Ë': 'E', 'Ê': 'E',
-#             'Í': 'I', 'Ì': 'I', 'Ï': 'I', 'Î': 'I',
-#             'Ó': 'O', 'Ò': 'O', 'Ö': 'O', 'Ô': 'O', 'Õ': 'O', 'Ø': 'O',
-#             'Ú': 'U', 'Ù': 'U', 'Ü': 'U', 'Û': 'U',
-#             'Ñ': 'N', 'Ç': 'C',
-#             '€': 'EUR', '£': 'GBP', '¥': 'YEN',
-#             '"': '"', '"': '"', ''': "'", ''': "'",
-#             '–': '-', '—': '-', '…': '...',
-#         }
-#         for old, new in replacements.items():
-#             text = text.replace(old, new)
-#         # Remove any remaining non-ASCII characters
-#         return text.encode('ascii', 'ignore').decode('ascii')
-    
-#     # Create PDF
-#     pdf = FPDF()
-#     pdf.add_page()
-#     pdf.set_auto_page_break(auto=True, margin=15)
-    
-#     # Header
-#     pdf.set_font('Arial', 'B', 24)
-#     pdf.cell(0, 10, 'Transport Group', 0, 1, 'C')
-#     pdf.set_font('Arial', '', 14)
-#     pdf.cell(0, 8, clean_text(group.name), 0, 1, 'C')
-#     pdf.ln(5)
-    
-#     # Draw header line
-#     pdf.set_draw_color(37, 99, 235)  # Blue color
-#     pdf.set_line_width(0.5)
-#     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
-#     pdf.ln(10)
-    
-#     # Group Information Section
-#     pdf.set_fill_color(243, 244, 246)  # Light gray background
-#     pdf.rect(10, pdf.get_y(), 190, 35, 'F')
-    
-#     y_start = pdf.get_y() + 5
-    
-#     # Excursion
-#     pdf.set_xy(15, y_start)
-#     pdf.set_font('Arial', 'B', 9)
-#     pdf.cell(60, 5, 'EXCURSION', 0, 1)
-#     pdf.set_xy(15, y_start + 5)
-#     pdf.set_font('Arial', '', 11)
-#     pdf.cell(60, 5, clean_text(group.excursion.title[:40]), 0, 1)
-    
-#     # Date
-#     pdf.set_xy(75, y_start)
-#     pdf.set_font('Arial', 'B', 9)
-#     pdf.cell(60, 5, 'DATE', 0, 1)
-#     pdf.set_xy(75, y_start + 5)
-#     pdf.set_font('Arial', '', 11)
-#     pdf.cell(60, 5, group.date.strftime('%A, %B %d, %Y'), 0, 1)
-    
-#     # Total Guests
-#     pdf.set_xy(135, y_start)
-#     pdf.set_font('Arial', 'B', 9)
-#     pdf.cell(60, 5, 'TOTAL GUESTS', 0, 1)
-#     pdf.set_xy(135, y_start + 5)
-#     pdf.set_font('Arial', '', 11)
-    
-#     # Add capacity badge if needed
-#     guests_text = str(group.total_guests)
-#     # if group.is_at_capacity:
-#     #     guests_text += ' (At Capacity)'
-#     # elif group.capacity_warning:
-#     #     guests_text += ' (Near Capacity)'
-#     pdf.cell(60, 5, guests_text, 0, 1)
-    
-#     pdf.set_y(y_start + 25)
-    
-#     # Description (if exists)
-#     if group.description:
-#         pdf.ln(5)
-#         pdf.set_font('Arial', 'B', 9)
-#         pdf.cell(0, 5, 'DESCRIPTION', 0, 1)
-#         pdf.set_font('Arial', '', 11)
-#         pdf.multi_cell(0, 5, clean_text(group.description))
-    
-#     pdf.ln(10)
-    
-#     # Guest List Header
-#     pdf.set_font('Arial', 'B', 16)
-#     pdf.cell(0, 8, 'Guest List', 0, 1)
-#     pdf.ln(2)
-    
-#     # Table Header
-#     pdf.set_fill_color(249, 250, 251)  # Light gray
-#     pdf.set_font('Arial', 'B', 9)
-    
-#     # Column widths
-#     col_widths = [10, 50, 30, 50, 12, 12, 15, 12]
-    
-#     pdf.cell(col_widths[0], 8, '#', 1, 0, 'C', True)
-#     pdf.cell(col_widths[1], 8, 'Guest Name', 1, 0, 'L', True)
-#     pdf.cell(col_widths[2], 8, 'Phone', 1, 0, 'L', True)
-#     pdf.cell(col_widths[3], 8, 'Pickup Point', 1, 0, 'L', True)
-#     pdf.cell(col_widths[4], 8, 'Adults', 1, 0, 'C', True)
-#     pdf.cell(col_widths[5], 8, 'Kids', 1, 0, 'C', True)
-#     pdf.cell(col_widths[6], 8, 'Infants', 1, 0, 'C', True)
-#     pdf.cell(col_widths[7], 8, 'Total', 1, 1, 'C', True)
-    
-#     # Table Body
-#     pdf.set_font('Arial', '', 9)
-#     for idx, booking in enumerate(bookings, 1):
-#         # Alternate row colors
-#         if idx % 2 == 0:
-#             pdf.set_fill_color(249, 250, 251)
-#             fill = True
-#         else:
-#             pdf.set_fill_color(255, 255, 255)
-#             fill = True
+    # Handle search
+    search_query = request.GET.get('search', '').strip()
+    if search_query:
+        buses = buses.filter(
+            Q(name__icontains=search_query) |
+            Q(capacity__icontains=search_query)
+        )
+
+    # Pagination
+    paginator = Paginator(buses, 15)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    return render(request, 'main/admin/buses.html', {
+        'buses': page_obj.object_list,
+        'search_query': search_query,
+        'page_obj': page_obj,
+    })
+
+@user_passes_test(is_staff)
+def manage_buses(request):
+    buses = Bus.objects.all().order_by('capacity')
+
+    # Handle search
+    search_query = request.GET.get('search', '').strip()
+    if search_query:
+        buses = buses.filter(
+            Q(name__icontains=search_query) |
+            Q(capacity__icontains=search_query)
+        )
+
+    if request.method == 'POST':
+        action_type = request.POST.get('action_type')
+        item_id = request.POST.get('item_id')
         
-#         # Get phone
-#         phone = booking.voucher_id.client_phone if booking.voucher_id and booking.voucher_id.client_phone else '-'
-        
-#         # Get pickup point
-#         pickup_text = '-'
-#         if booking.pickup_point:
-#             pickup_text = booking.pickup_point.name[:25]  # Truncate if too long
-#             if booking.pickup_point.pickup_group:
-#                 pickup_text += f" ({booking.pickup_point.pickup_group.name[:15]})"
-        
-#         # Calculate total guests for this booking
-#         booking_total = (booking.total_adults or 0) + (booking.total_kids or 0) + (booking.total_infants or 0)
-        
-#         pdf.cell(col_widths[0], 8, str(idx), 1, 0, 'C', fill)
-#         pdf.cell(col_widths[1], 8, clean_text(booking.guest_name[:30]), 1, 0, 'L', fill)  # Truncate if too long
-#         pdf.cell(col_widths[2], 8, clean_text(phone), 1, 0, 'L', fill)
-#         pdf.cell(col_widths[3], 8, clean_text(pickup_text), 1, 0, 'L', fill)
-#         pdf.cell(col_widths[4], 8, str(booking.total_adults or 0), 1, 0, 'C', fill)
-#         pdf.cell(col_widths[5], 8, str(booking.total_kids or 0), 1, 0, 'C', fill)
-#         pdf.cell(col_widths[6], 8, str(booking.total_infants or 0), 1, 0, 'C', fill)
-#         pdf.set_font('Arial', 'B', 9)
-#         pdf.cell(col_widths[7], 8, str(booking_total), 1, 1, 'C', fill)
-#         pdf.set_font('Arial', '', 9)
-    
-#     # Table Footer - Total
-#     pdf.set_fill_color(229, 231, 235)  # Gray background
-#     pdf.set_font('Arial', 'B', 10)
-#     pdf.cell(sum(col_widths[:-1]), 8, 'Total Guests:', 1, 0, 'R', True)
-#     pdf.set_font('Arial', 'B', 12)
-#     pdf.cell(col_widths[-1], 8, str(group.total_guests), 1, 1, 'C', True)
-    
-#     # Footer
-#     pdf.ln(10)
-#     pdf.set_font('Arial', 'I', 8)
-#     pdf.set_text_color(156, 163, 175)  # Gray color
-#     pdf.cell(0, 5, f'Generated on {datetime.now().strftime("%B %d, %Y at %H:%M")}', 0, 1, 'C')
-    
-#     # Output PDF
-#     pdf_output = pdf.output()
-    
-#     # Create response
-#     response = HttpResponse(pdf_output, content_type='application/pdf')
-#     safe_name = clean_text(group.name.replace(" ", "_"))
-#     filename = f'transport_group_{safe_name}_{group.date}.pdf'
-#     response['Content-Disposition'] = f'attachment; filename="{filename}"'
-    
-#     return response
+        if action_type == 'add_bus':
+            name = request.POST.get('name', '').strip()
+            capacity = request.POST.get('capacity', '').strip()
+            if name and capacity:
+                try:
+                    Bus.objects.create(name=name, capacity=int(capacity))
+                    messages.success(request, 'Bus added successfully.')
+                except ValueError:
+                    messages.error(request, 'Invalid capacity value.')
+            else:
+                messages.error(request, 'Please fill in all fields.')
+            return redirect('manage_buses')
+
+        elif action_type == 'edit_bus':
+            bus = get_object_or_404(Bus, pk=item_id)
+            name = request.POST.get('name', '').strip()
+            capacity = request.POST.get('capacity', '').strip()
+            if name and capacity:
+                try:
+                    bus.name = name
+                    bus.capacity = int(capacity)
+                    bus.save()
+                    messages.success(request, 'Bus updated successfully.')
+                except ValueError:
+                    messages.error(request, 'Invalid capacity value.')
+            else:
+                messages.error(request, 'Please fill in all fields.')
+            return redirect('manage_buses')
+
+        elif action_type == 'delete_bus':
+            bus = get_object_or_404(Bus, pk=item_id)
+            bus_name = bus.name
+            bus.delete()
+            messages.success(request, f'Bus "{bus_name}" deleted successfully.')
+            return redirect('manage_buses')
+
+    # Pagination
+    paginator = Paginator(buses, 15)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    return render(request, 'main/admin/buses.html', {
+        'buses': page_obj.object_list,
+        'search_query': search_query,
+        'page_obj': page_obj,
+    })
+
+@user_passes_test(is_staff)
+def group_send(request, pk):
+    if request.method == 'POST':
+        group = get_object_or_404(Group, pk=pk)
+        group_name = group.name
+        group.status = 'sent'
+        group.save()
+        messages.success(request, f'Group "{group_name}" sent successfully.')
+        return redirect('group_list')
+    else:
+        messages.error(request, 'Invalid request method.')
+        return redirect('group_list')
+
 
 # ----- Category and Tag Management -----
 @user_passes_test(is_staff)

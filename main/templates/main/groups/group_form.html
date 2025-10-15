@@ -2,140 +2,179 @@
 {% load static %}
 
 {% block content %}
-<div class="container mx-auto px-4 py-8">
-    <!-- Header Section -->
-    <div class="mb-6">
-        <h1 class="text-2xl font-bold text-gray-900">{% if is_update %}Edit Group{% else %}Create New Group{% endif %}</h1>
-        <p class="text-sm text-gray-500">{% if is_update %}Update transport group details{% else %}Create a new transport group for logistics{% endif %}</p>
+<style>
+    .auth-input-field input,
+    .auth-input-field select,
+    .auth-input-field textarea{
+        padding: 0.5rem 0.75rem;
+    }
+    .auth-input-field input:focus,
+    .auth-input-field select:focus,
+    .auth-input-field textarea:focus {
+        border: 0!important;
+        /* box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25)!important; */
+        outline: none!important;
+    }
+</style>
+
+<div class="flex justify-center items-center">
+    <div class="w-full max-w-6xl p-6 pl-0">
+        <a href="{% url 'group_list' %}" class="inline-flex items-left text-sm font-semibold text-blue hover:opacity-80">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Back to Groups List
+        </a>
     </div>
+</div>
 
-    <form method="post" id="groupForm">
-        {% csrf_token %}
-        
-        <!-- Hidden field for group ID if editing -->
-        {% if is_update and group %}
-        <input type="hidden" name="group_id" id="id_group_id" value="{{ group.pk }}">
-        {% endif %}
-        
-        <!-- Basic Information Card -->
-        <div class="bg-white shadow rounded-lg p-6 mb-6">
-            <h2 class="text-lg font-semibold text-gray-900 mb-4">Basic Information</h2>
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <!-- Name -->
-                <div>
-                    <label for="{{ form.name.id_for_label }}" class="block text-sm font-medium text-gray-700">
-                        Group Name <span class="text-red-500">*</span>
-                    </label>
-                    {{ form.name }}
-                    {% if form.name.errors %}
-                        <p class="mt-1 text-sm text-red-600">{{ form.name.errors.0 }}</p>
-                    {% endif %}
-                </div>
-
-                <!-- Excursion -->
-                <div>
-                    <label for="{{ form.excursion.id_for_label }}" class="block text-sm font-medium text-gray-700">
-                        Excursion <span class="text-red-500">*</span>
-                    </label>
-                    <select name="excursion" id="id_excursion" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                        hx-get="{% url 'get_bookings_for_group' %}"
-                        hx-target="#bookingsList"
-                        hx-trigger="change"
-                        hx-include="#groupForm"
-                        hx-indicator="#loadingIndicator">
-                        <option value="">---------</option>
-                        {% for excursion in form.excursion.field.queryset %}
-                            <option value="{{ excursion.id }}" {% if form.excursion.value == excursion.id %}selected{% endif %}>{{ excursion.title }}</option>
-                        {% endfor %}
-                    </select>
-                    {% if form.excursion.errors %}
-                        <p class="mt-1 text-sm text-red-600">{{ form.excursion.errors.0 }}</p>
-                    {% endif %}
-                </div>
-
-                <!-- Date -->
-                <div>
-                    <label for="{{ form.date.id_for_label }}" class="block text-sm font-medium text-gray-700">
-                        Date <span class="text-red-500">*</span>
-                    </label>
-                    <input type="date" name="date" id="id_date" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                        value="{{ form.date.value|date:'Y-m-d' }}"
-                        hx-get="{% url 'get_bookings_for_group' %}"
-                        hx-target="#bookingsList"
-                        hx-trigger="change"
-                        hx-include="#groupForm"
-                        hx-indicator="#loadingIndicator">
-                    {% if form.date.errors %}
-                        <p class="mt-1 text-sm text-red-600">{{ form.date.errors.0 }}</p>
-                    {% endif %}
-                </div>
-
-                <!-- Bus -->
-                <div>
-                    <label for="{{ form.bus.id_for_label }}" class="block text-sm font-medium text-gray-700">
-                        Bus <span class="text-red-500">*</span>
-                    </label>
-                    <select name="bus" id="id_bus" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                        <option value="">---------</option>
-                        {% for bus in form.bus.field.queryset %}
-                            <option value="{{ bus.id }}" {% if form.bus.value == bus.id %}selected{% endif %} data-capacity="{{ bus.capacity }}">{{ bus.name }} - {{ bus.capacity }}</option>
-                        {% endfor %}
-                    </select>
-
-                    {% if form.bus.errors %}
-                    <p class="mt-1 text-sm text-red-600">{{ form.bus.errors.0 }}</p>
-                    {% endif %}
-                </div>
-            </div>
-
-            <!-- Description -->
-            <div class="mt-6">
-                <label for="{{ form.description.id_for_label }}" class="block text-sm font-medium text-gray-700">
-                    Description
-                </label>
-                {{ form.description }}
-                {% if form.description.errors %}
-                    <p class="mt-1 text-sm text-red-600">{{ form.description.errors.0 }}</p>
-                {% endif %}
-            </div>
+<div class="flex justify-center items-center">
+    <div class="bg-white rounded-lg w-full max-w-6xl p-6">
+        <div class="mb-6">
+            <h1 class="text-3xl font-bold page-header-color">
+                {% if is_update %}Edit Group{% else %}Create New Group{% endif %}
+            </h1>
+            <p class="text-md font-semibold text-purple">
+                {% if is_update %}Update transport group details{% else %}Create a new transport group for logistics{% endif %}
+            </p>
         </div>
 
-        <!-- Booking Selection Card - Two Column Layout -->
-        <div class="bg-white shadow rounded-lg p-6 mb-6">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-lg font-semibold text-gray-900">Select Bookings</h2>
+        <form method="post" id="groupForm" class="space-y-6">
+            {% csrf_token %}
+            
+            <!-- Hidden field for group ID if editing -->
+            {% if is_update and group %}
+            <input type="hidden" name="group_id" id="id_group_id" value="{{ group.pk }}">
+            {% endif %}
+            
+            <!-- Basic Information -->
+            <div class="space-y-4">
+                <h2 class="text-lg font-semibold text-header-grey">Basic Information</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Name -->
+                    <div class="space-y-1">
+                        <label for="{{ form.name.id_for_label }}" class="block text-md font-semibold text-header-grey">
+                            Group Name <span class="text-red-500">*</span>
+                        </label>
+                        <div class="w-full auth-input-field rounded-lg border form-fields-border">
+                            {{ form.name }}
+                        </div>
+                        {% if form.name.errors %}
+                            <div class="text-red-500 text-xs mt-1">{{ form.name.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Excursion -->
+                    <div class="space-y-1">
+                        <label for="{{ form.excursion.id_for_label }}" class="block text-md font-semibold text-header-grey">
+                            Excursion <span class="text-red-500">*</span>
+                        </label>
+                        <div class="w-full auth-input-field rounded-lg border form-fields-border">
+                            <select name="excursion" id="id_excursion" class="w-full"
+                                hx-get="{% url 'get_bookings_for_group' %}"
+                                hx-target="#bookingsList"
+                                hx-trigger="change"
+                                hx-include="#groupForm"
+                                hx-indicator="#loadingIndicator">
+                                <option value="">---------</option>
+                                {% for excursion in form.excursion.field.queryset %}
+                                    <option value="{{ excursion.id }}" {% if form.excursion.value == excursion.id %}selected{% endif %}>{{ excursion.title }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% if form.excursion.errors %}
+                            <div class="text-red-500 text-xs mt-1">{{ form.excursion.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Date -->
+                    <div class="space-y-1">
+                        <label for="{{ form.date.id_for_label }}" class="block text-md font-semibold text-header-grey">
+                            Date <span class="text-red-500">*</span>
+                        </label>
+                        <div class="w-full auth-input-field rounded-lg border form-fields-border">
+                            <input type="date" name="date" id="id_date" class="w-full"
+                                value="{{ form.date.value|date:'Y-m-d' }}"
+                                hx-get="{% url 'get_bookings_for_group' %}"
+                                hx-target="#bookingsList"
+                                hx-trigger="change"
+                                hx-include="#groupForm"
+                                hx-indicator="#loadingIndicator">
+                        </div>
+                        {% if form.date.errors %}
+                            <div class="text-red-500 text-xs mt-1">{{ form.date.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Bus -->
+                    <div class="space-y-1">
+                        <label for="{{ form.bus.id_for_label }}" class="block text-md font-semibold text-header-grey">
+                            Bus <span class="text-red-500">*</span>
+                        </label>
+                        <div class="w-full auth-input-field rounded-lg border form-fields-border">
+                            <select name="bus" id="id_bus" class="w-full">
+                                <option value="">---------</option>
+                                {% for bus in form.bus.field.queryset %}
+                                    <option value="{{ bus.id }}" {% if form.bus.value == bus.id %}selected{% endif %} data-capacity="{{ bus.capacity }}">{{ bus.name }} ({{ bus.capacity }} seats)</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% if form.bus.errors %}
+                            <div class="text-red-500 text-xs mt-1">{{ form.bus.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Description -->
+                <div class="space-y-1">
+                    <label for="{{ form.description.id_for_label }}" class="block text-md font-semibold text-header-grey">
+                        Description
+                    </label>
+                    <div class="w-full auth-input-field rounded-lg border form-fields-border">
+                        {{ form.description }}
+                    </div>
+                    {% if form.description.errors %}
+                        <div class="text-red-500 text-xs mt-1">{{ form.description.errors.0 }}</div>
+                    {% endif %}
+                </div>
+            </div>
+
+        <!-- Booking Selection Section -->
+        <div class="space-y-4">
+            <div class="flex justify-between items-center">
+                <h2 class="text-lg font-semibold text-header-grey">Select Bookings</h2>
                 <div class="text-sm">
-                    <span class="text-gray-600">Selected Guests: </span>
-                    <span id="selectedCount" class="font-semibold text-blue-600">0</span>
-                    <span class="text-gray-600"> / <span id="busCapacity">{% if group and group.bus %}{{ group.bus.capacity }}{% else %}50{% endif %}</span></span>
-                    <span id="capacityWarning" class="ml-2 text-yellow-600 font-semibold hidden">⚠ Approaching Limit</span>
-                    <span id="capacityError" class="ml-2 text-red-600 font-semibold hidden">❌ Exceeds Limit!</span>
+                    <span class="text-header-grey">Selected Guests: </span>
+                    <span id="selectedCount" class="font-semibold text-blue">0</span>
+                    <span class="text-header-grey"> / <span id="busCapacity">{% if group and group.bus %}{{ group.bus.capacity }}{% else %}50 (Indicator){% endif %}</span></span>
+                    <span id="capacityWarning" class="ml-2 text-orange font-semibold hidden">⚠ Approaching Limit</span>
+                    <span id="capacityError" class="ml-2 text-red font-semibold hidden">❌ Exceeds Limit!</span>
                 </div>
             </div>
 
             <!-- Loading Indicator -->
-            <div id="loadingIndicator" class="htmx-indicator text-center py-4">
-                <svg class="animate-spin h-8 w-8 text-blue-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <div id="loadingIndicator" class="htmx-indicator text-center py-4 hidden">
+                <svg class="animate-spin h-8 w-8 text-blue mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                <p class="mt-2 text-sm text-gray-600">Loading bookings...</p>
+                <p class="mt-2 text-sm text-header-grey">Loading bookings...</p>
             </div>
 
             <!-- Two Column Layout -->
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 <!-- Left Column: Available Bookings -->
                 <div class="lg:col-span-6">
-                    <h3 class="text-md font-semibold text-gray-700 mb-3">Available Bookings</h3>
+                    <h3 class="text-md font-semibold text-header-grey mb-3">Available Bookings</h3>
                     <div id="bookingsList" class="max-h-[600px] overflow-y-auto border border-gray-200 rounded-lg p-3">
                         {% include 'main/groups/partials/_bookings_selection.html' with pickup_groups=None no_bookings=False %}
                     </div>
                     <div class="mt-3 flex items-center justify-between">
-                        <span class="text-sm text-gray-600">
+                        <span class="text-sm text-header-grey">
                             <span id="pendingCount">0</span> bookings selected
                         </span>
-                        <button type="button" id="addToGroupBtn" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                        <button type="button" id="addToGroupBtn" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green disabled:opacity-50 disabled:cursor-not-allowed" disabled>
                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
                             </svg>
@@ -146,13 +185,13 @@
 
                 <!-- Right Column: Selected Bookings in Group -->
                 <div class="lg:col-span-6">
-                    <h3 class="text-md font-semibold text-gray-700 mb-3">Bookings in This Group</h3>
+                    <h3 class="text-md font-semibold text-header-grey mb-3">Bookings in This Group</h3>
                     <div id="selectedBookingsList" class="max-h-[600px] overflow-y-auto border border-gray-200 rounded-lg p-3">
                         <div class="text-center py-8 text-gray-400">
                             <svg class="mx-auto h-12 w-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                             </svg>
-                            <p class="mt-2 text-sm">No bookings in group yet</p>
+                            <p class="mt-2 text-sm text-header-grey">No bookings in group yet</p>
                         </div>
                     </div>
                 </div>
@@ -160,15 +199,17 @@
         </div>
 
         <!-- Form Actions -->
-        <div class="flex justify-end space-x-3">
-            <a href="{% url 'group_list' %}" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                Cancel
-            </a>
-            <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+        <div class="mt-6 flex gap-4">
+            <button type="submit" class="flex-1 bg-blue-primary text-white font-medium py-2 px-4 rounded-md hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-blue-primary focus:ring-offset-2">
                 {% if is_update %}Update Group{% else %}Create Group{% endif %}
             </button>
+            <a href="{% url 'group_list' %}" 
+               class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-4 rounded-md text-center focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2">
+                Cancel
+            </a>
         </div>
     </form>
+    </div>
 </div>
 {% endblock %}
 
@@ -423,12 +464,11 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <span class="text-xs font-semibold text-gray-500 mr-2">#${counter}</span>
                                 <span class="text-sm font-medium text-gray-900">${booking.guestName}</span>
                             </div>
-                            <p class="text-xs text-gray-600 mt-1">${booking.phone}</p>
                             <p class="text-xs text-gray-500 mt-1">${booking.breakdown}</p>
                         </div>
-                        <div class="flex items-center space-x-2">
-                            <span class="text-sm font-semibold text-green-600">${booking.guests} guests</span>
-                            <button type="button" class="remove-booking text-red-500 hover:text-red-700" data-booking-id="${booking.id}" data-guests="${booking.guests}">
+                            <div class="flex items-center space-x-2">
+                            <span class="text-sm font-semibold text-green">${booking.guests} guests</span>
+                            <button type="button" class="remove-booking text-red hover:opacity-80" data-booking-id="${booking.id}" data-guests="${booking.guests}">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                                 </svg>
@@ -455,7 +495,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     const nameCell = row.cells[1];
                     if (nameCell && !nameCell.querySelector('.in-group-badge')) {
                         const badge = document.createElement('span');
-                        badge.className = 'in-group-badge ml-2 text-xs text-green-600 font-semibold';
+                        badge.className = 'in-group-badge ml-2 text-xs text-green font-semibold';
                         badge.innerHTML = '✓ In Group';
                         nameCell.appendChild(badge);
                     }
@@ -524,7 +564,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     const nameCell = row.cells[1];
                     if (nameCell && !nameCell.querySelector('.in-group-badge')) {
                         const badge = document.createElement('span');
-                        badge.className = 'in-group-badge ml-2 text-xs text-green-600 font-semibold';
+                        badge.className = 'in-group-badge ml-2 text-xs text-green font-semibold';
                         badge.innerHTML = '✓ In Group';
                         nameCell.appendChild(badge);
                     }
@@ -537,7 +577,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     });
-
 });
 </script>
 

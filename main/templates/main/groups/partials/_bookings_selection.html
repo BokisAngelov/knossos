@@ -28,7 +28,7 @@
                     </td>
                     <td class="py-2 px-2 text-sm text-gray-900">{{ booking.guest_name }}</td>
                     <td class="py-2 px-2 text-sm text-gray-500">
-                        {% if booking.voucher_id and booking.voucher_id.client_phone %}
+                        {% if booking.voucher_id.client_phone %}
                             {{ booking.voucher_id.client_phone }}
                         {% else %}
                             -

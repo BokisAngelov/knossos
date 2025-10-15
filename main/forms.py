@@ -496,25 +496,25 @@ class GroupForm(forms.ModelForm):
         fields = ['name', 'description', 'excursion', 'date', 'bus']
         widgets = {
             'name': forms.TextInput(attrs={
-                'class': 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500',
+                'class': 'mt-1 block w-full',
                 'placeholder': 'Enter group name'
             }),
             'description': forms.Textarea(attrs={
-                'class': 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500',
+                'class': 'mt-1 block w-full',
                 'rows': 3,
                 'placeholder': 'Enter group description'
             }),
             'excursion': forms.Select(attrs={
-                'class': 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500',
+                'class': 'mt-1 block w-full',
                 'id': 'id_excursion'
             }),
             'date': forms.DateInput(attrs={
-                'class': 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500',
+                'class': 'mt-1 block w-full',
                 'type': 'date',
                 'id': 'id_date'
             }),
             'bus': forms.Select(attrs={
-                'class': 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500',
+                'class': 'mt-1 block w-full',
                 'id': 'id_bus'
             }),
         }
@@ -534,15 +534,15 @@ class GroupForm(forms.ModelForm):
     def save(self, commit=True):
         instance = super().save(commit=False)
         if commit:
+            # Save instance first to get an ID
+            instance.save()
+            
+            # Now we can set the ManyToMany relationship
             booking_ids = self.data.getlist('selected_bookings')
             if booking_ids:
-                from .utils import TransportGroupService
-                total_guests = TransportGroupService.calculate_total_guests(booking_ids)
-                if total_guests > instance.bus.capacity:
-                    raise ValidationError({'selected_bookings': 'Total guests cannot exceed bus capacity.'})
                 instance.bookings.set(booking_ids)
-                
-            instance.save()
-
+            else:
+                # Clear bookings if none selected (important for updates)
+                instance.bookings.clear()
 
         return instance

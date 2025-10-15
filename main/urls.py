@@ -89,8 +89,11 @@ urlpatterns = [
     path('groups/<int:pk>/delete/', views.group_delete, name='group_delete'),
     path('groups/<int:pk>/export-pdf/', views.group_export_pdf, name='group_export_pdf'),
     path('groups/<int:pk>/export-csv/', views.group_export_csv, name='group_export_csv'),
+    path('groups/<int:pk>/send/', views.group_send, name='group_send'),
     path('get_bookings_for_group/', views.get_bookings_for_group, name='get_bookings_for_group'),
     path('test-pdf/', views.test_simple_pdf, name='test_simple_pdf'),  # Test PDF endpoint
+    path('buses/', views.buses_list, name='buses_list'),
+    path('manage_buses/', views.manage_buses, name='manage_buses'),
     
     # Categories and Tags Management
     path('manage-categories-tags/', views.manage_categories_tags, name='manage_categories_tags'),
