@@ -794,7 +794,12 @@ class ExcursionAnalyticsService:
         for availability in availabilities:
             # Create display name for this availability
             time_str = availability.start_time.strftime('%H:%M') if availability.start_time else 'No Time'
-            display_name = f"{availability.excursion.title} - {time_str}"
+            # display_name = f"{availability.pickup_groups.all().first().name} - {time_str}"
+            display_name = "("
+            for pickup_group in availability.pickup_groups.all():
+                display_name += f"{pickup_group.name}, "
+            display_name = display_name[:-2]
+            display_name += ")"
             
             # Build data for each date in the full date range
             date_data = {}
