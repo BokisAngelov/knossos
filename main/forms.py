@@ -6,6 +6,7 @@ import datetime
 from django.utils.html import format_html, mark_safe
 from django.utils.dateparse import parse_time
 from django.contrib.auth.forms import UserCreationForm
+from ckeditor.fields import RichTextFormField
 
 from .models import (
     Category, Tag, Excursion, ExcursionImage, Feedback,
@@ -17,6 +18,8 @@ User = get_user_model()
 
 # ----- Excursion Forms -----
 class ExcursionForm(forms.ModelForm):
+    description = RichTextFormField(config_name='default')
+    
     class Meta:
         model = Excursion
         fields = [
@@ -25,11 +28,11 @@ class ExcursionForm(forms.ModelForm):
             'full_day', 'on_request', 'status', 'provider', 'guide'
         ]
         widgets = {
-            'description': forms.Textarea(attrs={
-                'rows': 4,
-                'class': 'editor',
-                'style': 'width: 100%;'
-            }),
+            # 'description': forms.Textarea(attrs={
+            #     'rows': 4,
+            #     'class': 'editor',
+            #     'style': 'width: 100%;'
+            # }),
             'category': forms.CheckboxSelectMultiple(attrs={'class': 'text-brown font-semibold bg-blue-light hover:opacity-80'}),
             'tags': forms.CheckboxSelectMultiple(attrs={'class': 'text-brown font-semibold bg-blue-light hover:opacity-80'}),
             'full_day': forms.Select(choices=[(True, 'Yes'), (False, 'No')], attrs={'class': 'text-brown font-semibold'}),

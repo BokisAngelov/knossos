@@ -1,6 +1,10 @@
 {% extends "base.html" %}
 {% load static %}
 
+{% block extra_js %}
+{{ form.media }}
+{% endblock %}
+
 {% block content %}
 <style>
   .auth-input-field input, 
@@ -45,6 +49,9 @@
   .checkbox-list input[type="checkbox"] {
     width: auto;
     margin: 0;
+  }
+  .django-ckeditor-widget{
+    width: 100% !important;
   }
 </style>
 
@@ -96,7 +103,7 @@
       <!-- Description -->
       <div class="space-y-1">
         <label for="{{ form.description.id_for_label }}" class="block text-md font-semibold text-header-grey">{{ form.description.label }}</label>
-        <div class="w-full auth-input-field rounded-lg border form-fields-border">{{ form.description }}</div>
+        <div class="w-full auth-input-field">{{ form.description }}</div>
         {% if form.description.errors %}<div class="text-red-500 text-xs mt-1">{{ form.description.errors }}</div>{% endif %}
       </div>
 
