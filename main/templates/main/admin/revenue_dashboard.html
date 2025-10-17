@@ -1,0 +1,153 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load analytics_filters %}
+
+{% block content %}
+
+<div class="container mx-auto py-8 px-4">
+  <a href="{% url 'admin_dashboard' user.profile.id %}" class="inline-flex items-center mb-4 text-blue font-semibold text-sm hover:opacity-80">
+    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+    </svg>
+    Back to Dashboard
+  </a>
+  <div class="mb-8">
+    <h1 class="text-3xl font-bold page-header-color mb-1">Revenue Dashboard</h1>
+    <p class="text-md font-semibold text-purple mb-4">Comprehensive revenue and financial analytics</p>
+    
+    <!-- Date Range Selection Form -->
+    <div class="bg-white p-6 rounded-lg shadow-sm mb-6">
+      <form method="get" action="{% url 'revenue_dashboard' %}" class="flex flex-wrap gap-4 items-end">
+        <div class="flex-1 min-w-[200px]">
+          <label for="id_start_date" class="block text-sm font-semibold text-gray-700 mb-2">
+            Start Date
+          </label>
+          {{ form.start_date }}
+          {% if form.start_date.errors %}
+            <p class="mt-1 text-sm text-red-600">{{ form.start_date.errors.0 }}</p>
+          {% endif %}
+        </div>
+        
+        <div class="flex-1 min-w-[200px]">
+          <label for="id_end_date" class="block text-sm font-semibold text-gray-700 mb-2">
+            End Date
+          </label>
+          {{ form.end_date }}
+          {% if form.end_date.errors %}
+            <p class="mt-1 text-sm text-red-600">{{ form.end_date.errors.0 }}</p>
+          {% endif %}
+        </div>
+        
+        <div>
+          <button type="submit" class="px-6 py-2 bg-blue text-white font-semibold rounded-lg hover:opacity-80 transition-opacity">
+            Generate Report
+          </button>
+        </div>
+      </form>
+      
+      {% if form.non_field_errors %}
+        <div class="mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
+          <p class="text-sm text-red-600">{{ form.non_field_errors.0 }}</p>
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Revenue Data -->
+    {% if revenue_data %}
+      <!-- Key Metrics Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <!-- Total Revenue -->
+        <div class="bg-white p-6 rounded-lg shadow-sm border-l-4 border-green">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm font-semibold text-gray-500 uppercase">Total Revenue</p>
+              <p class="text-3xl font-bold text-green mt-2">€{{ revenue_data.total_revenue|floatformat:2 }}</p>
+            </div>
+            <div class="p-3 bg-green-100 rounded-full">
+              <svg class="h-8 w-8 text-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- Total Bookings -->
+        <div class="bg-white p-6 rounded-lg shadow-sm border-l-4 border-blue">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm font-semibold text-gray-500 uppercase">Total Bookings</p>
+              <p class="text-3xl font-bold text-blue mt-2">{{ revenue_data.total_bookings }}</p>
+            </div>
+            <div class="p-3 bg-blue-100 rounded-full">
+              <svg class="h-8 w-8 text-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- Average Booking Value -->
+        <div class="bg-white p-6 rounded-lg shadow-sm border-l-4 border-purple">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm font-semibold text-gray-500 uppercase">Avg Booking Value</p>
+              <p class="text-3xl font-bold text-purple mt-2">€{{ revenue_data.average_booking_value|floatformat:2 }}</p>
+            </div>
+            <div class="p-3 bg-purple-100 rounded-full">
+              <svg class="h-8 w-8 text-purple" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- Partial Payments -->
+        <div class="bg-white p-6 rounded-lg shadow-sm border-l-4 border-yellow">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm font-semibold text-gray-500 uppercase">Partial Payments</p>
+              <p class="text-3xl font-bold text-yellow mt-2">€{{ revenue_data.total_partial_payments|floatformat:2 }}</p>
+              <p class="text-xs text-gray-500 mt-1">{{ revenue_data.partial_payments_count }} booking(s)</p>
+            </div>
+            <div class="p-3 bg-yellow-100 rounded-full">
+              <svg class="h-8 w-8 text-yellow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Payment Methods & Daily Revenue -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <!-- Payment Methods Breakdown -->
+        {% include 'main/admin/partials/payment_methods_chart.html' with data=revenue_data %}
+
+        <!-- Daily Revenue Chart -->
+        {% include 'main/admin/partials/daily_revenue_chart.html' with data=revenue_data %}
+      </div>
+
+      <!-- Revenue Breakdown Tables -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Top Excursions by Revenue -->
+        {% include 'main/admin/partials/revenue_by_excursion.html' with data=revenue_data %}
+
+        <!-- Revenue by Provider -->
+        {% include 'main/admin/partials/revenue_by_provider.html' with data=revenue_data %}
+
+        <!-- Revenue by Guide -->
+        {% include 'main/admin/partials/revenue_by_guide.html' with data=revenue_data %}
+      </div>
+
+    {% else %}
+      <div class="bg-white p-8 rounded-lg shadow-sm text-center">
+        <svg class="mx-auto h-16 w-16 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+        <p class="text-gray-500 text-lg">Select a date range to view revenue analytics</p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+

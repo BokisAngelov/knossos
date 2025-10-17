@@ -1,0 +1,115 @@
+{% load analytics_filters %}
+<!-- Analytics Table Partial -->
+<div class="bg-white rounded-lg shadow-sm overflow-hidden">
+  <!-- Table Header Info -->
+  <div class="px-6 py-4 border-b border-gray-200">
+    <div class="flex items-center justify-between">
+      <div>
+        <h3 class="text-lg font-semibold text-gray-900">
+          Analytics Report
+        </h3>
+        <p class="mt-1 text-sm text-gray-500">
+          Showing {{ data.date_range|length }} days from {{ data.date_range.0|date:"M d, Y" }} to {{ data.date_range|last|date:"M d, Y" }}
+        </p>
+      </div>
+      <div class="text-sm text-gray-500">
+        Total Availabilities: {{ data.availabilities|length }}
+      </div>
+    </div>
+  </div>
+
+  <!-- Table Container with horizontal scroll -->
+  <div class="overflow-x-auto">
+    <table class="min-w-full divide-y divide-gray-200">
+      <thead class="bg-gray-50">
+        <tr>
+          <!-- First column: Excursion Name -->
+          <th scope="col" class="sticky left-0 z-10 bg-gray-50 px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-300">
+            Excursion / Time
+          </th>
+          
+          <!-- Date columns -->
+          {% for date in data.date_range %}
+          <th scope="col" class="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider whitespace-nowrap">
+            <div>{{ date|date:"D" }}</div>
+            <div>{{ date|date:"M d" }}</div>
+          </th>
+          {% endfor %}
+        </tr>
+      </thead>
+      
+      <tbody class="bg-white divide-y divide-gray-200">
+        {% for availability in data.availabilities %}
+        <tr class="hover:bg-gray-50">
+          <!-- Excursion name column (sticky) -->
+          <td class="sticky left-0 z-10 bg-white px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 border-r border-gray-300">
+            <div class="max-w-xs">
+              <div class="font-semibold text-purple">{{ availability.excursion.title }}</div>
+              <div class="text-xs text-gray-500">{{ availability.display_name }}</div>
+            </div>
+          </td>
+          
+          <!-- Date data columns -->
+          {% for date in data.date_range %}
+          <td class="px-4 py-4 whitespace-nowrap text-sm text-center">
+            {% with date_info=availability.date_data|get_item:date %}
+              {% if date_info %}
+                  {% if date_info.bookings > 0 or date_info.capacity > 0 %}
+                    <div class="inline-flex items-center">
+                      <span class="font-semibold {% if date_info.bookings >= date_info.capacity %}text-red{% elif date_info.bookings >= date_info.capacity|mul:0.8 %}text-orange{% else %}text-green{% endif %}">
+                        {{ date_info.bookings }}
+                      </span>
+                      <span class="text-gray-400 mx-1">|</span>
+                      <span class="text-gray-600">{{ date_info.capacity }}</span>
+                    </div>
+                {% else %}
+                  <span class="text-gray-400">0|0</span>
+                {% endif %}
+              {% else %}
+                <span class="text-gray-300">-</span>
+              {% endif %}
+            {% endwith %}
+          </td>
+          {% endfor %}
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="{{ data.date_range|length|add:1 }}" class="px-6 py-8 text-center text-gray-500">
+            No availabilities found for the selected date range.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Legend -->
+  <div class="px-6 py-4 bg-gray-50 border-t border-gray-200">
+    <div class="flex items-center gap-6 text-sm">
+      <div class="font-semibold text-gray-700">Legend:</div>
+      <div class="flex items-center gap-2">
+        <span class="font-semibold text-green-600">●</span>
+        <span class="text-gray-600">Available (&lt;80%)</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="font-semibold text-orange-600">●</span>
+        <span class="text-gray-600">Nearly Full (≥80%)</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="font-semibold text-red-600">●</span>
+        <span class="text-gray-600">Full (100%)</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="text-gray-300">-</span>
+        <span class="text-gray-600">No availability</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Custom template filter to get dictionary item by key -->
+{% load static %}
+<script>
+// Add custom filter for template if needed
+</script>
+

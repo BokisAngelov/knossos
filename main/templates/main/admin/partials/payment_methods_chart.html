@@ -1,0 +1,60 @@
+{% load analytics_filters %}
+<!-- Payment Methods Breakdown -->
+<div class="bg-white p-6 rounded-lg shadow-sm">
+  <h3 class="text-lg font-semibold text-gray-900 mb-4">Payment Methods</h3>
+  
+  <div class="space-y-4">
+    <!-- Cash Payments -->
+    <div>
+      <div class="flex items-center justify-between mb-2">
+        <div class="flex items-center gap-2">
+          <div class="w-3 h-3 bg-green rounded-full"></div>
+          <span class="text-sm font-medium text-gray-700">Cash</span>
+        </div>
+        <span class="text-sm font-bold text-gray-900">€{{ data.cash_revenue|floatformat:2 }}</span>
+      </div>
+      <div class="w-full bg-gray-200 rounded-full h-2">
+        {% if data.cash_revenue > 0 or data.card_revenue > 0 %}
+          {% with total=data.cash_revenue|add:data.card_revenue %}
+            {% with percentage=data.cash_revenue|mul:100|div:total %}
+              <div class="bg-green h-2 rounded-full" style="width: {{ percentage|floatformat:0 }}%"></div>
+            {% endwith %}
+          {% endwith %}
+        {% else %}
+          <div class="bg-green h-2 rounded-full" style="width: 0%"></div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Card Payments -->
+    <div>
+      <div class="flex items-center justify-between mb-2">
+        <div class="flex items-center gap-2">
+          <div class="w-3 h-3 bg-blue rounded-full"></div>
+          <span class="text-sm font-medium text-gray-700">Card</span>
+        </div>
+        <span class="text-sm font-bold text-gray-900">€{{ data.card_revenue|floatformat:2 }}</span>
+      </div>
+      <div class="w-full bg-gray-200 rounded-full h-2">
+        {% if data.cash_revenue > 0 or data.card_revenue > 0 %}
+          {% with total=data.cash_revenue|add:data.card_revenue %}
+            {% with percentage=data.card_revenue|mul:100|div:total %}
+              <div class="bg-blue h-2 rounded-full" style="width: {{ percentage|floatformat:0 }}%"></div>
+            {% endwith %}
+          {% endwith %}
+        {% else %}
+          <div class="bg-blue h-2 rounded-full" style="width: 0%"></div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Summary -->
+  <div class="mt-6 pt-4 border-t border-gray-200">
+    <div class="flex items-center justify-between">
+      <span class="text-sm font-semibold text-gray-700">Partial Payments Total</span>
+      <span class="text-lg font-bold text-purple">€{{ data.cash_revenue|add:data.card_revenue|floatformat:2 }}</span>
+    </div>
+  </div>
+</div>
+

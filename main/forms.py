@@ -546,3 +546,36 @@ class GroupForm(forms.ModelForm):
                 instance.bookings.clear()
 
         return instance
+
+# ----- Analytics Forms -----
+class ExcursionAnalyticsForm(forms.Form):
+    start_date = forms.DateField(
+        widget=forms.DateInput(attrs={
+            'type': 'date',
+            'class': 'px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
+        }),
+        label='Start Date'
+    )
+    end_date = forms.DateField(
+        widget=forms.DateInput(attrs={
+            'type': 'date',
+            'class': 'px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
+        }),
+        label='End Date'
+    )
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        start_date = cleaned_data.get('start_date')
+        end_date = cleaned_data.get('end_date')
+        
+        if start_date and end_date:
+            if end_date < start_date:
+                raise ValidationError({'end_date': 'End date cannot be before start date.'})
+            
+            # Optional: Limit the date range to prevent too large queries
+            date_diff = (end_date - start_date).days
+            if date_diff > 365:
+                raise ValidationError('Date range cannot exceed 365 days.')
+        
+        return cleaned_data

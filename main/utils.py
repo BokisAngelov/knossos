@@ -600,6 +600,242 @@ class TransportGroupService:
         return summary
 
 
+class RevenueAnalyticsService:
+    """Service class for handling revenue analytics operations."""
+    
+    @staticmethod
+    def get_revenue_data(start_date, end_date):
+        """
+        Process revenue analytics data for a date range.
+        
+        Args:
+            start_date: Starting date of the range
+            end_date: Ending date of the range
+            
+        Returns:
+            dict: Comprehensive revenue analytics data
+        """
+        from django.db.models import Sum, Count, Q, Avg
+        from decimal import Decimal
+        
+        # Get all completed bookings in the date range
+        bookings = Booking.objects.filter(
+            payment_status='completed',
+            created_at__date__gte=start_date,
+            created_at__date__lte=end_date
+        ).select_related(
+            'excursion_availability',
+            'excursion_availability__excursion',
+            'excursion_availability__excursion__provider',
+            'excursion_availability__excursion__guide'
+        )
+        
+        # Total revenue metrics
+        total_revenue = bookings.aggregate(total=Sum('total_price'))['total'] or Decimal('0')
+        total_bookings = bookings.count()
+        average_booking_value = bookings.aggregate(avg=Avg('total_price'))['avg'] or Decimal('0')
+        
+        # Partial payments
+        partial_payments = bookings.exclude(
+            Q(partial_paid__isnull=True) | Q(partial_paid=0)
+        ).aggregate(
+            total=Sum('partial_paid'),
+            count=Count('id')
+        )
+        total_partial_payments = partial_payments['total'] or Decimal('0')
+        partial_payments_count = partial_payments['count'] or 0
+        
+        # Payment method breakdown
+        cash_revenue = bookings.filter(partial_paid_method='cash').aggregate(
+            total=Sum('partial_paid')
+        )['total'] or Decimal('0')
+        
+        card_revenue = bookings.filter(partial_paid_method='card').aggregate(
+            total=Sum('partial_paid')
+        )['total'] or Decimal('0')
+        
+        # Revenue by excursion (Top 10)
+        revenue_by_excursion = []
+        excursion_data = bookings.values(
+            'excursion_availability__excursion__id',
+            'excursion_availability__excursion__title'
+        ).annotate(
+            revenue=Sum('total_price'),
+            booking_count=Count('id')
+        ).order_by('-revenue')[:10]
+        
+        for item in excursion_data:
+            revenue_by_excursion.append({
+                'excursion_id': item['excursion_availability__excursion__id'],
+                'excursion_title': item['excursion_availability__excursion__title'],
+                'revenue': item['revenue'],
+                'bookings': item['booking_count']
+            })
+        
+        # Revenue by provider
+        revenue_by_provider = []
+        provider_data = bookings.exclude(
+            excursion_availability__excursion__provider__isnull=True
+        ).values(
+            'excursion_availability__excursion__provider__id',
+            'excursion_availability__excursion__provider__name'
+        ).annotate(
+            revenue=Sum('total_price'),
+            booking_count=Count('id')
+        ).order_by('-revenue')[:10]
+        
+        for item in provider_data:
+            revenue_by_provider.append({
+                'provider_id': item['excursion_availability__excursion__provider__id'],
+                'provider_name': item['excursion_availability__excursion__provider__name'],
+                'revenue': item['revenue'],
+                'bookings': item['booking_count']
+            })
+        
+        # Revenue by guide
+        revenue_by_guide = []
+        guide_data = bookings.exclude(
+            excursion_availability__excursion__guide__isnull=True
+        ).values(
+            'excursion_availability__excursion__guide__id',
+            'excursion_availability__excursion__guide__name'
+        ).annotate(
+            revenue=Sum('total_price'),
+            booking_count=Count('id')
+        ).order_by('-revenue')[:10]
+        
+        for item in guide_data:
+            revenue_by_guide.append({
+                'guide_id': item['excursion_availability__excursion__guide__id'],
+                'guide_name': item['excursion_availability__excursion__guide__name'],
+                'revenue': item['revenue'],
+                'bookings': item['booking_count']
+            })
+        
+        # Daily revenue breakdown
+        from datetime import timedelta
+        daily_revenue = []
+        current_date = start_date
+        while current_date <= end_date:
+            day_bookings = bookings.filter(created_at__date=current_date)
+            day_revenue = day_bookings.aggregate(total=Sum('total_price'))['total'] or Decimal('0')
+            day_count = day_bookings.count()
+            
+            daily_revenue.append({
+                'date': current_date,
+                'revenue': day_revenue,
+                'bookings': day_count
+            })
+            current_date += timedelta(days=1)
+        
+        return {
+            'total_revenue': total_revenue,
+            'total_bookings': total_bookings,
+            'average_booking_value': average_booking_value,
+            'total_partial_payments': total_partial_payments,
+            'partial_payments_count': partial_payments_count,
+            'cash_revenue': cash_revenue,
+            'card_revenue': card_revenue,
+            'revenue_by_excursion': revenue_by_excursion,
+            'revenue_by_provider': revenue_by_provider,
+            'revenue_by_guide': revenue_by_guide,
+            'daily_revenue': daily_revenue,
+        }
+
+
+class ExcursionAnalyticsService:
+    """Service class for handling excursion analytics operations."""
+    
+    @staticmethod
+    def get_analytics_data(start_date, end_date):
+        """
+        Process excursion analytics data for a date range.
+        
+        Args:
+            start_date: Starting date of the range
+            end_date: Ending date of the range
+            
+        Returns:
+            dict: {
+                'date_range': list of all date objects in range,
+                'availabilities': list of availability data with bookings per day
+            }
+        """
+        from datetime import timedelta
+        from django.db.models import Q
+        
+        # Generate full list of dates in range (all dates, not just availability days)
+        date_range = []
+        current_date = start_date
+        while current_date <= end_date:
+            date_range.append(current_date)
+            current_date += timedelta(days=1)
+        
+        # Get all AvailabilityDays within the date range
+        availability_days_in_range = AvailabilityDays.objects.filter(
+            date_day__gte=start_date,
+            date_day__lte=end_date
+        ).select_related('excursion_availability', 'excursion_availability__excursion')
+        
+        # Get unique availabilities that have days in this range
+        availability_ids = set(
+            av_day.excursion_availability_id for av_day in availability_days_in_range
+        )
+        
+        availabilities = ExcursionAvailability.objects.filter(
+            id__in=availability_ids
+        ).select_related('excursion').prefetch_related(
+            'availability_days',
+            'bookings'
+        ).order_by('excursion__title', 'start_time')
+        
+        analytics_data = []
+        
+        for availability in availabilities:
+            # Create display name for this availability
+            time_str = availability.start_time.strftime('%H:%M') if availability.start_time else 'No Time'
+            # display_name = f"{availability.pickup_groups.all().first().name} - {time_str}"
+            display_name = "("
+            for pickup_group in availability.pickup_groups.all():
+                display_name += f"{pickup_group.name}, "
+            display_name = display_name[:-2]
+            display_name += ")"
+            
+            # Build data for each date in the full date range
+            date_data = {}
+            for date in date_range:
+                # Try to get AvailabilityDays for this specific date and availability
+                try:
+                    day_availability = availability.availability_days.get(date_day=date)
+                    capacity = day_availability.capacity
+                    
+                    # Count completed bookings for this date
+                    bookings_count = availability.bookings.filter(
+                        date=date,
+                        payment_status='completed'
+                    ).count()
+                    
+                    date_data[date] = {
+                        'bookings': bookings_count,
+                        'capacity': capacity
+                    }
+                except AvailabilityDays.DoesNotExist:
+                    # This availability doesn't have a day for this date
+                    date_data[date] = None
+            
+            analytics_data.append({
+                'availability_id': availability.id,
+                'display_name': display_name,
+                'excursion': availability.excursion,
+                'date_data': date_data
+            })
+        
+        return {
+            'date_range': date_range,
+            'availabilities': analytics_data
+        }
+
+
 def create_reservation(booking_data):
     """Create a reservation from booking data."""
     if booking_data is not None:
