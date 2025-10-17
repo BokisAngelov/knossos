@@ -286,6 +286,8 @@ class Reservation(models.Model):
     pickup_group = models.ForeignKey(PickupGroup, on_delete=models.SET_NULL, null=True, blank=True, related_name='reservations')
     pickup_point = models.ForeignKey(PickupPoint, on_delete=models.SET_NULL, null=True, blank=True, related_name='reservations')
     departure_time = models.TimeField(null=True, blank=True)
+    departure_time_updated = models.BooleanField(default=False)
+    
     status = models.CharField(max_length=255, choices=STATUS_CHOICES, default='active')
     
     # Link to client UserProfile

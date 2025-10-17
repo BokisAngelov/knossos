@@ -222,7 +222,6 @@ def create_or_link_client_profile(sender, instance, created, **kwargs):
         logger.error(f"Error creating/linking client profile for reservation {instance.voucher_id}: {str(e)}")
         # Don't raise - we don't want to break the reservation creation
 
-
 @receiver(pre_save, sender=Reservation)
 def update_client_profile_on_reservation_change(sender, instance, **kwargs):
     """
@@ -282,6 +281,29 @@ def update_client_profile_on_reservation_change(sender, instance, **kwargs):
         pass
     except Exception as e:
         logger.error(f"Error updating client profile from reservation {instance.voucher_id}: {str(e)}")
+
+@receiver(pre_save, sender=Reservation)
+def detect_departure_time_change(sender, instance, **kwargs):
+    """
+    Detect if departure time has changed and set notification flag.
+    """
+    if not instance.pk:
+        # New reservation, skip
+        return
+    
+    try:
+        old_instance = Reservation.objects.get(pk=instance.pk)
+        
+        # Check if departure_time has changed
+        if old_instance.departure_time != instance.departure_time:
+            logger.info(f"Departure time changed for reservation {instance.voucher_id}: {old_instance.departure_time} -> {instance.departure_time}")
+            instance.departure_time_updated = True
+            # TODO: send email notification and maybe sms
+        
+    except Reservation.DoesNotExist:
+        # New reservation
+        pass
+
 
 @receiver(post_save, sender=UserProfile)
 def update_reservation_on_user_profile_save(sender, instance, created, **kwargs):
