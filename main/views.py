@@ -83,28 +83,6 @@ def manage_cookies(request, cookie_name, cookie_value, cookie_action):
         response.delete_cookie(cookie_name)
         return response
     return None
-
-# def check_voucher(request):
-#     if request.method == 'POST':
-#         data = json.loads(request.body)
-#         return_data = {}
-#         voucher_code = data.get('voucher_code')
-#         if voucher_code:
-#             voucher = Reservation.objects.filter(voucher_id=voucher_code).first()
-#             if voucher:
-#                 return_data = {
-#                     'client_name': voucher.client_name,
-#                     'pickup_group_id': voucher.pickup_group.id,
-#                     'pickup_point_id': voucher.pickup_point.id,
-#                     'client_email': voucher.client_email,
-#                 }
-#                 return JsonResponse({'success': True, 'message': 'Voucher found in database.', 'return_data': return_data})
-#             else:
-#                 return JsonResponse({'success': False, 'message': 'Voucher not found in database.', 'return_data': return_data})
-#         else:
-#             return JsonResponse({'success': False, 'message': 'Voucher code is required.', 'return_data': return_data})
-#     else:
-#         return JsonResponse({'success': False, 'message': 'Invalid request method.'})
     
 def retrive_voucher(request):
     """
@@ -240,6 +218,24 @@ def retrive_voucher(request):
             'message': f'An error occurred: {str(e)}'
         })
    
+def booking_id_page(request):
+    """
+    Display booking ID entry page for guest users.
+    Reuses the existing retrive_voucher endpoint for authentication.
+    """
+    from .forms import BookingIdForm
+    # Redirect authenticated users away from this page
+    if request.user.is_authenticated:
+        messages.info(request, 'You are already logged in.')
+        return redirect('profile', pk=request.user.id)
+    
+    form = BookingIdForm()
+    
+    context = {
+        'form': form,
+    }
+    
+    return render(request, 'main/accounts/booking_id.html', context)
     
 #  Sync with Cyberlogic API
 def sync_pickup_groups(request):

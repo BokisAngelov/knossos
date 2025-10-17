@@ -1,0 +1,200 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Check Your Booking - Knossos{% endblock %}
+
+{% block content %}
+<!-- Hero Section with Dark Overlay -->
+<div class="relative min-h-screen flex items-center justify-center">
+    
+    <!-- Content -->
+    <div class="relative z-20 text-center px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto">
+        <!-- Main Heading -->
+        <h1 class="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight">
+            Explore the world to experience the beauty of nature
+        </h1>
+        
+        <!-- Sub-heading -->
+        <p class="text-lg md:text-xl mb-8 max-w-2xl mx-auto">
+            Lorem ipsum dolor sit amet, consectetur adipiscing elit. Morbi lobortis maximus
+        </p>
+        
+        <!-- Call to Action -->
+        <p class="text-lg mb-8">
+            Ready to travel with us?
+        </p>
+        
+        <!-- Form -->
+        <form id="booking-id-form" method="post" class="max-w-md mx-auto">
+            {% csrf_token %}
+            
+            <!-- Form Errors -->
+            {% if form.non_field_errors %}
+                <div class="bg-red-50 border-l-4 border-red-500 p-4 rounded mb-6">
+                    <div class="flex items-center">
+                        <svg class="w-5 h-5 text-red-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                        </svg>
+                        <p class="text-sm text-red-700">{{ form.non_field_errors.0 }}</p>
+                    </div>
+                </div>
+            {% endif %}
+            
+            <!-- Input and Button Container -->
+            <div class="flex flex-col sm:flex-row gap-3">
+                <!-- Input Field -->
+                <div class="flex-1">
+                    {{ form.booking_id }}
+                    {% if form.booking_id.errors %}
+                        <p class="mt-1 text-sm text-red-300">{{ form.booking_id.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                
+                <!-- Button -->
+                <button 
+                    type="submit" 
+                    id="submit-booking-id"
+                    class="px-8 py-3 bg-blue hover:opacity-90 text-white font-semibold rounded-lg transition-colors duration-200 flex items-center justify-center min-w-[140px]">
+                    <span id="button-text">Get started</span>
+                    <svg id="loading-spinner" class="hidden animate-spin ml-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </button>
+            </div>
+        </form>
+        
+        <!-- Additional Links -->
+        <div class="mt-12 space-y-4">
+            <p class="text-sm">
+                Don't have a booking yet? 
+                <a href="{% url 'excursion_list' %}" class="text-blue hover:text-blue-600 underline">
+                    Browse our excursions
+                </a>
+            </p>
+            
+            <p class="text-sm">
+                Already have an account? 
+                <a href="{% url 'login' %}" class="text-blue hover:text-blue-600 underline">
+                    Login here
+                </a>
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('booking-id-form');
+    const submitButton = document.getElementById('submit-booking-id');
+    const buttonText = document.getElementById('button-text');
+    const loadingSpinner = document.getElementById('loading-spinner');
+    
+    // Get CSRF token helper
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const bookingIdInput = document.querySelector('input[name="booking_id"]');
+        const bookingId = bookingIdInput.value.trim();
+        
+        if (!bookingId) {
+            Swal.fire({
+                title: 'Missing Booking ID',
+                text: 'Please enter your booking ID.',
+                icon: 'warning',
+                confirmButtonText: 'OK'
+            });
+            return;
+        }
+        
+        // Disable button and show loading
+        submitButton.disabled = true;
+        buttonText.textContent = 'Checking...';
+        loadingSpinner.classList.remove('hidden');
+        
+        // Call the existing retrive_voucher endpoint
+        fetch('/retrive_voucher/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                voucher_code: bookingId
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                // Success - show message and redirect
+                Swal.fire({
+                    title: 'Success!',
+                    text: data.message,
+                    icon: 'success',
+                    timer: 1500,
+                    showConfirmButton: false,
+                    allowOutsideClick: false
+                }).then(() => {
+                    // Redirect to profile page
+                    if (data.redirect_url) {
+                        window.location.href = data.redirect_url;
+                    } else {
+                        window.location.reload();
+                    }
+                });
+            } else {
+                // Error - show message
+                Swal.fire({
+                    title: 'Booking Not Found',
+                    text: data.message || 'The booking ID you entered could not be found. Please check and try again.',
+                    icon: 'error',
+                    confirmButtonText: 'OK'
+                });
+                
+                // Re-enable button
+                submitButton.disabled = false;
+                buttonText.textContent = 'Get started';
+                loadingSpinner.classList.add('hidden');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            Swal.fire({
+                title: 'Error',
+                text: 'An error occurred while checking your booking. Please try again.',
+                icon: 'error',
+                confirmButtonText: 'OK'
+            });
+            
+            // Re-enable button
+            submitButton.disabled = false;
+            buttonText.textContent = 'Get started';
+            loadingSpinner.classList.add('hidden');
+        });
+    });
+});
+</script>
+{% endblock %}
+

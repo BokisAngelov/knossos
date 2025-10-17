@@ -477,6 +477,32 @@ class UserProfileForm(forms.ModelForm):
         
         return cleaned_data
 
+class BookingIdForm(forms.Form):
+    """
+    Simple form for guest users to enter their booking/voucher ID.
+    Validation and authentication is handled by the retrive_voucher endpoint.
+    """
+    booking_id = forms.CharField(
+        max_length=255, 
+        required=True,
+        widget=forms.TextInput(attrs={
+            'class': 'w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-500',
+            'placeholder': 'Enter your booking ID',
+            'autofocus': True
+        }),
+        label='',
+        help_text=''
+    )
+
+    def clean_booking_id(self):
+        """Basic validation - just ensure it's not empty or whitespace"""
+        booking_id = self.cleaned_data.get('booking_id', '').strip()
+        
+        if not booking_id:
+            raise forms.ValidationError("Booking ID cannot be empty.")
+        
+        return booking_id
+
 # ----- Lookup Forms -----
 class CategoryForm(forms.ModelForm):
     class Meta:
