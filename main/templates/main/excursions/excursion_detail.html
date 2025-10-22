@@ -627,7 +627,17 @@
                             voucher_code: voucherInput
                         })
                     })
-                    .then(response => response.json())
+                    .then(response => {
+                        // Check if response is ok and is JSON
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        const contentType = response.headers.get("content-type");
+                        if (!contentType || !contentType.includes("application/json")) {
+                            throw new Error("Response is not JSON");
+                        }
+                        return response.json();
+                    })
                     .then(data => {
                         if (data.success) {
                             // console.log('data.return_data: ' + data.return_data);
@@ -649,12 +659,12 @@
                             } 
 
                         } else {
-                            console.log('data.message: ' + data.message);
-                            console.log('data.success: ' + data.success);
+                            console.log('Voucher check failed:', data.message);
                         }
                     })
                     .catch(error => {
-                        console.error('Error:', error);
+                        console.error('Voucher check error:', error.message);
+                        // Silently fail - voucher checking is optional
                     });
                 }
             

@@ -217,6 +217,72 @@ def retrive_voucher(request):
             'success': False,
             'message': f'An error occurred: {str(e)}'
         })
+
+def check_voucher(request):
+    """
+    Check voucher validity and return reservation data without logging in.
+    Used for pre-filling booking forms.
+    """
+    import logging
+    import traceback
+    logger = logging.getLogger(__name__)
+    
+    if request.method != 'POST':
+        return JsonResponse({
+            'success': False,
+            'message': 'Invalid request method.'
+        })
+    
+    try:
+        data = json.loads(request.body)
+        voucher_code = data.get('voucher_code')
+        
+        if not voucher_code:
+            return JsonResponse({
+                'success': False,
+                'message': 'Voucher code is required.'
+            })
+        
+        logger.info(f"Checking voucher: {voucher_code}")
+        
+        # Get reservation from database or API
+        try:
+            reservation, created = VoucherService.authenticate_voucher(voucher_code)
+            logger.info(f"Voucher found. Created: {created}")
+        except ValidationError as e:
+            return JsonResponse({
+                'success': False,
+                'message': str(e)
+            })
+        except Exception as e:
+            logger.error(f"Error checking voucher: {str(e)}\n{traceback.format_exc()}")
+            return JsonResponse({
+                'success': False,
+                'message': 'Invalid or expired voucher.'
+            })
+        
+        # Get voucher data
+        try:
+            voucher_data = VoucherService.get_voucher_data(reservation)
+        except Exception as e:
+            logger.error(f"Error getting voucher data: {str(e)}\n{traceback.format_exc()}")
+            return JsonResponse({
+                'success': False,
+                'message': 'Error retrieving voucher data.'
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Voucher is valid.',
+            'return_data': voucher_data
+        })
+        
+    except Exception as e:
+        logger.error(f"Unexpected error: {str(e)}\n{traceback.format_exc()}")
+        return JsonResponse({
+            'success': False,
+            'message': 'An error occurred while checking the voucher.'
+        })
    
 def booking_id_page(request):
     """
