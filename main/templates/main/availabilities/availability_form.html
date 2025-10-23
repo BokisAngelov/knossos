@@ -66,6 +66,99 @@
     gap: 0.5rem;
     flex: 1 1 0;
   }
+
+  /* Pickup Points Styling */
+  .pickup-points-container {
+    max-height: 500px;
+    overflow-y: auto;
+    padding: 0.5rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.375rem;
+  }
+  
+  .pickup-group-section {
+    margin-bottom: 1rem;
+  }
+  
+  .pickup-points-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+  }
+  
+  .pickup-point-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .pickup-point-checkbox {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+  }
+  
+  .pickup-point-label {
+    flex: 1;
+    padding: 0.5rem 0.75rem;
+    background-color: #e0f2fe;
+    border-radius: 0.375rem;
+    text-align: center;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+  
+  .pickup-point-label:hover {
+    background-color: #bae6fd;
+  }
+  
+  /* Region Selection Styling */
+  .region-selection-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 0.5rem;
+    padding: 0.5rem;
+  }
+  
+  .region-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .region-checkbox {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+  }
+  
+  .region-checkbox:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  
+  .region-label {
+    flex: 1;
+    padding: 0.5rem 0.75rem;
+    background-color: #e0e7ff;
+    border-radius: 0.375rem;
+    text-align: center;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+  
+  .region-label:hover {
+    background-color: #c7d2fe;
+  }
+  
+  .region-item.disabled .region-label {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background-color: #f3f4f6;
+  }
 </style>
 
 <div class="flex justify-center items-center">
@@ -157,12 +250,12 @@
         </div>
       </div>
 
-      <!-- Region -->
-      <!-- <div class="space-y-1">
-        <label for="{{ form.region.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.region.label }}</label>
-        <div class="w-full auth-input-field">{{ form.region }}</div>
-        {% if form.region.errors %}<div class="text-red-500 text-xs mt-1">{{ form.region.errors }}</div>{% endif %}
-      </div> -->
+      <!-- Regions (Multiple Selection) -->
+      <div class="space-y-1">
+        <label for="{{ form.regions.id_for_label }}" class="block text-md font-semibold text-header-grey">{{ form.regions.label }}</label>
+        <div class="w-full">{{ form.regions }}</div>
+        {% if form.regions.errors %}<div class="text-red-500 text-xs mt-1">{{ form.regions.errors }}</div>{% endif %}
+      </div>
 
       <!-- Max Guests -->
       <div class="space-y-1">
@@ -207,13 +300,14 @@
           </div>
           {% if form.weekdays.errors %}<div class="text-red-500 text-xs mt-1">{{ form.weekdays.errors }}</div>{% endif %}
         </div>
-        <!-- Pickup Groups -->
+
+        <!-- Pickup Points -->
         <div class="md:col-span-2 space-y-1">
-          <label for="{{ form.pickup_groups.id_for_label }}" class="block text-md font-semibold text-header-grey">{{ form.pickup_groups.label }}</label>
-          <div class="w-full overflow-x-auto">
-            {{ form.pickup_groups }}
+          <label for="{{ form.pickup_points.id_for_label }}" class="block text-md font-semibold text-header-grey">{{ form.pickup_points.label }}</label>
+          <div class="w-full">
+            {{ form.pickup_points }}
           </div>
-          {% if form.pickup_groups.errors %}<div class="text-red-500 text-xs mt-1">{{ form.pickup_groups.errors }}</div>{% endif %}
+          {% if form.pickup_points.errors %}<div class="text-red-500 text-xs mt-1">{{ form.pickup_points.errors }}</div>{% endif %}
         </div>
       </div>
 
@@ -249,96 +343,76 @@
     const csrftoken = getCookie('csrftoken');
 document.addEventListener('DOMContentLoaded', function() {
   
-    // const regionSelect = document.getElementById('id_region');
-    const pickupGroupDivs = document.querySelectorAll('[data-region-id]');
     const weekdaysCheckboxes = document.querySelectorAll('input[name="weekdays"]');
     const allPriceFields = document.querySelectorAll('.price-field');
     const excursionSelect = document.querySelector('#id_excursion');
+    const startDateInput = document.querySelector('#id_start_date');
+    const endDateInput = document.querySelector('#id_end_date');
+    const availabilityId = {{ availability.id|default:"null" }};
 
-    // if excursion is changed, clear the pickup groups
-    excursionSelect.addEventListener('change', function() {
+    // Function to update available regions based on excursion and date range
+    function updateAvailableRegions() {
         const selectedExcursion = excursionSelect.value;
-        console.log(selectedExcursion);
+        const startDate = startDateInput.value;
+        const endDate = endDateInput.value;
         
-        fetch('/check_excursion_pickup_groups/', {
+        if (!selectedExcursion || !startDate || !endDate) {
+            return;
+        }
+        
+        fetch('/get_available_regions/', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRFToken': csrftoken
             },
             body: JSON.stringify({
-              excursion_id: selectedExcursion
+                excursion_id: selectedExcursion,
+                start_date: startDate,
+                end_date: endDate,
+                current_availability_id: availabilityId
             })
         })
         .then(response => response.json())
         .then(data => {
-            if (data.pickup_groups) {
-                data.pickup_groups.forEach(pickupGroup => {
-                  group_id = pickupGroup.pickup_groups;
-                  const pickCheckbox = document.querySelector(`input[value="${group_id}"]`);
-                  const pickLabel = document.querySelector(`label[for="id_pickup_groups_${group_id}"]`);
-                  if (pickCheckbox) {
-                    pickCheckbox.setAttribute('disabled', 'disabled');
-                    pickCheckbox.style.opacity = 0.5;
-                    pickLabel.style.opacity = 0.5;
-                  }
+            if (data.regions) {
+                // Reset all regions first
+                document.querySelectorAll('.region-checkbox').forEach(checkbox => {
+                    checkbox.disabled = false;
+                    checkbox.closest('.region-item').classList.remove('disabled');
                 });
-            }
-        });
-    });
-
-
-    // function filterPickupGroups() {
-    //     const selectedRegion = regionSelect.value;
-    //     pickupGroupDivs.forEach(div => {
-    //         if (!selectedRegion || div.getAttribute('data-region-id') === selectedRegion) {
-    //             div.style.display = '';
-    //         } else {
-    //             div.style.display = 'none';
-    //         }
-    //     });
-    // }
-
-    // if (regionSelect) {
-    //     regionSelect.addEventListener('change', filterPickupGroups);
-    //     filterPickupGroups(); // Initial call in case of edit
-    // }
-
-    // Fix for M2M fields not being selected when editing
-    function checkSelectedValues() {
-        // For region checkboxes
-        // const selectedRegionsData = document.querySelector('#id_region').getAttribute('data-initial-values');
-        // if (selectedRegionsData) {
-        //     try {
-        //         const selectedRegions = JSON.parse(selectedRegionsData);
-        //         regionCheckboxes.forEach(checkbox => {
-        //             if (selectedRegions.includes(parseInt(checkbox.value))) {
-        //                 checkbox.checked = true;
-        //             }
-        //         });
-        //     } catch (e) {
-        //         console.error('Error parsing selected regions:', e);
-        //     }
-        // }
-
-        // For weekdays checkboxes
-        const selectedWeekdaysData = document.querySelector('#id_weekdays').getAttribute('data-initial-values');
-        if (selectedWeekdaysData) {
-            try {
-                const selectedWeekdays = JSON.parse(selectedWeekdaysData);
-                weekdaysCheckboxes.forEach(checkbox => {
-                    if (selectedWeekdays.includes(parseInt(checkbox.value))) {
-                        checkbox.checked = true;
+                
+                // Disable conflicting regions
+                data.regions.forEach(region => {
+                    const regionCheckbox = document.querySelector(`.region-checkbox[data-region-id="${region.id}"]`);
+                    if (regionCheckbox && region.disabled) {
+                        regionCheckbox.disabled = true;
+                        regionCheckbox.checked = false;
+                        regionCheckbox.closest('.region-item').classList.add('disabled');
                     }
                 });
-            } catch (e) {
-                console.error('Error parsing selected weekdays:', e);
             }
-        }
-
+        })
+        .catch(error => {
+            console.error('Error fetching available regions:', error);
+        });
     }
 
-    // checkSelectedValues();
+    // Listen for changes to excursion, start date, and end date
+    if (excursionSelect) {
+        excursionSelect.addEventListener('change', updateAvailableRegions);
+    }
+    if (startDateInput) {
+        startDateInput.addEventListener('change', updateAvailableRegions);
+    }
+    if (endDateInput) {
+        endDateInput.addEventListener('change', updateAvailableRegions);
+    }
+
+    // Initial call if editing an existing availability
+    if (availabilityId) {
+        updateAvailableRegions();
+    }
 
   
     // Form submission handling

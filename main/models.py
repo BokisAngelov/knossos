@@ -42,6 +42,7 @@ class Region(models.Model):
 class PickupGroup(models.Model):
     name = models.CharField(max_length=255)
     code = models.CharField(max_length=255, unique=True, null=True, blank=True)
+    priority = models.PositiveIntegerField(default=0)
     # cl_id = models.IntegerField(null=True, blank=True, unique=True)
     # region = models.ForeignKey(Region, on_delete=models.SET_NULL, null=True, related_name='pickup_groups')
     def __str__(self):
@@ -140,7 +141,7 @@ class PickupPoint(models.Model):
     # type = models.CharField(max_length=15, choices=TYPE_CHOICES, default='other')
     pickup_group = models.ForeignKey(PickupGroup, on_delete=models.SET_NULL, null=True, related_name='pickup_points')
     google_maps_link = models.CharField(max_length=255, blank=True, null=True)
-    # priority = models.PositiveIntegerField(default=0)    
+    priority = models.PositiveIntegerField(default=0)    
 
     def __str__(self):
         return self.name
@@ -201,8 +202,9 @@ class ExcursionAvailability(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     start_date = models.DateField()
     end_date = models.DateField()
-    # region = models.ForeignKey(Region, on_delete=models.SET_NULL, null=True, related_name='availabilities')
-    # pickup_group = models.ForeignKey(PickupGroup, on_delete=models.SET_NULL, null=True, related_name='availabilities')
+    pickup_start_time = models.TimeField(null=True, blank=True)
+    pickup_end_time = models.TimeField(null=True, blank=True)
+    regions = models.ManyToManyField(Region, blank=True, related_name='availabilities')
     max_guests = models.PositiveIntegerField()
     booked_guests = models.PositiveIntegerField(default=0)
     is_active = models.BooleanField(default=True)
@@ -221,6 +223,55 @@ class ExcursionAvailability(models.Model):
     
     def __str__(self):
         return f"{self.excursion.title} - {self.start_date} to {self.end_date}"
+
+    def clean(self):
+        """
+        Model-level validation to ensure data integrity.
+        This runs before save() and raises ValidationError if invalid.
+        """
+        from django.core.exceptions import ValidationError
+        from .utils import AvailabilityValidationService
+        
+        # Validate date range
+        if self.start_date and self.end_date:
+            try:
+                AvailabilityValidationService.validate_date_range(
+                    self.start_date, 
+                    self.end_date
+                )
+            except ValidationError as e:
+                raise ValidationError({'end_date': e.message})
+        
+        # Note: We can't validate M2M relationships here because they don't exist yet
+        # until after save(). M2M validation should be done in the form or after save.
+
+    def validate_overlap(self):
+        """
+        Validate that this availability doesn't conflict with existing ones.
+        This must be called AFTER save() when M2M relationships exist.
+        
+        Raises:
+            ValidationError: If overlap is detected
+        """
+        from .utils import AvailabilityValidationService
+        
+        # Get current M2M relationships
+        region_ids = list(self.regions.values_list('id', flat=True))
+        pickup_point_ids = list(self.pickup_points.values_list('id', flat=True))
+        
+        # Check for overlap
+        has_conflict, error_details = AvailabilityValidationService.check_overlap(
+            excursion=self.excursion,
+            start_date=self.start_date,
+            end_date=self.end_date,
+            regions=region_ids,
+            pickup_points=pickup_point_ids,
+            current_availability_id=self.pk
+        )
+        
+        if has_conflict:
+            from django.core.exceptions import ValidationError
+            raise ValidationError(' '.join(error_details))
 
     def update_status(self):
         if self.end_date < datetime.now().date():

@@ -2567,7 +2567,7 @@ def manage_reservations(request):
     })
 
 def check_excursion_pickup_groups(request):
-
+    """Legacy endpoint - can be removed if not used elsewhere"""
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
@@ -2579,116 +2579,104 @@ def check_excursion_pickup_groups(request):
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=400)
 
+def get_available_regions(request):
+    """
+    API endpoint to get available regions for an excursion and date range.
+    Uses AvailabilityValidationService for business logic.
+    """
+    if request.method == 'POST':
+        try:
+            from .utils import AvailabilityValidationService
+            from .models import Region
+            
+            data = json.loads(request.body)
+            excursion_id = data.get('excursion_id')
+            start_date = data.get('start_date')
+            end_date = data.get('end_date')
+            current_availability_id = data.get('current_availability_id')
+            
+            if not excursion_id or not start_date or not end_date:
+                return JsonResponse({'error': 'Missing required parameters'}, status=400)
+            
+            # Use service to get conflicting regions
+            used_region_ids = AvailabilityValidationService.get_conflicting_regions(
+                excursion_id=excursion_id,
+                start_date=start_date,
+                end_date=end_date,
+                current_availability_id=current_availability_id
+            )
+            
+            # Get all regions and mark disabled ones
+            all_regions = Region.objects.all().order_by('name')
+            regions_data = [
+                {
+                    'id': region.id,
+                    'name': region.name,
+                    'disabled': region.id in used_region_ids
+                }
+                for region in all_regions
+            ]
+            
+            return JsonResponse({'regions': regions_data})
+            
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
+    
+    return JsonResponse({'error': 'Invalid request method'}, status=400)
+
 @user_passes_test(is_staff)
 def availability_form(request, pk=None):
-
+    """
+    Create or update availability.
+    Uses Django's form validation system with service classes for business logic.
+    """
     availability = None
     if pk:
         availability = get_object_or_404(ExcursionAvailability, pk=pk)
     
     if request.method == 'POST':
         form = ExcursionAvailabilityForm(request.POST, instance=availability)
-        pickup_groups = request.POST.getlist('pickup_groups')
-        excursion = request.POST.get('excursion')
-        start_date = request.POST.get('start_date')
-        end_date = request.POST.get('end_date')
-        # region = request.POST.get('region')
-
-
-        overlapping_query = ExcursionAvailability.objects.filter(
-            excursion=excursion,
-            start_date__lte=end_date,
-            end_date__gte=start_date,
-            pickup_groups__in=pickup_groups,
-            # region=region,
-            status='active'
-        )
-
-        if pk:
-            overlapping_query = overlapping_query.exclude(pk=pk)
         
-        if overlapping_query.exists():
-            error_message = 'Availability already exists for this excursion during the selected dates with the selected pickup groups.'
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return JsonResponse({
-                    'success': False,
-                    'message': error_message,
-                    'errors': [error_message]
-                })
-            form.add_error(None, error_message)
-        elif form.is_valid():
+        # Form validation handles all business logic via clean() method
+        if form.is_valid():
             try:
-                # First validate weekday capacities from form data
-                # max_guests = int(request.POST.get('max_guests', 0))
+                # Get M2M field data from POST
                 selected_weekday_ids = request.POST.getlist('weekdays')
-                pickup_group_ids = pickup_groups
+                pickup_point_ids = request.POST.getlist('pickup_points')
+                region_ids = request.POST.getlist('regions')
 
-                # Validate capacities before saving
-                # for weekday_id in selected_weekday_ids:
-                #     capacity_name = f'weekdays_capacity_{weekday_id}'
-                #     capacity = request.POST.get(capacity_name)
-                #     if capacity:
-                #         try:
-                #             capacity = int(capacity)
-                #             if capacity > max_guests:
-                #                 raise ValueError(f"Capacity for {DayOfWeek.objects.get(id=weekday_id).get_code_display()} cannot be greater than the maximum number of guests.")
-                #         except ValueError as e:
-                #             if str(e).startswith("Capacity for"):
-                #                 raise e
-                #             raise ValueError(f"Invalid capacity value for {DayOfWeek.objects.get(id=weekday_id).get_code_display()}")
-
-                
+                # Save the instance (without M2M relationships yet)
                 availability = form.save(commit=False)
-                excursion_pk = request.POST.get('excursion')
-
-                if not excursion_pk:
-                    raise ValueError("Excursion ID is required")
-                    
-                excursion = get_object_or_404(Excursion, pk=excursion_pk)
-                availability.excursion = excursion
                 
-                # Save the availability to get an ID
+                # Ensure excursion is set
+                if not availability.excursion:
+                    excursion_pk = request.POST.get('excursion')
+                    if not excursion_pk:
+                        raise ValueError("Excursion ID is required")
+                    availability.excursion = get_object_or_404(Excursion, pk=excursion_pk)
+                
+                # Save to get an ID before setting M2M relationships
                 availability.save()
                 
-                # Manually set the weekdays and pickup groups relationships
+                # Set M2M relationships
                 availability.weekdays.set(selected_weekday_ids)
-                availability.pickup_groups.set(pickup_group_ids)
+                availability.pickup_points.set(pickup_point_ids)
+                availability.regions.set(region_ids)
                 
-                # Update weekday capacities
-                # for weekday_id in selected_weekday_ids:
-                #     capacity_name = f'weekdays_capacity_{weekday_id}'
-                #     capacity = request.POST.get(capacity_name)
-                #     if capacity:
-                #         try:
-                #             capacity = int(capacity)
-                #             if capacity == 0:
-                #                 capacity = max_guests
-                #             DayOfWeek.objects.filter(id=weekday_id).update(capacity=capacity)
-                #         except ValueError:
-                #             pass  
-                
-                if excursion.status != 'active':
-                    excursion.status = 'active'
-                    excursion.save()
+                # Activate excursion if it's not already active
+                if availability.excursion.status != 'active':
+                    availability.excursion.status = 'active'
+                    availability.excursion.save()
 
-                # Delete existing AvailabilityDays entries (for both create and update)
+                # Regenerate AvailabilityDays entries
                 AvailabilityDays.objects.filter(excursion_availability=availability).delete()
-
-                # Delete existing PickupGroupAvailability entries (for both create and update)
-                PickupGroupAvailability.objects.filter(excursion_availability=availability).delete()
                 
-                # Get the selected weekdays after saving
+                # Get the selected weekdays and create days
                 selected_weekdays = availability.weekdays.all()
-                
-                # Convert selected weekdays to Python's weekday numbers (0=Monday, 6=Sunday)
-                weekday_numbers = []
                 weekday_mapping = {'MON': 0, 'TUE': 1, 'WED': 2, 'THU': 3, 'FRI': 4, 'SAT': 5, 'SUN': 6}
+                weekday_numbers = [weekday_mapping[w.code] for w in selected_weekdays if w.code in weekday_mapping]
                 
-                for weekday in selected_weekdays:
-                    if weekday.code in weekday_mapping:
-                        weekday_numbers.append(weekday_mapping[weekday.code])
-                
-                # Create an entry for each day in the range that matches selected weekdays
+                # Create AvailabilityDays for each matching day in date range
                 current_date = availability.start_date
                 while current_date <= availability.end_date:
                     if current_date.weekday() in weekday_numbers:
@@ -2698,14 +2686,6 @@ def availability_form(request, pk=None):
                             capacity=availability.max_guests
                         )
                     current_date += timedelta(days=1)
-
-                # Create entries for each pickup group
-                # region_id = availability.region_id
-                for pickup_group in PickupGroup.objects.filter(id__in=pickup_group_ids):
-                    PickupGroupAvailability.objects.create(
-                        excursion_availability=availability,
-                        pickup_group=pickup_group
-                    )
 
                 if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                     return JsonResponse({
@@ -2746,18 +2726,17 @@ def availability_form(request, pk=None):
         'form': form,
         'availability': availability,
         'is_update': bool(pk),
-        'pickup_groups': PickupGroup.objects.all(),
     })
 
 @user_passes_test(is_staff)
 def availability_detail(request, pk):
     availability = get_object_or_404(ExcursionAvailability, pk=pk)
-    pickup_points = PickupPoint.objects.filter(pickup_group__in=availability.pickup_groups.all())
-    pickup_groups = PickupGroup.objects.filter(id__in=availability.pickup_groups.all())
+    pickup_points = availability.pickup_points.all().select_related('pickup_group').order_by('pickup_group__priority', 'priority', 'name')
+    regions = availability.regions.all().order_by('name')
     return render(request, 'main/availabilities/availability_detail.html', {
         'availability': availability,
         'pickup_points': pickup_points,
-        'pickup_groups': pickup_groups,
+        'regions': regions,
     })
 
 @user_passes_test(is_staff)
@@ -2783,18 +2762,18 @@ def availability_delete(request, pk):
     
 @user_passes_test(is_staff)
 def pickup_points_list(request):
-    pickup_points = PickupPoint.objects.all().select_related('pickup_group').order_by('name')
-    pickup_groups = PickupGroup.objects.all()
+    pickup_points = PickupPoint.objects.all().select_related('pickup_group').order_by('-pickup_group__priority', 'name')
+    pickup_groups = PickupGroup.objects.all().order_by('priority')
     
     # Convert pickup groups to JSON-serializable format
-    pickup_groups_json = json.dumps([{'id': group.id, 'name': group.name} for group in pickup_groups])
+    pickup_groups_json = json.dumps([{'id': group.id, 'name': group.name, 'priority': group.priority} for group in pickup_groups])
     
     # Handle search
     search_query = request.GET.get('search', '').strip()
     if search_query:
         pickup_points = pickup_points.filter(
             Q(name__icontains=search_query) |
-            Q(address__icontains=search_query) |
+            # Q(address__icontains=search_query) |
             Q(pickup_group__name__icontains=search_query)
         )
     
@@ -2820,11 +2799,12 @@ def manage_pickup_points(request):
     try:
         if action_type == 'add_point':
             name = request.POST.get('name', '').strip()
-            address = request.POST.get('address', '').strip()
+            # address = request.POST.get('address', '').strip()
+            priority = request.POST.get('priority', '').strip()
             pickup_group_id = request.POST.get('pickup_group')
             google_maps_link = request.POST.get('google_maps_link', '').strip()
 
-            if not all([name, address, pickup_group_id]):
+            if not all([name, pickup_group_id, priority]):
                 messages.error(request, 'Please fill in all required fields')
                 return redirect('pickup_points_list')
             
@@ -2836,7 +2816,7 @@ def manage_pickup_points(request):
             
             PickupPoint.objects.create(
                 name=name,
-                address=address,
+                priority=priority,
                 pickup_group=pickup_group,
                 google_maps_link=google_maps_link if google_maps_link else None,
             )
@@ -2845,11 +2825,12 @@ def manage_pickup_points(request):
         elif action_type == 'edit_point':
             item_id = request.POST.get('item_id')
             name = request.POST.get('name', '').strip()
-            address = request.POST.get('address', '').strip()
+            # address = request.POST.get('address', '').strip()
+            priority = request.POST.get('priority', '').strip()
             pickup_group_id = request.POST.get('pickup_group')
             google_maps_link = request.POST.get('google_maps_link', '').strip()
 
-            if not all([item_id, name, address, pickup_group_id]):
+            if not all([item_id, name, pickup_group_id, priority]):
                 messages.error(request, 'Please fill in all required fields')
                 return redirect('pickup_points_list')
             
@@ -2861,7 +2842,7 @@ def manage_pickup_points(request):
                 return redirect('pickup_points_list')
             
             point.name = name
-            point.address = address
+            point.priority = priority
             point.pickup_group = pickup_group
             point.google_maps_link = google_maps_link if google_maps_link else None
             point.save()
@@ -3210,7 +3191,7 @@ def manage_regions(request):
                      
 @user_passes_test(is_staff)
 def pickup_groups_list(request):
-    pickup_groups = PickupGroup.objects.all()
+    pickup_groups = PickupGroup.objects.all().order_by('priority')
     regions = Region.objects.all()
     # Convert regions to JSON-serializable format
     regions_json = json.dumps([{'id': region.id, 'name': region.name} for region in regions])
@@ -3240,12 +3221,14 @@ def manage_pickup_groups(request):
             if action_type == 'add_group':
                 name = request.POST.get('name', '').strip()
                 code = request.POST.get('code', '').strip()
+                priority = request.POST.get('priority', '').strip()
 
-                if name and code:
+                if name and code and priority:
                     try:
                         PickupGroup.objects.create(
                             name=name,
                             code=code,
+                            priority=priority,
                         )
                         messages.success(request, 'Pickup group created successfully.')
                         return redirect('pickup_groups_list')
@@ -3257,11 +3240,13 @@ def manage_pickup_groups(request):
                 group = get_object_or_404(PickupGroup, pk=item_id)
                 name = request.POST.get('name', '').strip()
                 code = request.POST.get('code', '').strip()
-
+                priority = request.POST.get('priority', '').strip()
                 if name:    
                     group.name = name
                     if code:
                         group.code = code
+                    if priority:
+                        group.priority = priority
                     group.save()
                     messages.success(request, 'Pickup group updated successfully.')
                     return redirect('pickup_groups_list')

@@ -7,10 +7,187 @@ from django.utils import timezone
 from django.core.exceptions import ValidationError
 from .models import (
     Excursion, Feedback, Booking, Reservation, 
-    AvailabilityDays, ExcursionAvailability, PickupPoint, Hotel
+    AvailabilityDays, ExcursionAvailability, PickupPoint, Hotel, Region
 )
 from .cyber_api import get_reservation
 from datetime import datetime
+
+
+class AvailabilityValidationService:
+    """Service class for handling availability validation logic."""
+    
+    @staticmethod
+    def check_overlap(excursion, start_date, end_date, regions, pickup_points, current_availability_id=None):
+        """
+        Check if an availability conflicts with existing availabilities.
+        
+        A conflict occurs when:
+        1. Same excursion
+        2. Overlapping date ranges
+        3. ANY overlapping regions
+        4. ANY overlapping pickup points
+        
+        Args:
+            excursion: Excursion instance or ID
+            start_date: Start date (date object or string)
+            end_date: End date (date object or string)
+            regions: List of region IDs
+            pickup_points: List of pickup point IDs
+            current_availability_id: ID to exclude from check (for updates)
+            
+        Returns:
+            tuple: (has_conflict: bool, error_details: list)
+        """
+        if not excursion or not start_date or not end_date:
+            return False, []
+        
+        # Convert to date objects if strings
+        if isinstance(start_date, str):
+            start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+        if isinstance(end_date, str):
+            end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+        
+        # Convert regions and pickup_points to sets of integers
+        region_ids = set(int(r) if not isinstance(r, int) else r for r in regions if r)
+        pickup_point_ids = set(int(p) if not isinstance(p, int) else p for p in pickup_points if p)
+        
+        if not region_ids or not pickup_point_ids:
+            return False, []
+        
+        # Get excursion ID
+        excursion_id = excursion.id if hasattr(excursion, 'id') else excursion
+        
+        # Get all active availabilities for this excursion with overlapping dates
+        overlapping_availabilities = ExcursionAvailability.objects.filter(
+            excursion_id=excursion_id,
+            start_date__lte=end_date,
+            end_date__gte=start_date,
+            status='active'
+        ).prefetch_related('regions', 'pickup_points')
+        
+        if current_availability_id:
+            overlapping_availabilities = overlapping_availabilities.exclude(pk=current_availability_id)
+        
+        # Check each overlapping availability for conflicts
+        error_details = []
+        has_conflict = False
+        
+        for avail in overlapping_availabilities:
+            existing_regions = set(avail.regions.values_list('id', flat=True))
+            existing_pickup_points = set(avail.pickup_points.values_list('id', flat=True))
+            
+            # Check for overlapping regions
+            overlapping_regions = existing_regions & region_ids
+            # Check for overlapping pickup points
+            overlapping_pickup_points = existing_pickup_points & pickup_point_ids
+            
+            # Conflict only if BOTH regions AND pickup points overlap
+            if overlapping_regions and overlapping_pickup_points:
+                has_conflict = True
+                
+                # Get region and pickup point names for detailed error message
+                region_names = Region.objects.filter(
+                    id__in=overlapping_regions
+                ).values_list('name', flat=True)
+                
+                point_names = PickupPoint.objects.filter(
+                    id__in=overlapping_pickup_points
+                ).values_list('name', flat=True)
+                
+                error_details.append(
+                    f"Conflict with availability #{avail.id} ({avail.start_date} to {avail.end_date}): "
+                    f"Regions ({', '.join(region_names)}), "
+                    f"Pickup Points ({', '.join(point_names)})"
+                )
+        
+        return has_conflict, error_details
+    
+    @staticmethod
+    def get_conflicting_regions(excursion_id, start_date, end_date, current_availability_id=None):
+        """
+        Get regions that are already used in overlapping availabilities.
+        
+        Args:
+            excursion_id: Excursion ID
+            start_date: Start date
+            end_date: End date
+            current_availability_id: ID to exclude from check (for updates)
+            
+        Returns:
+            set: Set of region IDs that are conflicting
+        """
+        if not excursion_id or not start_date or not end_date:
+            return set()
+        
+        # Convert to date objects if strings
+        if isinstance(start_date, str):
+            start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+        if isinstance(end_date, str):
+            end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+        
+        # Get all regions that are already used in overlapping availabilities
+        overlapping_availabilities = ExcursionAvailability.objects.filter(
+            excursion_id=excursion_id,
+            start_date__lte=end_date,
+            end_date__gte=start_date,
+            status='active'
+        )
+        
+        if current_availability_id:
+            overlapping_availabilities = overlapping_availabilities.exclude(pk=current_availability_id)
+        
+        # Get all region IDs that are used in overlapping availabilities
+        used_region_ids = set()
+        for avail in overlapping_availabilities:
+            used_region_ids.update(avail.regions.values_list('id', flat=True))
+        
+        return used_region_ids
+    
+    @staticmethod
+    def validate_date_range(start_date, end_date):
+        """
+        Validate that date range is logical.
+        
+        Args:
+            start_date: Start date
+            end_date: End date
+            
+        Raises:
+            ValidationError: If date range is invalid
+        """
+        if not start_date or not end_date:
+            raise ValidationError('Start date and end date are required.')
+        
+        # Convert to date objects if strings
+        if isinstance(start_date, str):
+            start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+        if isinstance(end_date, str):
+            end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+        
+        if end_date < start_date:
+            raise ValidationError('End date cannot be before start date.')
+    
+    @staticmethod
+    def validate_availability_requirements(regions, pickup_points, weekdays):
+        """
+        Validate that availability has minimum required data.
+        
+        Args:
+            regions: List of region IDs
+            pickup_points: List of pickup point IDs
+            weekdays: List of weekday IDs
+            
+        Raises:
+            ValidationError: If required data is missing
+        """
+        if not regions or len(regions) == 0:
+            raise ValidationError('At least one region must be selected.')
+        
+        if not pickup_points or len(pickup_points) == 0:
+            raise ValidationError('At least one pickup point must be selected.')
+        
+        if not weekdays or len(weekdays) == 0:
+            raise ValidationError('At least one weekday must be selected.')
 
 
 class FeedbackService:

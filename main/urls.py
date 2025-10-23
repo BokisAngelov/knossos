@@ -55,6 +55,7 @@ urlpatterns = [
     path('guides_list/', views.guides_list, name='guides_list'),
     path('manage_guides/', views.manage_guides, name='manage_guides'),
     path('check_excursion_pickup_groups/', views.check_excursion_pickup_groups, name='check_excursion_pickup_groups'),
+    path('get_available_regions/', views.get_available_regions, name='get_available_regions'),
     path('admin_reservations/', views.admin_reservations, name='admin_reservations'),
     path('manage_reservations/', views.manage_reservations, name='manage_reservations'),
     # location urls
