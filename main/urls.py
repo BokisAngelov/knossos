@@ -94,6 +94,7 @@ urlpatterns = [
     path('groups/<int:pk>/export-pdf/', views.group_export_pdf, name='group_export_pdf'),
     path('groups/<int:pk>/export-csv/', views.group_export_csv, name='group_export_csv'),
     path('groups/<int:pk>/send/', views.group_send, name='group_send'),
+    path('groups/<int:pk>/set-pickup-time/', views.set_pickup_time, name='set_pickup_time'),
     path('get_bookings_for_group/', views.get_bookings_for_group, name='get_bookings_for_group'),
     path('test-pdf/', views.test_simple_pdf, name='test_simple_pdf'),  # Test PDF endpoint
     path('buses/', views.buses_list, name='buses_list'),

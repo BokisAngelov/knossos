@@ -1430,11 +1430,15 @@ def group_create(request):
 
 @user_passes_test(is_staff)
 def group_detail(request, pk):
+    from .models import GroupPickupPoint
+    
     group = get_object_or_404(Group.objects.prefetch_related(
         'bookings', 
         'bookings__pickup_point',
         'bookings__pickup_point__pickup_group',
-        'bookings__voucher_id'
+        'bookings__voucher_id',
+        'pickup_times',
+        'pickup_times__pickup_point'
     ), pk=pk)
     
     # Group bookings by pickup point for display
@@ -1444,13 +1448,39 @@ def group_detail(request, pk):
         'pickup_point__name'
     )
     
-    #     # Get pickup group summary (hierarchical structure)
+    # Get pickup group summary (hierarchical structure)
     pickup_summary = TransportGroupService.get_pickup_group_summary(bookings)
+    
+    # Get all unique pickup points from bookings
+    unique_pickup_points = set()
+    for booking in bookings:
+        if booking.pickup_point:
+            unique_pickup_points.add(booking.pickup_point)
+    
+    # Get or create GroupPickupPoint entries for each pickup point
+    pickup_times_dict = {}
+    for pickup_point in unique_pickup_points:
+        gpp, created = GroupPickupPoint.objects.get_or_create(
+            group=group,
+            pickup_point=pickup_point
+        )
+        pickup_times_dict[pickup_point.id] = gpp.pickup_time
+    
+    # Add pickup times to the pickup summary structure
+    for pickup_group in pickup_summary:
+        for pickup_point_summary in pickup_group['pickup_point_summaries']:
+            if pickup_point_summary['pickup_point']:
+                pickup_point_id = pickup_point_summary['pickup_point'].id
+                pickup_point_summary['pickup_time'] = pickup_times_dict.get(pickup_point_id)
+    
+    # Check if all pickup times are set
+    all_times_set = all(time is not None for time in pickup_times_dict.values()) and len(pickup_times_dict) > 0
     
     return render(request, 'main/groups/group_detail.html', {
         'group': group,
         'bookings': bookings,
         'pickup_groups': pickup_summary,
+        'all_times_set': all_times_set,
     })
 
 @user_passes_test(is_staff)
@@ -1496,6 +1526,128 @@ def group_delete(request, pk):
     
     # If GET request, redirect to group detail instead
     return redirect('group_detail', pk=pk)
+
+@user_passes_test(is_staff)
+def set_pickup_time(request, pk):
+    """AJAX endpoint to save pickup time for a specific pickup point in a group"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': 'Invalid request method'}, status=400)
+    
+    try:
+        from .models import GroupPickupPoint
+        import json
+        
+        data = json.loads(request.body)
+        pickup_point_id = data.get('pickup_point_id')
+        pickup_time = data.get('pickup_time')
+        
+        if not pickup_point_id or not pickup_time:
+            return JsonResponse({'success': False, 'message': 'Missing required fields'}, status=400)
+        
+        group = get_object_or_404(Group, pk=pk)
+        pickup_point = get_object_or_404(PickupPoint, pk=pickup_point_id)
+        
+        # Get or create GroupPickupPoint entry
+        gpp, created = GroupPickupPoint.objects.get_or_create(
+            group=group,
+            pickup_point=pickup_point
+        )
+        gpp.pickup_time = pickup_time
+        gpp.save()
+        
+        # Check if all pickup times are now set
+        bookings = group.bookings.all()
+        unique_pickup_points = set()
+        for booking in bookings:
+            if booking.pickup_point:
+                unique_pickup_points.add(booking.pickup_point.id)
+        
+        all_times_set = True
+        for pp_id in unique_pickup_points:
+            try:
+                gpp = GroupPickupPoint.objects.get(group=group, pickup_point_id=pp_id)
+                if not gpp.pickup_time:
+                    all_times_set = False
+                    break
+            except GroupPickupPoint.DoesNotExist:
+                all_times_set = False
+                break
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Pickup time saved successfully',
+            'all_times_set': all_times_set
+        })
+        
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=500)
+
+@user_passes_test(is_staff)
+def group_send(request, pk):
+    """Send group list to transportation company and mark availability as inactive"""
+    if request.method != 'POST':
+        messages.error(request, 'Invalid request method')
+        return redirect('group_detail', pk=pk)
+    
+    try:
+        from .models import GroupPickupPoint, AvailabilityDays
+        from django.core.mail import send_mail
+        from django.conf import settings
+        
+        group = get_object_or_404(Group, pk=pk)
+        
+        # Check if all pickup times are set
+        bookings = group.bookings.all()
+        unique_pickup_points = set()
+        for booking in bookings:
+            if booking.pickup_point:
+                unique_pickup_points.add(booking.pickup_point.id)
+        
+        if not unique_pickup_points:
+            messages.error(request, 'No pickup points found in this group')
+            return redirect('group_detail', pk=pk)
+        
+        # Verify all times are set
+        missing_times = []
+        for pp_id in unique_pickup_points:
+            try:
+                gpp = GroupPickupPoint.objects.get(group=group, pickup_point_id=pp_id)
+                if not gpp.pickup_time:
+                    pickup_point = PickupPoint.objects.get(pk=pp_id)
+                    missing_times.append(pickup_point.name)
+            except GroupPickupPoint.DoesNotExist:
+                pickup_point = PickupPoint.objects.get(pk=pp_id)
+                missing_times.append(pickup_point.name)
+        
+        if missing_times:
+            messages.error(request, f'Please set pickup times for: {", ".join(missing_times)}')
+            return redirect('group_detail', pk=pk)
+        
+        # Mark availability day as inactive
+        if group.excursion and group.date:
+            availability_days = AvailabilityDays.objects.filter(
+                excursion_availability__excursion=group.excursion,
+                date_day=group.date
+            )
+            availability_days.update(status='inactive')
+        
+        # TODO: Send email to transportation company
+        # You'll need to configure this with the transportation company email
+        # Example:
+        # subject = f'Transport Group List - {group.name}'
+        # message = f'Transport group details for {group.excursion.title} on {group.date}'
+        # send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, ['transport@company.com'])
+        
+        # Mark group as sent
+        group.status = 'sent'
+        group.save()
+        
+        messages.success(request, f'Group list sent successfully! Availability for {group.date} has been disabled.')
+        return redirect('group_detail', pk=pk)
+        
+    except Exception as e:
+        messages.error(request, f'Error sending group list: {str(e)}')
+        return redirect('group_detail', pk=pk)
 
 @user_passes_test(is_staff)
 def get_bookings_for_group(request):
@@ -1606,14 +1758,22 @@ def group_export_pdf(request, pk):
     from xhtml2pdf import pisa
     from io import BytesIO
     from collections import defaultdict
+    from .models import GroupPickupPoint
 
     group = get_object_or_404(Group.objects.prefetch_related(
         'bookings',
         'bookings__pickup_point',
         'bookings__pickup_point__pickup_group',
         'bookings__voucher_id',
-        'bookings__voucher_id__hotel'
+        'bookings__voucher_id__hotel',
+        'pickup_times',
+        'pickup_times__pickup_point'
     ), pk=pk)
+
+    # Get pickup times dictionary
+    pickup_times = {}
+    for gpp in group.pickup_times.all():
+        pickup_times[gpp.pickup_point.id] = gpp.pickup_time
 
     # Get bookings for the group
     bookings = group.bookings.all().order_by(
@@ -1655,8 +1815,14 @@ def group_export_pdf(request, pk):
                 break
         
         if not pickup_point_data:
+            # Get pickup time for this pickup point
+            pickup_time = None
+            if pickup_point:
+                pickup_time = pickup_times.get(pickup_point.id)
+            
             pickup_point_data = {
                 'pickup_point': pickup_point,
+                'pickup_time': pickup_time,
                 'bookings': [],
                 'subtotal': {'adults': 0, 'kids': 0, 'infants': 0, 'total': 0}
             }
@@ -1707,14 +1873,22 @@ def group_export_pdf(request, pk):
 def group_export_csv(request, pk):
     import csv
     from io import StringIO
+    from .models import GroupPickupPoint
     
     group = get_object_or_404(Group.objects.prefetch_related(
         'bookings',
         'bookings__pickup_point',
         'bookings__pickup_point__pickup_group',
         'bookings__voucher_id',
-        'bookings__voucher_id__hotel'
+        'bookings__voucher_id__hotel',
+        'pickup_times',
+        'pickup_times__pickup_point'
     ), pk=pk)
+    
+    # Get pickup times dictionary
+    pickup_times = {}
+    for gpp in group.pickup_times.all():
+        pickup_times[gpp.pickup_point.id] = gpp.pickup_time
     
     # Get bookings for the group
     bookings = group.bookings.all().order_by(
@@ -1756,8 +1930,14 @@ def group_export_csv(request, pk):
                 break
         
         if not pickup_point_data:
+            # Get pickup time for this pickup point
+            pickup_time = None
+            if pickup_point:
+                pickup_time = pickup_times.get(pickup_point.id)
+            
             pickup_point_data = {
                 'pickup_point': pickup_point,
+                'pickup_time': pickup_time,
                 'bookings': [],
                 'subtotal': {'adults': 0, 'kids': 0, 'infants': 0, 'total': 0}
             }
@@ -1791,7 +1971,7 @@ def group_export_csv(request, pk):
     writer.writerow([])
     
     # Column headers
-    headers = ['#', 'Pickup Group', 'Pickup Point', 'Guest Name', 'Phone', 'Hotel/Location', 'Adults', 'Kids', 'Infants', 'Total']
+    headers = ['#', 'Pickup Group', 'Pickup Point', 'Pickup Time', 'Guest Name', 'Phone', 'Hotel/Location', 'Adults', 'Kids', 'Infants', 'Total']
     writer.writerow(headers)
     
     # Data rows
@@ -1801,6 +1981,7 @@ def group_export_csv(request, pk):
         
         for pp_data in pg_data['pickup_points']:
             pickup_point_name = pp_data['pickup_point'].name if pp_data['pickup_point'] else 'No Pickup Point'
+            pickup_time_str = pp_data['pickup_time'].strftime('%H:%M') if pp_data['pickup_time'] else 'Not Set'
             
             for booking in pp_data['bookings']:
                 phone = ''
@@ -1820,6 +2001,7 @@ def group_export_csv(request, pk):
                     row_number,
                     pickup_group_name,
                     pickup_point_name,
+                    pickup_time_str,
                     booking.guest_name,
                     phone,
                     hotel,
@@ -1835,6 +2017,7 @@ def group_export_csv(request, pk):
                 '',
                 '',
                 f'SUBTOTAL - {pickup_point_name}',
+                '',
                 f'{len(pp_data["bookings"])} booking(s)',
                 '',
                 '',

@@ -38,9 +38,22 @@
                 </svg>
                 Export CSV
             </a>
-            <a href="{% url 'group_list' %}" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                Back to List
-            </a>
+            
+            <!-- Send Group List Button -->
+            <form method="POST" action="{% url 'group_send' group.pk %}" id="sendGroupForm" class="inline">
+                {% csrf_token %}
+                <button type="submit" 
+                        id="sendGroupBtn" 
+                        {% if not all_times_set %}disabled{% endif %}
+                        class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white 
+                        {% if all_times_set and group.status == 'not_sent' %}bg-orange-600 hover:bg-orange-700 focus:ring-orange-500{% else %}bg-gray-400 cursor-not-allowed{% endif %}
+                        focus:outline-none focus:ring-2 focus:ring-offset-2">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                    </svg>
+                    {% if group.status == 'sent' %}Sent{% else %}Send Group List{% endif %}
+                </button>
+            </form>
         </div>
     </div>
 
@@ -102,12 +115,35 @@
                 {% for pickup_point in pickup_group.pickup_point_summaries %}
                 <!-- Pickup Point -->
                 <div class="ml-7 mb-4">
-                    <div class="flex items-center mb-2">
-                        <svg class="w-4 h-4 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                        </svg>
-                        <h4 class="text-sm font-medium text-gray-700">{{ pickup_point.pickup_point_name }}</h4>
-                        <span class="ml-2 text-xs text-gray-400">({{ pickup_point.booking_count }} bookings)</span>
+                    <div class="flex items-center mb-2 justify-between">
+                        <div class="flex items-center">
+                            <svg class="w-4 h-4 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                            </svg>
+                            <h4 class="text-sm font-medium text-gray-700">{{ pickup_point.pickup_point_name }}</h4>
+                            <span class="ml-2 text-xs text-gray-400">({{ pickup_point.booking_count }} bookings)</span>
+                        </div>
+                        
+                        <!-- Pickup Time Input -->
+                        <div class="flex items-center space-x-2">
+                            <label class="text-xs font-medium text-gray-600">Pickup Time:</label>
+                            <input type="time" 
+                                   class="pickup-time-input border-gray-300 rounded-md shadow-sm text-sm focus:ring-blue-500 focus:border-blue-500 px-2 py-1"
+                                   data-pickup-point-id="{{ pickup_point.pickup_point.id }}"
+                                   value="{% if pickup_point.pickup_time %}{{ pickup_point.pickup_time|time:'H:i' }}{% endif %}"
+                                   {% if group.status == 'sent' %}readonly{% endif %}>
+                            <span class="time-status-icon ml-1">
+                                {% if pickup_point.pickup_time %}
+                                    <svg class="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                    </svg>
+                                {% else %}
+                                    <svg class="w-5 h-5 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                    </svg>
+                                {% endif %}
+                            </span>
+                        </div>
                     </div>
 
                     <!-- Bookings Table -->
@@ -177,4 +213,122 @@
         {% endif %}
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const pickupTimeInputs = document.querySelectorAll('.pickup-time-input');
+    const sendGroupBtn = document.getElementById('sendGroupBtn');
+    const sendGroupForm = document.getElementById('sendGroupForm');
+    const groupStatus = '{{ group.status }}';
+    
+    // Function to get CSRF token
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    
+    // Function to save pickup time
+    async function savePickupTime(pickupPointId, pickupTime, inputElement) {
+        try {
+            const response = await fetch("{% url 'set_pickup_time' group.pk %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({
+                    pickup_point_id: pickupPointId,
+                    pickup_time: pickupTime
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                // Update status icon
+                const statusIcon = inputElement.parentElement.querySelector('.time-status-icon');
+                if (pickupTime) {
+                    statusIcon.innerHTML = `
+                        <svg class="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                        </svg>
+                    `;
+                } else {
+                    statusIcon.innerHTML = `
+                        <svg class="w-5 h-5 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                        </svg>
+                    `;
+                }
+                
+                // Update send button state
+                if (data.all_times_set && groupStatus === 'not_sent') {
+                    sendGroupBtn.disabled = false;
+                    sendGroupBtn.classList.remove('bg-gray-400', 'cursor-not-allowed');
+                    sendGroupBtn.classList.add('bg-orange-600', 'hover:bg-orange-700', 'focus:ring-orange-500');
+                } else {
+                    sendGroupBtn.disabled = true;
+                    sendGroupBtn.classList.add('bg-gray-400', 'cursor-not-allowed');
+                    sendGroupBtn.classList.remove('bg-orange-600', 'hover:bg-orange-700', 'focus:ring-orange-500');
+                }
+                
+                // Show brief success feedback
+                inputElement.classList.add('ring-2', 'ring-green-500');
+                setTimeout(() => {
+                    inputElement.classList.remove('ring-2', 'ring-green-500');
+                }, 1000);
+            } else {
+                alert('Error saving pickup time: ' + data.message);
+                inputElement.classList.add('ring-2', 'ring-red-500');
+                setTimeout(() => {
+                    inputElement.classList.remove('ring-2', 'ring-red-500');
+                }, 2000);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Error saving pickup time. Please try again.');
+        }
+    }
+    
+    // Add change event listeners to all time inputs
+    pickupTimeInputs.forEach(input => {
+        input.addEventListener('change', function() {
+            const pickupPointId = this.dataset.pickupPointId;
+            const pickupTime = this.value;
+            savePickupTime(pickupPointId, pickupTime, this);
+        });
+    });
+    
+    // Add confirmation dialog for sending group
+    if (sendGroupForm) {
+        sendGroupForm.addEventListener('submit', function(e) {
+            if (groupStatus !== 'sent') {
+                const confirmed = confirm(
+                    'Are you sure you want to send this group list?\n\n' +
+                    'This will:\n' +
+                    '- Send the group list to the transportation company\n' +
+                    '- Mark the availability date as inactive\n' +
+                    '- Mark this group as sent\n\n' +
+                    'You can still edit pickup times after sending.'
+                );
+                
+                if (!confirmed) {
+                    e.preventDefault();
+                }
+            }
+        });
+    }
+});
+</script>
+
 {% endblock %}

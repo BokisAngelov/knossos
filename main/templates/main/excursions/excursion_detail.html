@@ -850,38 +850,61 @@
                         errorList.innerHTML = '';
                     }
                 }
+                // Clear previous error styling
                 document.querySelectorAll('.border-red-500').forEach(el => el.classList.remove('border-red-500'));
-                document.querySelectorAll('.text-red-600').forEach(el => el.remove());
+                document.querySelectorAll('.text-red-600').forEach(el => {
+                    if (el.tagName === 'P' && el.classList.contains('text-red-600')) {
+                        el.remove();
+                    }
+                });
                 
-                // Get form values
-                const selectedDate = document.getElementById('date-picker').value;
-                // const availabilityId = document.getElementById('availability-id').value;
+                // Get form values using consistent element references
+                const selectedDate = datePickerInput.value.trim();
+                const availabilityId = availabilityIdInput.value.trim();
+                const regionId = regionSelect.value;
+                const pickupPointId = pickupPointSelect.value;
                 const adults = parseInt(document.querySelector('input[name="adults"]').value) || 0;
                 const children = parseInt(document.querySelector('input[name="children"]').value) || 0;
                 const infants = parseInt(document.querySelector('input[name="infants"]').value) || 0;
-                const pickupGroupId = document.querySelector('select[name="pickup_group"]').value;
-                const availabilityId = document.querySelector(`input[name="${pickupGroupId}-pickup-group"]`).dataset.availabilityId;
-                const guestEmail = document.querySelector('#guest-email').value;
-                const guestName = document.querySelector('#guest-name').value;
+                const guestEmail = document.querySelector('#guest-email').value.trim();
+                const guestName = document.querySelector('#guest-name').value.trim();
                 const voucherInput = document.querySelector('#voucher_code');
-                const voucherCode = voucherInput && voucherInput.value ? voucherInput.value : "";
+                const voucherCode = (voucherInput && voucherInput.value) ? voucherInput.value.trim() : "";
                 const partialPaymentInput = document.querySelector('#partial-payment');
-                const partialPayment = partialPaymentInput && partialPaymentInput.value ? partialPaymentInput.value : "";
+                const partialPayment = (partialPaymentInput && partialPaymentInput.value) ? partialPaymentInput.value.trim() : "";
                 const partialPaidMethodInput = document.querySelector('#partial-paid-method');
-                const partialPaidMethod = partialPaidMethodInput && partialPaidMethodInput.value ? partialPaidMethodInput.value : '';
+                const partialPaidMethod = (partialPaidMethodInput && partialPaidMethodInput.value) ? partialPaidMethodInput.value.trim() : '';
                 // Validate form
                 let errors = [];
 
+                // Validate region
+                if (!regionId) {
+                    errors.push({ field: 'regions', message: 'Please select a region.' });
+                    regionSelect.classList.add('border-red-500');
+                    const errorDiv = document.createElement('p');
+                    errorDiv.className = 'mt-1 text-sm text-red-600';
+                    errorDiv.textContent = 'Please select a region.';
+                    regionSelect.parentNode.appendChild(errorDiv);
+                }
+
+                // Validate pickup point
+                if (!pickupPointId) {
+                    errors.push({ field: 'pickup_point', message: 'Please select a pickup point.' });
+                    pickupPointSelect.classList.add('border-red-500');
+                    const errorDiv = document.createElement('p');
+                    errorDiv.className = 'mt-1 text-sm text-red-600';
+                    errorDiv.textContent = 'Please select a pickup point.';
+                    pickupPointSelect.parentNode.appendChild(errorDiv);
+                }
+
+                // Validate date
                 if (!selectedDate || !availabilityId) {
                     errors.push({ field: 'date', message: 'Please select a date.' });
-                    const datePicker = document.getElementById('date-picker');
-                    if (datePicker) {
-                        datePicker.classList.add('border-red-500');
-                        const errorDiv = document.createElement('p');
-                        errorDiv.className = 'mt-1 text-sm text-red-600';
-                        errorDiv.textContent = 'Please select a date.';
-                        datePicker.parentNode.appendChild(errorDiv);
-                    }
+                    datePickerInput.classList.add('border-red-500');
+                    const errorDiv = document.createElement('p');
+                    errorDiv.className = 'mt-1 text-sm text-red-600';
+                    errorDiv.textContent = 'Please select a date.';
+                    datePickerInput.parentNode.appendChild(errorDiv);
                 }
 
                 if (adults + children + infants === 0) {
@@ -923,20 +946,28 @@
                         errorDiv.textContent = 'Please enter your email.';
                         guestEmailInput.parentNode.appendChild(errorDiv);
                     }
+                } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guestEmail)) {
+                    errors.push({ field: 'guest-email', message: 'Please enter a valid email address.' });
+                    const guestEmailInput = document.querySelector('#guest-email');
+                    if (guestEmailInput) {
+                        guestEmailInput.classList.add('border-red-500');
+                        const errorDiv = document.createElement('p');
+                        errorDiv.className = 'mt-1 text-sm text-red-600';
+                        errorDiv.textContent = 'Please enter a valid email address.';
+                        guestEmailInput.parentNode.appendChild(errorDiv);
+                    }
                 }
 
-                if (userRole == 'admin') {
-                    
-                    if (partialPayment && partialPayment > 0 && !partialPaidMethod) {
-                        errors.push({ field: 'partial-paid-method', message: 'Please select a payment method.' });
-                        const partialPaidMethodInput = document.querySelector('#partial-paid-method');
-                        if (partialPaidMethodInput) {
-                            partialPaidMethodInput.classList.add('border-red-500');
-                            const errorDiv = document.createElement('p');
-                            errorDiv.className = 'mt-1 text-sm text-red-600';
-                            errorDiv.textContent = 'Please select a payment method.';
-                                partialPaidMethodInput.parentNode.appendChild(errorDiv);
-                            }
+                // Validate partial payment for admin/staff
+                if ((userRole === 'admin' || userRole === 'representative') && partialPayment && parseFloat(partialPayment) > 0 && !partialPaidMethod) {
+                    errors.push({ field: 'partial-paid-method', message: 'Please select a payment method for partial payment.' });
+                    const partialPaidMethodInput = document.querySelector('#partial-paid-method');
+                    if (partialPaidMethodInput) {
+                        partialPaidMethodInput.classList.add('border-red-500');
+                        const errorDiv = document.createElement('p');
+                        errorDiv.className = 'mt-1 text-sm text-red-600';
+                        errorDiv.textContent = 'Please select a payment method for partial payment.';
+                        partialPaidMethodInput.parentNode.appendChild(errorDiv);
                     }
                 }
 
@@ -952,9 +983,11 @@
                 const formData = new FormData(bookingForm);
                 formData.append('selected_date', selectedDate);
                 formData.append('availability_id', availabilityId);
-                formData.append('voucher_code', voucherCode ? voucherCode : "");
-                formData.append('partial_payment', partialPayment ? partialPayment : "");
-                formData.append('partial_paid_method', partialPaidMethod ? partialPaidMethod : "");
+                formData.append('regions', regionId);
+                formData.append('pickup_point', pickupPointId);
+                formData.append('voucher_code', voucherCode || "");
+                formData.append('partial_payment', partialPayment || "");
+                formData.append('partial_paid_method', partialPaidMethod || "");
                 // Submit form via AJAX
                 fetch(window.location.href, {
                     method: 'POST',
@@ -981,33 +1014,45 @@
                         submitButton.disabled = false;
                         loadingSpinner.classList.add('hidden');
                         submitText.textContent = 'Book Now';
-                        document.getElementById('form-errors').textContent = data.message;
-                        console.log('data.message:', data.message);
+                        
+                        // Map field names to actual input selectors for error display
+                        const fieldSelectors = {
+                            'regions': '#regions',
+                            'pickup_point': '#pickup-point',
+                            'date': '#date-picker',
+                            'guest_name': '#guest-name',
+                            'guest_email': '#guest-email',
+                            'adults': 'input[name="adults"]',
+                            'children': 'input[name="children"]',
+                            'infants': 'input[name="infants"]',
+                            'partial_paid_method': '#partial-paid-method'
+                        };
+                        
                         // Display server-side validation errors
                         if (data.errors) {
-                            console.log('Validation errors:', data.errors);
-                            console.log('Error message:', data.message);
                             Object.keys(data.errors).forEach(field => {
-                                const input = document.querySelector(`[name="${field}"]`);
+                                const selector = fieldSelectors[field] || `[name="${field}"]`;
+                                const input = document.querySelector(selector);
+                                
                                 if (input) {
                                     input.classList.add('border-red-500');
                                     const errorDiv = document.createElement('p');
                                     errorDiv.className = 'mt-1 text-sm text-red-600';
-                                    errorDiv.textContent = data.errors[field][0];
-                                    // errorDiv.textContent = data.errors;
+                                    errorDiv.textContent = Array.isArray(data.errors[field]) ? data.errors[field][0] : data.errors[field];
                                     input.parentNode.appendChild(errorDiv);
                                 }
                             });
-                        } else if (data.message) {
-                            // console.log('Error message:', data.message);
-                            if (formErrors) {
-                                formErrors.classList.remove('hidden');
-                                const errorList = formErrors.querySelector('ul');
-                                if (errorList) {
-                                    const errorItem = document.createElement('li');
-                                    errorItem.textContent = data.message;
-                                    errorList.appendChild(errorItem);
-                                }
+                        }
+                        
+                        // Display general error message
+                        if (data.message && formErrors) {
+                            formErrors.classList.remove('hidden');
+                            const errorList = formErrors.querySelector('ul');
+                            if (errorList) {
+                                errorList.innerHTML = '';
+                                const errorItem = document.createElement('li');
+                                errorItem.textContent = data.message;
+                                errorList.appendChild(errorItem);
                             }
                         }
                     }

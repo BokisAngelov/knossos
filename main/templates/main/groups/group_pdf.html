@@ -156,6 +156,11 @@
                 <div class="pickup-point-header">
                     {% if pp_data.pickup_point %}
                         📍 {{ pp_data.pickup_point.name }}
+                        {% if pp_data.pickup_time %}
+                            - ⏰ Pickup Time: {{ pp_data.pickup_time|time:"H:i" }}
+                        {% else %}
+                            - ⏰ Pickup Time: NOT SET
+                        {% endif %}
                     {% else %}
                         📍 No Pickup Point
                     {% endif %}

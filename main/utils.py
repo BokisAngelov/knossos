@@ -1,6 +1,3 @@
-"""
-Utility functions for booking and feedback operations.
-"""
 from django.contrib.auth.models import User
 from django.db import transaction
 from django.utils import timezone
@@ -294,7 +291,7 @@ class BookingService:
         
         if booking_data['total_guests'] > remaining_seats:
             raise ValidationError(
-                f'The availability has not enough guests. Remaining seats: {remaining_seats}'
+                f'The selected date has not enough seats available. Remaining seats: {remaining_seats}'
             )
         
         # Create booking
@@ -353,7 +350,7 @@ class ExcursionService:
             regions = availability.regions.all()
             
             # Get all availability days for this availability
-            days = availability.availability_days.all()
+            days = availability.availability_days.filter(status='active')
             
             # Get all pickup points for this availability
             pickup_points = availability.pickup_points.all().order_by('name')

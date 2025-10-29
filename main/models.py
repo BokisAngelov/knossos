@@ -279,12 +279,17 @@ class ExcursionAvailability(models.Model):
             self.save()
 
 class AvailabilityDays(models.Model):
+    STATUS_CHOICES = [
+        ('active', 'Active'),
+        ('inactive', 'Inactive'),
+    ]
     created_at = models.DateTimeField(auto_now_add=True)
     # excursion = models.ForeignKey(Excursion, on_delete=models.CASCADE, related_name='availability_days')
     excursion_availability = models.ForeignKey(ExcursionAvailability, on_delete=models.CASCADE, related_name='availability_days', null=True)
     date_day = models.DateField()
     capacity = models.PositiveIntegerField(default=0)
     booked_guests = models.PositiveIntegerField(default=0)
+    status = models.CharField(max_length=255, choices=STATUS_CHOICES, default='active')
 
     def __str__(self):
         return f"{self.excursion_availability.excursion.title} - {self.date_day}"
@@ -503,6 +508,20 @@ class Group(models.Model):
         verbose_name = 'Transport Group'
         verbose_name_plural = 'Transport Groups'
         ordering = ['-date', 'status']  
- 
+
+class GroupPickupPoint(models.Model):
+    """Store pickup times for each pickup point in a transport group"""
+    group = models.ForeignKey(Group, on_delete=models.CASCADE, related_name='pickup_times')
+    pickup_point = models.ForeignKey(PickupPoint, on_delete=models.CASCADE, related_name='group_pickup_times')
+    pickup_time = models.TimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ['group', 'pickup_point']
+        ordering = ['pickup_point__pickup_group__priority', 'pickup_point__priority', 'pickup_point__name']
+
+    def __str__(self):
+        return f"{self.group.name} - {self.pickup_point.name} @ {self.pickup_time or 'Not Set'}"
 
 
