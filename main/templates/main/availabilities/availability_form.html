@@ -257,6 +257,20 @@
         {% if form.regions.errors %}<div class="text-red-500 text-xs mt-1">{{ form.regions.errors }}</div>{% endif %}
       </div>
 
+      <!-- Pickup time -->
+      <div class="flex gap-4">
+        <div class="flex-1 space-y-1">
+          <label for="{{ form.pickup_start_time.id_for_label }}" class="block text-md font-semibold text-header-grey">{{ form.pickup_start_time.label }}</label>
+          <div class="w-full auth-input-field rounded-lg border form-fields-border">{{ form.pickup_start_time }}</div>
+          {% if form.pickup_start_time.errors %}<div class="text-red-500 text-xs mt-1">{{ form.pickup_start_time.errors }}</div>{% endif %}
+        </div>
+        <div class="flex-1 space-y-1">
+          <label for="{{ form.pickup_end_time.id_for_label }}" class="block text-md font-semibold text-header-grey">{{ form.pickup_end_time.label }}</label>
+          <div class="w-full auth-input-field rounded-lg border form-fields-border">{{ form.pickup_end_time }}</div>
+          {% if form.pickup_end_time.errors %}<div class="text-red-500 text-xs mt-1">{{ form.pickup_end_time.errors }}</div>{% endif %}
+        </div>
+      </div>
+
       <!-- Max Guests -->
       <div class="space-y-1">
         <label for="{{ form.max_guests.id_for_label }}" class="block text-md font-semibold text-header-grey">{{ form.max_guests.label }}</label>

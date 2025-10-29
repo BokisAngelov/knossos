@@ -2,19 +2,10 @@
 {% load static %}
 
 {% block extra_css %}
-<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/pikaday/css/pikaday.css">
 <style>
-    #date-picker-inline {
-        min-height: 250px;        
-        position: relative;      
-        border: 1px solid #ccc;  
-        padding: 10px;
+    .flatpickr-calendar {
+        z-index: 9999 !important;
     }
-    .pika-single {
-        position: absolute;
-        z-index: 9999;
-    }
-    
 </style>
 {% endblock %}
 
@@ -159,31 +150,14 @@
                     </div>
 
                     <div class="prose max-w-none mb-6 border-t border-gray-200 pt-4">
-                        <p class="text-sm text-gray-500 mb-4">*Note: Pickup points and prices are based on the pickup group you have selected. <span class="text-sm text-gray-500 font-normal">(Selected Pickup Group: <span class="pickup-region font-semibold">{{ excursion_availability.pickup_groups.all.first.name }}</span>)</span></p>
+                        <p class="text-sm text-gray-500 mb-4">*Note: Pickup points and prices are based on the region you have selected. <span class="text-sm text-gray-500 font-normal">(Selected Region: <span id="selected-region-name" class="pickup-region font-semibold">Please select a region</span>)</span></p>
                         <div class="grid grid-cols-2 gap-2">
                             <div class="flex flex-col gap-2">
                                 <h2 class="text-xl font-semibold text-purple">Pickup Points</h2>
-                                <div class="flex gap-6">
-                                    {% for availability in excursion_availabilities %}
-                                        {% for pick_group in availability.pickup_groups.all %}
-                                            <div class="flex flex-col gap-2 group-{{ pick_group.id }} pickup-group">
-                                                <h2 class="text-lg font-semibold text-gray-900 mt-1">{{ pick_group.name }}</h2>
-                                                <ul class="pickup-points-list">
-                                                    {% for pickup_point in pick_group.pickup_points.all %}
-                                                    <li>
-                                                        <div class="flex items-center py-1">
-                                                            <svg class="mr-2" width="17" height="19" viewBox="0 0 20 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                                <path d="M9.75 23C14.125 18.6 18.5 14.66 18.5 9.8C18.5 4.93989 14.5825 1 9.75 1C4.91751 1 1 4.93989 1 9.8C1 14.66 5.375 18.6 9.75 23Z" stroke="#8E24AA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                                                                <path d="M9.75 13.2222C11.8211 13.2222 13.5 11.5806 13.5 9.55552C13.5 7.53048 11.8211 5.88885 9.75 5.88885C7.67887 5.88885 6 7.53048 6 9.55552C6 11.5806 7.67887 13.2222 9.75 13.2222Z" stroke="#8E24AA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                                                                </svg>                                                                
-                                                            <a href="{% if pickup_point.google_maps_link %}{{ pickup_point.google_maps_link }}{% else %}#{% endif %}">{{ pickup_point.name }}</a>
-                                                        </div>
-                                                    </li>
-                                                    {% endfor %}
-                                                </ul>
-                                            </div>
-                                        {% endfor %}
-                                    {% endfor %}
+                                <div class="flex gap-6" id="pickup-points-display">
+                                    <div class="flex flex-col gap-2">
+                                        <p class="text-sm text-gray-500">Select a region to view pickup points</p>
+                                    </div>
                                 </div>
                             </div>
                             
@@ -311,33 +285,29 @@
                         <input type="hidden" name="{{ availability.id }}-adult-price" value="{{ availability.adult_price }}">
                         <input type="hidden" name="{{ availability.id }}-child-price" value="{{ availability.child_price }}">
                         <input type="hidden" name="{{ availability.id }}-infant-price" value="{{ availability.infant_price }}">
-                        {% for pickup_group in availability.pickup_groups.all %}
-                            <input type="hidden" name="{{ pickup_group.id }}-pickup-group" value="{{ pickup_group.name }}" data-availability-id="{{ availability.id }}">
-                        {% endfor %}
                     {% endfor %}
                     <input type="hidden" name="availability_id" id="availability-id" value="">
-                    <div class="flex flex-col gap-2 pickup-group-div" >
-                        <label class="block text-md font-semibold text-header-grey">Pickup Group</label>
-                        <select name="pickup_group" id="pickup-group" class="mt-1 block w-full pl-3 pr-2 py-2 text-base form-fields-border focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md {% if form.pickup_group.errors %}border-red-500{% endif %}">
-                            {% for group_id, group_name in pickup_group_map.items %}
-                                <option value="{{ group_id }}">{{ group_name }}</option>
+                    <div class="flex flex-col gap-2">
+                        <label class="block text-md font-semibold text-header-grey">Region</label>
+                        <select name="regions" id="regions" class="mt-1 block w-full pl-3 pr-2 py-2 text-base form-fields-border focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md {% if form.regions.errors %}border-red-500{% endif %}">
+                            <option value="">Select a region</option>
+                            {% for region in regions %}
+                                <option value="{{ region.id }}">{{ region.name }}</option>
                             {% endfor %}
                         </select>
-                        {% if form.pickup_group.errors %}
-                        <p class="mt-1 text-sm text-red-600">{{ form.pickup_group.errors.0 }}</p>
+                        {% if form.regions.errors %}
+                        <p class="mt-1 text-sm text-red-600">{{ form.regions.errors.0 }}</p>
                         {% endif %}
                     </div>
                     
                     {{ availability_dates_by_region|json_script:"available-dates-json" }}
-                    {{ pickup_points|json_script:"pickup-points-json" }}
+                    {{ pickup_points_by_region|json_script:"pickup-points-json" }}
+                    {{ region_availability_map|json_script:"region-availability-map-json" }}
 
                     <div class="flex flex-col gap-2">
                         <label class="block text-md font-semibold text-header-grey">Pickup Point</label>
-                        <select name="pickup_point" id="pickup-point" class="mt-1 block w-full pl-3 pr-2 py-2 text-base form-fields-border focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md {% if form.pickup_point.errors %}border-red-500{% endif %}">
-                            <option value="">Select a pickup point</option>
-                            {% for pickup_point in pickup_points %}
-                                <option data-pickup_group="{{ pickup_point.pickup_group }}" value="{{ pickup_point.id }}">{{ pickup_point.name }}</option>
-                            {% endfor %}
+                        <select name="pickup_point" id="pickup-point" class="mt-1 block w-full pl-3 pr-2 py-2 text-base form-fields-border focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md {% if form.pickup_point.errors %}border-red-500{% endif %}" disabled>
+                            <option value="">Select a region first</option>
                         </select>
                         {% if form.pickup_point.errors %}
                             <p class="mt-1 text-sm text-red-600">{{ form.pickup_point.errors.0 }}</p>
@@ -346,7 +316,7 @@
 
                     <div>
                         <label class="block text-md font-semibold text-header-grey">Date</label>
-                        <input type="text" id="date-picker" class="mt-1 block w-full form-fields-border rounded-md px-3 py-2 {% if form.date.errors %}border-red-500{% endif %}" placeholder="Select a date">
+                        <input type="text" id="date-picker" class="mt-1 block w-full form-fields-border rounded-md px-3 py-2 {% if form.date.errors %}border-red-500{% endif %}" placeholder="Select a region first" readonly>
                         <!-- <span id="remaining-seats" class="text-sm text-gray-500">Remaining seats: <span id="remaining-seats-count">{{ remaining_seats }}</span></span> -->
                         
                         {% if form.date.errors %}
@@ -506,39 +476,134 @@
     const csrftoken = getCookie('csrftoken');
 
     const availableDatesByRegion = JSON.parse(document.getElementById('available-dates-json').textContent);
-    const pickupPointsByGroup = JSON.parse(document.getElementById('pickup-points-json').textContent);
+    const pickupPointsByRegion = JSON.parse(document.getElementById('pickup-points-json').textContent);
+    const regionAvailabilityMap = JSON.parse(document.getElementById('region-availability-map-json').textContent);
 
-    const pickupGroupSelect = document.getElementById('pickup-group');
+    const regionSelect = document.getElementById('regions');
     const pickupPointSelect = document.getElementById('pickup-point');
     const datePickerInput = document.getElementById('date-picker');
+    const availabilityIdInput = document.getElementById('availability-id');
     
     const userRole = getCookie('user_role') ? getCookie('user_role') : '';
     const userId = getCookie('user_id') ? getCookie('user_id') : '';
-    // const availabilityIdInput = document.getElementById('availability-id');
-
-    // console.log(availabilityIdInput);
 
     let picker = null;
+    let currentAvailability = null;
 
-    // Helper: update pickup points dropdown for selected group
-    function updatePickupPoints(groupId) {
-        const groupObj = pickupPointsByGroup.find(g => g.pickup_group == groupId);
+    function calculateTotal() {
+        const adults = parseInt(document.querySelector('input[name="adults"]').value) || 0;
+        const children = parseInt(document.querySelector('input[name="children"]').value) || 0;
+        const infants = parseInt(document.querySelector('input[name="infants"]').value) || 0;
+        const availabilityId = availabilityIdInput.value;
+
+        if (!availabilityId) {
+            document.getElementById('total-price').textContent = '0.00';
+            document.getElementById('total-price-input').value = 0;
+            return;
+        }
+
+        const adultPrice = parseFloat(document.querySelector(`input[name="${availabilityId}-adult-price"]`)?.value || 0);
+        const childPrice = parseFloat(document.querySelector(`input[name="${availabilityId}-child-price"]`)?.value || 0);
+        const infantPrice = parseFloat(document.querySelector(`input[name="${availabilityId}-infant-price"]`)?.value || 0);
+        
+        const total = (adults * adultPrice) + (children * childPrice) + (infants * infantPrice);
+        document.getElementById('total-price').textContent = total.toFixed(2);
+        document.getElementById('total-price-input').value = total;
+    }
+
+    // Helper: display price details and pickup points for selected region
+    function displayRegionDetails(regionId) {
+        // Update prices in the existing price details section
+        const adultPriceEl = document.getElementById('adult-price');
+        const childPriceEl = document.getElementById('child-price');
+        const infantPriceEl = document.getElementById('infant-price');
+        const selectedRegionNameEl = document.getElementById('selected-region-name');
+        const pickupPointsDisplayEl = document.getElementById('pickup-points-display');
+        
+        if (!regionId) {
+            // Reset prices to 0.00 if no region selected
+            if (adultPriceEl) adultPriceEl.textContent = '0.00';
+            if (childPriceEl) childPriceEl.textContent = '0.00';
+            if (infantPriceEl) infantPriceEl.textContent = '0.00';
+            if (selectedRegionNameEl) selectedRegionNameEl.textContent = 'Please select a region';
+            if (pickupPointsDisplayEl) {
+                pickupPointsDisplayEl.innerHTML = '<div class="flex flex-col gap-2"><p class="text-sm text-gray-500">Select a region to view pickup points</p></div>';
+            }
+            return;
+        }
+        
+        const availabilities = regionAvailabilityMap[regionId];
+        if (availabilities && availabilities.length > 0) {
+            // Use the first availability for this region
+            currentAvailability = availabilities[0];
+            
+            // Display prices in the existing elements
+            if (adultPriceEl) adultPriceEl.textContent = currentAvailability.adult_price.toFixed(2);
+            if (childPriceEl) childPriceEl.textContent = currentAvailability.child_price.toFixed(2);
+            if (infantPriceEl) infantPriceEl.textContent = currentAvailability.infant_price.toFixed(2);
+            
+            // Update selected region name
+            const regionOption = regionSelect.querySelector(`option[value="${regionId}"]`);
+            if (selectedRegionNameEl && regionOption) {
+                selectedRegionNameEl.textContent = regionOption.textContent;
+            }
+            
+            // Display pickup points for this region
+            if (pickupPointsDisplayEl && currentAvailability.pickup_points) {
+                let pickupPointsHTML = '<div class="flex flex-col gap-2"><ul class="pickup-points-list">';
+                
+                currentAvailability.pickup_points.forEach(point => {
+                    pickupPointsHTML += `
+                        <li>
+                            <div class="flex items-center py-1">
+                                <svg class="mr-2" width="17" height="19" viewBox="0 0 20 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M9.75 23C14.125 18.6 18.5 14.66 18.5 9.8C18.5 4.93989 14.5825 1 9.75 1C4.91751 1 1 4.93989 1 9.8C1 14.66 5.375 18.6 9.75 23Z" stroke="#8E24AA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    <path d="M9.75 13.2222C11.8211 13.2222 13.5 11.5806 13.5 9.55552C13.5 7.53048 11.8211 5.88885 9.75 5.88885C7.67887 5.88885 6 7.53048 6 9.55552C6 11.5806 7.67887 13.2222 9.75 13.2222Z" stroke="#8E24AA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                                <a href="#">${point.name}</a>
+                            </div>
+                        </li>
+                    `;
+                });
+                
+                pickupPointsHTML += '</ul></div>';
+                pickupPointsDisplayEl.innerHTML = pickupPointsHTML;
+            }
+        }
+    }
+
+    // Helper: update pickup points dropdown for selected region
+    function updatePickupPoints(regionId) {
         pickupPointSelect.innerHTML = '<option value="">Select a pickup point</option>';
-        if (groupObj) {
-            groupObj.points.forEach(point => {
+        
+        if (!regionId) {
+            pickupPointSelect.disabled = true;
+            return;
+        }
+        
+        const pickupPoints = pickupPointsByRegion[regionId];
+        if (pickupPoints && pickupPoints.length > 0) {
+            // Sort points alphabetically
+            const sortedPoints = [...pickupPoints].sort((a, b) => a.name.localeCompare(b.name));
+            
+            // Add options
+            sortedPoints.forEach(point => {
                 const option = document.createElement('option');
                 option.value = point.id;
                 option.textContent = point.name;
                 pickupPointSelect.appendChild(option);
             });
-        }else{
-            console.log('no group found');
+            
+            pickupPointSelect.disabled = false;
+        } else {
+            pickupPointSelect.disabled = true;
+            console.log('No pickup points found for region:', regionId);
         }
     }
 
-    // Helper: update date picker for selected group
-    function updateDatePicker(groupId) {
-        const availableDates = availableDatesByRegion[groupId] || [];
+    // Helper: update date picker for selected region
+    function updateDatePicker(regionId) {
+        const availableDates = availableDatesByRegion[regionId] || [];
         const today = new Date();
         today.setHours(0, 0, 0, 0); // Set to start of today
         
@@ -548,33 +613,63 @@
             return itemDate >= today;
         });
         
-        if (picker) picker.destroy();
-        picker = flatpickr(datePickerInput, {
-            enable: futureAvailableDates.map(item => item.date),
-            dateFormat: "Y-m-d",
-            position: "below",
-            onChange: function(selectedDates, dateStr) {
-                const selectedDate = futureAvailableDates.find(item => item.date === dateStr);
-                // availabilityIdInput.value = selectedDate ? selectedDate.id : '';
-            }
-        });
+        // Destroy existing picker
+        if (picker) {
+            picker.destroy();
+            picker = null;
+        }
+        
+        // Clear values
         datePickerInput.value = '';
-        // availabilityIdInput.value = '';
+        availabilityIdInput.value = '';
+        
+        // Initialize new picker only if there are available dates
+        if (futureAvailableDates.length > 0) {
+            picker = flatpickr(datePickerInput, {
+                enable: futureAvailableDates.map(item => item.date),
+                dateFormat: "Y-m-d",
+                minDate: "today",
+                disableMobile: false,
+                clickOpens: true,
+                allowInput: false,
+                static: false,
+                onChange: function(selectedDates, dateStr) {
+                    const selectedDate = futureAvailableDates.find(item => item.date === dateStr);
+                    if (selectedDate && selectedDate.availability_id) {
+                        availabilityIdInput.value = selectedDate.availability_id;
+                        calculateTotal();
+                    }
+                },
+                onReady: function(selectedDates, dateStr, instance) {
+                    console.log('Flatpickr ready with', futureAvailableDates.length, 'available dates');
+                }
+            });
+            
+            // Make input clickable
+            datePickerInput.placeholder = 'Click to select a date';
+            datePickerInput.disabled = false;
+        } else {
+            datePickerInput.placeholder = 'No available dates for this region';
+            datePickerInput.disabled = true;
+        }
     }
 
-    // On pickup group change, update both date picker and pickup points
-    pickupGroupSelect.addEventListener('change', function() {
-        const groupId = this.value;
-        updateDatePicker(groupId);
-        updatePickupPoints(groupId);
+    // On region change, update everything
+    regionSelect.addEventListener('change', function() {
+        const regionId = this.value;
+        displayRegionDetails(regionId);
+        updatePickupPoints(regionId);
+        updateDatePicker(regionId);
+        calculateTotal();
     });
 
 
     document.addEventListener('DOMContentLoaded', function() {
 
-        const initialGroupId = pickupGroupSelect.value;
-        updateDatePicker(initialGroupId);
-        updatePickupPoints(initialGroupId);
+        // Initialize with no region selected - user must select region first
+        pickupPointSelect.disabled = true;
+        datePickerInput.disabled = true;
+        datePickerInput.placeholder = 'Select a region first';
 
         const notAvailability = document.querySelector('.not-availability');
         const bookingForm = document.getElementById('booking-form');
@@ -646,16 +741,16 @@
                             
                             document.querySelector('#guest-name').value = data.return_data.client_name;
                             document.querySelector('#guest-email').value = data.return_data.client_email;
-                            document.querySelector('.pickup-group').classList.add('hidden');
-                            document.querySelector('.group-' + data.return_data.pickup_group_id).classList.remove('hidden');
 
-                            if (data.return_data.pickup_group_id && data.return_data.pickup_point_id) {
-                                document.querySelector('select[name="pickup_group"]').value = data.return_data.pickup_group_id;
-                                updateDatePicker(data.return_data.pickup_group_id);
-                                updatePickupPoints(data.return_data.pickup_group_id);
-                                document.querySelector('#pickup-point').value = data.return_data.pickup_point_id;
-                                document.querySelector('.pickup-group').classList.add('hidden');
-                                document.querySelector('.group-' + data.return_data.pickup_group_id).classList.remove('hidden');
+                            // Pre-select pickup point if available from voucher
+                            if (data.return_data.pickup_point_id) {
+                                // We'll set this after region selection
+                                setTimeout(() => {
+                                    const pickupPointOption = pickupPointSelect.querySelector(`option[value="${data.return_data.pickup_point_id}"]`);
+                                    if (pickupPointOption) {
+                                        pickupPointSelect.value = data.return_data.pickup_point_id;
+                                    }
+                                }, 100);
                             } 
 
                         } else {
@@ -670,144 +765,17 @@
             
             }
             checkVoucher();
-
-            function initializeDatePicker(pickupGroupId) {
-                const availableDates = availableDatesByRegion[pickupGroupId] || [];
-                const today = new Date();
-                today.setHours(0, 0, 0, 0); // Set to start of today
-                
-                // Filter out past dates
-                const futureAvailableDates = availableDates.filter(item => {
-                    const itemDate = new Date(item.date);
-                    return itemDate >= today;
-                });
-
-                // Clear existing picker if it exists
-                if (picker) {
-                    picker.destroy();
-                }
-
-                // Initialize new picker
-                picker = flatpickr("#date-picker", {
-                    enable: futureAvailableDates.map(item => item.date),
-                    dateFormat: "Y-m-d",
-                    position: "below",
-                    onChange: function(selectedDates, dateStr) {
-                        const selectedDate = futureAvailableDates.find(item => item.date === dateStr);
-                        if (selectedDate) {
-                            document.getElementById("availability-id").value = selectedDate.id;
-                        } else {
-                            document.getElementById("availability-id").value = '';
-                        }
-                    },
-                });
-
-                // Clear any previously selected date
-                document.getElementById("availability-id").value = '';
-                document.getElementById("date-picker").value = '';
-            }
-
-            // Initialize date picker for the initially selected region
-            const initialPickupGroup = document.querySelector('select[name="pickup_group"]').value;
-            initializeDatePicker(initialPickupGroup);
-
-            // Update date picker when pickup group changes
-            document.querySelector('select[name="pickup_group"]').addEventListener('change', function(e) {
-                initializeDatePicker(e.target.value);
-                updatePriceAndPickupPoints();
-
-            });
-
-            function calculateTotal() {
-                const pickupGroup = document.querySelector('select[name="pickup_group"]').value;
-                const adults = parseInt(document.querySelector('input[name="adults"]').value) || 0;
-                const children = parseInt(document.querySelector('input[name="children"]').value) || 0;
-                const infants = parseInt(document.querySelector('input[name="infants"]').value) || 0;
-                const availabilityId = document.querySelector(`input[name="${pickupGroup}-pickup-group"]`).dataset.availabilityId;
-
-                // console.log('calculateTotal availabilityId: ' + availabilityId);
-                // console.log(availabilityId);
-
-                const adultPrice = document.querySelector(`input[name="${availabilityId}-adult-price"]`).value;
-                const childPrice = document.querySelector(`input[name="${availabilityId}-child-price"]`).value;
-                const infantPrice = document.querySelector(`input[name="${availabilityId}-infant-price"]`).value;
-                
-                const total = (adults * adultPrice) + (children * childPrice) + (infants * infantPrice);
-                document.getElementById('total-price').textContent = total.toFixed(2);
-                document.getElementById('total-price-input').value = total;
-            }
-
             // Calculate initial total
             calculateTotal();
 
-            function updatePriceAndPickupPoints() {
-                const pickupGroupId = document.querySelector('select[name="pickup_group"]').value;
-                const adults = parseInt(document.querySelector('input[name="adults"]').value) || 0;
-                const children = parseInt(document.querySelector('input[name="children"]').value) || 0;
-                const infants = parseInt(document.querySelector('input[name="infants"]').value) || 0;
-                const availabilityId = document.querySelector(`input[name="${pickupGroupId}-pickup-group"]`).dataset.availabilityId;
-
-                // console.log('updatePriceAndPickupPoints availabilityId: ' + availabilityId);
-
-                const pickupGroupName = document.querySelector(`input[name="${pickupGroupId}-pickup-group"]`).value;
-                // console.log(pickupGroupName);
-                document.querySelector('.pickup-region').textContent = pickupGroupName;
-                document.querySelectorAll('.pickup-group').forEach(group => {
-                    group.classList.add('hidden');
-                });
-                const pickupGroup = document.querySelectorAll('.group-' + pickupGroupId).forEach(group => {
-                    group.classList.remove('hidden');
-                });
-
-                document.querySelectorAll('.pickup-point').forEach(point => {
-                    point.classList.add('hidden');
-                });
-
-                const pickupPoints_options = document.querySelectorAll('select[name="pickup_point"] option');
-                
-                // pickupPoints_options.forEach(point => {
-                //     point.classList.add('hidden');
-                //     if (point.dataset.pickup_group === pickupGroupId) {
-                //         point.classList.remove('hidden');
-                //     }
-                // });
-
-                // Select the first available pickup point for the selected region
-                const pickupPointSelect = document.getElementById('pickup-point');
-                const availableOptions = Array.from(pickupPoints_options).filter(option => 
-                    option.dataset.pickup_group === pickupGroupId && option.value !== ''
-                );
-                
-                if (availableOptions.length > 0) {
-                    pickupPointSelect.value = availableOptions[0].value;
-                } else {
-                    pickupPointSelect.value = '';
-                }
-
-                const adultPrice = document.querySelector(`input[name="${availabilityId}-adult-price"]`).value;
-                const childPrice = document.querySelector(`input[name="${availabilityId}-child-price"]`).value;
-                const infantPrice = document.querySelector(`input[name="${availabilityId}-infant-price"]`).value;
-
-                document.getElementById('adult-price').textContent = adultPrice;
-                document.getElementById('child-price').textContent = childPrice;
-                document.getElementById('infant-price').textContent = infantPrice;
-
-                const total = (adults * adultPrice) + (children * childPrice) + (infants * infantPrice);
-                document.getElementById('total-price').textContent = total.toFixed(2);
-                document.getElementById('total-price-input').value = total;
-
-                calculateTotal();
-            }
-
-            // Add event listeners to number inputs
+            // Add event listeners to number inputs and date picker
             document.querySelectorAll('input[type="number"]').forEach(input => {
                 input.addEventListener('change', calculateTotal);
                 input.addEventListener('input', calculateTotal);    
             });
 
-            document.querySelector('select[name="pickup_group"]').addEventListener('change', updatePriceAndPickupPoints);
-
-            updatePriceAndPickupPoints();
+            // Recalculate when date changes (which sets availability_id)
+            datePickerInput.addEventListener('change', calculateTotal);
 
             document.querySelector('#clear-numbers').addEventListener('click', function(e) {
                 e.preventDefault();
@@ -815,9 +783,6 @@
                     input.value = 0;
                 });
                 calculateTotal();
-                document.querySelector('#remaining-price').textContent = document.querySelector('#total-price').textContent;
-                document.querySelector('#total-price-input').value = document.querySelector('#total-price').textContent;
-                updatePriceAndPickupPoints();
             });
         
             if (document.querySelector('#partial-payment')) {

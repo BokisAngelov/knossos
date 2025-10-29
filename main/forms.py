@@ -426,11 +426,12 @@ class BookingForm(forms.ModelForm):
             'total_price', 'partial_paid',
             'total_adults', 'total_kids', 'total_infants',
             'price', 'user', 'voucher_id', 'date', 'pickup_point',
-            'payment_status', 'partial_paid_method',
+            'payment_status', 'partial_paid_method', 'regions'
         ]
         widgets = {
             'pickup_point': forms.Select(attrs={'class': 'form-control'}),
             'partial_paid_method': forms.Select(choices=[('', 'Select a payment method')] + list(Booking.PAYMENT_METHOD_CHOICES)),
+            'regions': forms.Select(attrs={'class': 'form-control'}),
         }
 
     def __init__(self, *args, **kwargs):

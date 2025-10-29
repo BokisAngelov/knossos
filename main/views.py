@@ -572,11 +572,14 @@ def excursion_detail(request, pk):
             request, excursion, feedbacks, user_has_feedback
         )
 
-    # Process availability data
-    availability_dates_by_region, pickup_points = ExcursionService.get_availability_data(
+    # Process availability data organized by region
+    availability_dates_by_region, pickup_points_by_region, region_availability_map = ExcursionService.get_availability_data(
         excursion_availabilities
     )
-    pickup_group_map = ExcursionService.get_pickup_group_map(availability_dates_by_region)
+    region_map = ExcursionService.get_region_map(availability_dates_by_region)
+    
+    # Get only regions that are in the availabilities (not all regions)
+    regions = Region.objects.filter(id__in=availability_dates_by_region.keys())
 
 
     # Handle feedback submission
@@ -602,10 +605,12 @@ def excursion_detail(request, pk):
         'excursion_availability': excursion_availability,
         'booking_form': booking_form,
         'availability_dates_by_region': availability_dates_by_region,
-        'pickup_points': pickup_points,
+        'pickup_points_by_region': pickup_points_by_region,
+        'region_availability_map': region_availability_map,
         'user_has_feedback': user_has_feedback,
-        'pickup_group_map': pickup_group_map,
+        'region_map': region_map,
         'remaining_seats': remaining_seats,
+        'regions': regions,
     })
 
 
@@ -621,9 +626,12 @@ def _render_excursion_without_availability(request, excursion, feedbacks, user_h
         'booking_form': booking_form,
         'excursion_availability': None,
         'availability_dates_by_region': {},
-        'pickup_points': [],
+        'pickup_points_by_region': {},
+        'region_availability_map': {},
         'user_has_feedback': user_has_feedback,
         'remaining_seats': 0,
+        'regions': [],
+        'region_map': {},
     })
 
 
@@ -710,6 +718,15 @@ def _handle_ajax_booking_submission(request, excursion_availability):
             except PickupPoint.DoesNotExist:
                 pass
         
+        # Get region
+        region_id = request.POST.get('regions')
+        region = None
+        if region_id:
+            try:
+                region = Region.objects.get(id=region_id)
+            except Region.DoesNotExist:
+                pass
+        
         # Create booking
         booking = BookingService.create_booking(
             user=request.user,
@@ -722,7 +739,8 @@ def _handle_ajax_booking_submission(request, excursion_availability):
             pickup_point=pickup_point
         )
         
-        # Set partial payment method
+        # Set region and partial payment method
+        booking.regions = region
         booking.partial_paid_method = partial_paid_method
         booking.save()
         

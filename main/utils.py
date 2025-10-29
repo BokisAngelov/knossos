@@ -335,43 +335,78 @@ class ExcursionService:
     
     @staticmethod
     def get_availability_data(excursion_availabilities):
-        """Process excursion availabilities and return structured data."""
+        """
+        Process excursion availabilities and return structured data organized by region.
+        
+        Returns:
+            tuple: (availability_dates_by_region, pickup_points_by_region, region_availability_map)
+                - availability_dates_by_region: dict with region_id as key, containing dates and availability_id
+                - pickup_points_by_region: dict with region_id as key, containing pickup points from availability
+                - region_availability_map: dict mapping region_id to availability details (prices, pickup_points)
+        """
         availability_dates_by_region = {}
-        pickup_points = []
+        pickup_points_by_region = {}
+        region_availability_map = {}
         
         for availability in excursion_availabilities:
-            for pickup_group in availability.pickup_groups.all():
-                group_id = str(pickup_group.id)
-                days = availability.availability_days.all()
+            # Get all regions for this availability
+            regions = availability.regions.all()
+            
+            # Get all availability days for this availability
+            days = availability.availability_days.all()
+            
+            # Get all pickup points for this availability
+            pickup_points = availability.pickup_points.all().order_by('name')
+            pickup_points_list = list(pickup_points.values('id', 'name'))
+            
+            # Prepare availability details
+            availability_details = {
+                'id': availability.id,
+                'adult_price': float(availability.adult_price) if availability.adult_price else 0,
+                'child_price': float(availability.child_price) if availability.child_price else 0,
+                'infant_price': float(availability.infant_price) if availability.infant_price else 0,
+                'pickup_points': pickup_points_list,
+                'max_guests': availability.max_guests,
+                'booked_guests': availability.booked_guests,
+            }
+            
+            # Process each region
+            for region in regions:
+                region_id = str(region.id)
                 
-                # Convert queryset to list of dicts
+                # Convert queryset to list of dicts with availability_id
                 date_entries = [
-                    {"date": day.date_day.isoformat(), "id": day.id}
+                    {
+                        "date": day.date_day.isoformat(), 
+                        "id": day.id,
+                        "availability_id": availability.id
+                    }
                     for day in days
                 ]
                 
-                # If the group already exists, append dates; else, create new entry
-                if group_id not in availability_dates_by_region:
-                    availability_dates_by_region[group_id] = []
-                availability_dates_by_region[group_id].extend(date_entries)
+                # Add dates for this region
+                if region_id not in availability_dates_by_region:
+                    availability_dates_by_region[region_id] = []
+                availability_dates_by_region[region_id].extend(date_entries)
                 
-                # Get pickup points for this group
-                from .models import PickupPoint
-                points = PickupPoint.objects.filter(pickup_group=pickup_group).order_by('name')
-                pickup_points.append({
-                    "pickup_group": group_id,
-                    "points": list(points.values('id', 'name'))
-                })
+                # Add pickup points for this region (flattened - same points for all regions of same availability)
+                if region_id not in pickup_points_by_region:
+                    pickup_points_by_region[region_id] = pickup_points_list
+                
+                # Map region to availability details
+                if region_id not in region_availability_map:
+                    region_availability_map[region_id] = []
+                region_availability_map[region_id].append(availability_details)
         
-        return availability_dates_by_region, pickup_points
+        return availability_dates_by_region, pickup_points_by_region, region_availability_map
     
     @staticmethod
-    def get_pickup_group_map(availability_dates_by_region):
-        """Get pickup group mapping for JavaScript."""
-        from .models import PickupGroup
-        pickup_group_ids = [int(gid) for gid in availability_dates_by_region.keys()]
-        pickup_groups = PickupGroup.objects.filter(id__in=pickup_group_ids).values('id', 'name')
-        return {str(g['id']): g['name'] for g in pickup_groups}
+    def get_region_map(availability_dates_by_region):
+        """Get region mapping for JavaScript."""
+        from .models import Region
+        region_ids = [int(rid) for rid in availability_dates_by_region.keys()]
+        regions = Region.objects.filter(id__in=region_ids).values('id', 'name')
+        return {str(r['id']): r['name'] for r in regions}
 
 
 class VoucherService:
