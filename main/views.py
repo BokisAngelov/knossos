@@ -1520,7 +1520,10 @@ def group_delete(request, pk):
     group = get_object_or_404(Group, pk=pk)
     if request.method == 'POST':
         group_name = group.name
+        
+        # Note: AvailabilityDays reactivation is handled automatically via post_delete signal (see signals.py)
         group.delete()
+        
         messages.success(request, f'Group "{group_name}" deleted successfully.')
         return redirect('group_list')
     
@@ -1623,13 +1626,9 @@ def group_send(request, pk):
             messages.error(request, f'Please set pickup times for: {", ".join(missing_times)}')
             return redirect('group_detail', pk=pk)
         
-        # Mark availability day as inactive
-        if group.excursion and group.date:
-            availability_days = AvailabilityDays.objects.filter(
-                excursion_availability__excursion=group.excursion,
-                date_day=group.date
-            )
-            availability_days.update(status='inactive')
+        # Note: AvailabilityDays status is now updated via signals (see signals.py)
+        # The signal will automatically mark dates as inactive when group.status = 'sent'
+        # and reactivate them when a sent group is deleted
         
         # TODO: Send email to transportation company
         # You'll need to configure this with the transportation company email
@@ -1642,12 +1641,63 @@ def group_send(request, pk):
         group.status = 'sent'
         group.save()
         
-        messages.success(request, f'Group list sent successfully! Availability for {group.date} has been disabled.')
+        messages.success(
+            request, 
+            f'Group list sent successfully! {updated_count if group.excursion and group.date else 0} availability slot(s) for {group.date} have been disabled.'
+        )
         return redirect('group_detail', pk=pk)
         
     except Exception as e:
         messages.error(request, f'Error sending group list: {str(e)}')
         return redirect('group_detail', pk=pk)
+
+@user_passes_test(is_staff)
+def debug_availability_days(request, excursion_id, date):
+    """Debug endpoint to check AvailabilityDays status for a specific excursion and date"""
+    from .models import AvailabilityDays, Excursion
+    from datetime import datetime
+    
+    try:
+        excursion = get_object_or_404(Excursion, pk=excursion_id)
+        date_obj = datetime.strptime(date, '%Y-%m-%d').date()
+        
+        # Get all AvailabilityDays for this excursion and date
+        availability_days = AvailabilityDays.objects.filter(
+            excursion_availability__excursion=excursion,
+            date_day=date_obj
+        ).select_related('excursion_availability')
+        
+        if not availability_days.exists():
+            return JsonResponse({
+                'found': False,
+                'message': f'No AvailabilityDays found for {excursion.title} on {date}',
+                'excursion': excursion.title,
+                'date': date
+            })
+        
+        results = []
+        for ad in availability_days:
+            results.append({
+                'id': ad.id,
+                'date': str(ad.date_day),
+                'status': ad.status,
+                'capacity': ad.capacity,
+                'booked_guests': ad.booked_guests,
+                'availability_id': ad.excursion_availability.id,
+                'availability_range': f"{ad.excursion_availability.start_date} to {ad.excursion_availability.end_date}"
+            })
+        
+        return JsonResponse({
+            'found': True,
+            'count': len(results),
+            'excursion': excursion.title,
+            'date': date,
+            'availability_days': results
+        })
+    except Exception as e:
+        return JsonResponse({
+            'error': str(e)
+        }, status=500)
 
 @user_passes_test(is_staff)
 def get_bookings_for_group(request):

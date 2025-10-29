@@ -120,13 +120,6 @@
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                         </svg>
                                     </button>
-                                    {% if group.status == 'not_sent' %}
-                                    <button type="button" class="send-btn text-green hover:opacity-80 font-semibold" data-id="{{ group.pk }}" data-name="{{ group.name }}" title="Send Group">
-                                        <svg class="w-6 h-6 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9-7-9-7v4H3v6h9v4z" />
-                                        </svg>
-                                    </button>
-                                    {% endif %}
                                 </td>
                             </tr>
                             {% endfor %}
@@ -235,20 +228,6 @@
                 e.preventDefault();
                 const itemId = this.dataset.id;
                 window.location.href = `/groups/${itemId}/edit/`;
-            });
-        });
-
-        // Send buttons
-        const sendBtn = document.querySelectorAll('.send-btn');
-        sendBtn.forEach(btn => {
-            btn.addEventListener('click', function(e) {
-                e.preventDefault();
-                const itemId = this.dataset.id;
-                
-                const form = document.getElementById('send-group-form');
-                const baseUrl = "{% url 'group_send' 0 %}";
-                form.action = baseUrl.replace('/0/', `/${itemId}/`);
-                form.submit();
             });
         });
         

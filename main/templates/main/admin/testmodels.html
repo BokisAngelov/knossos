@@ -95,6 +95,7 @@
         <th>Capacity</th>
         <th>Booked Guests</th>
         <th>Remaining Seats</th>
+        <th>Status</th>
     </tr>
 {% for availability_day in availability_days %}
     <tr>
@@ -103,6 +104,7 @@
         <td>{{ availability_day.date_day }}</td>
         <td>{{ availability_day.capacity }}</td>
         <td>{{ availability_day.booked_guests }}</td>
+        <td>{{ availability_day.status }}</td>
     </tr>
 {% endfor %}
 </table>

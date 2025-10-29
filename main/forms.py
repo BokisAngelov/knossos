@@ -612,7 +612,7 @@ class PaymentMethodForm(forms.ModelForm):
 class GroupForm(forms.ModelForm):
     class Meta:
         model = Group
-        fields = ['name', 'description', 'excursion', 'date', 'bus']
+        fields = ['name', 'description', 'excursion', 'date', 'bus', 'guide', 'provider']
         widgets = {
             'name': forms.TextInput(attrs={
                 'class': 'mt-1 block w-full',
@@ -635,6 +635,14 @@ class GroupForm(forms.ModelForm):
             'bus': forms.Select(attrs={
                 'class': 'mt-1 block w-full',
                 'id': 'id_bus'
+            }),
+            'guide': forms.Select(attrs={
+                'class': 'mt-1 block w-full',
+                'id': 'id_guide'
+            }),
+            'provider': forms.Select(attrs={
+                'class': 'mt-1 block w-full',
+                'id': 'id_provider'
             }),
         }
     

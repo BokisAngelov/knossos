@@ -86,6 +86,14 @@
                 <p class="text-sm font-medium text-gray-500">Bus</p>
                 <p class="mt-1 text-sm text-gray-900">{{ group.bus.name }} - {{ group.bus.capacity }}</p>
             </div>
+            <div>
+                <p class="text-sm font-medium text-gray-500">Guide</p>
+                <p class="mt-1 text-sm text-gray-900">{{ group.guide.name }}</p>
+            </div>
+            <div>
+                <p class="text-sm font-medium text-gray-500">Provider</p>
+                <p class="mt-1 text-sm text-gray-900">{{ group.provider.name }} ({{ group.provider.email }})</p>
+            </div>
         </div>
         
         {% if group.description %}

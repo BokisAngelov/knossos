@@ -469,6 +469,8 @@ class Group(models.Model):
     date = models.DateField(null=True, blank=True)
     bookings = models.ManyToManyField('Booking', related_name='transport_groups', blank=True)
     bus = models.ForeignKey(Bus, on_delete=models.SET_NULL, null=True, blank=True, related_name='groups')
+    guide = models.ForeignKey(UserProfile, on_delete=models.SET_NULL, null=True, blank=True, related_name='groups_guide', limit_choices_to={'role': 'guide'})
+    provider = models.ForeignKey(UserProfile, on_delete=models.SET_NULL, null=True, blank=True, related_name='groups_provider', limit_choices_to={'role': 'provider'})
     status = models.CharField(max_length=255, choices=STATUS_CHOICES, default='not_sent')
     created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
 
