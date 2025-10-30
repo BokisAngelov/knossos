@@ -34,7 +34,7 @@
                             -
                         {% endif %}
                     </td>
-                    <td class="py-2 px-2 text-sm text-gray-500">A: {{ booking.total_adults|default:0 }} | K: {{ booking.total_kids|default:0 }} | I: {{ booking.total_infants|default:0 }}</td>
+                    <td class="py-2 px-2 text-sm text-gray-500">A: {{ booking.total_adults|default:0 }} | C: {{ booking.total_kids|default:0 }} | I: {{ booking.total_infants|default:0 }}</td>
                     <td class="py-2 px-2 text-sm text-gray-600 font-medium">Total: {{ booking.total_adults|default:0|add:booking.total_kids|default:0|add:booking.total_infants|default:0 }}</td>
                 </tr>
                 {% endfor %}

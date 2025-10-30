@@ -25,7 +25,7 @@ class ExcursionForm(forms.ModelForm):
         fields = [
             'title', 'description', 'intro_image',
             'category', 'tags',
-            'full_day', 'on_request', 'status', 'provider', 'guide'
+            'full_day', 'on_request', 'status', 'provider'
         ]
         widgets = {
             # 'description': forms.Textarea(attrs={

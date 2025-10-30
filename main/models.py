@@ -166,7 +166,7 @@ class Excursion(models.Model):
     full_day = models.BooleanField(default=False)
     on_request = models.BooleanField(default=False)
     provider = models.ForeignKey(UserProfile, on_delete=models.SET_NULL,blank=True, null=True, related_name='excursions_provider', limit_choices_to={'role': 'provider'})
-    guide = models.ForeignKey(UserProfile, on_delete=models.SET_NULL, blank=True, null=True, related_name='excursions_guide', limit_choices_to={'role': 'guide'})
+    # guide = models.ForeignKey(UserProfile, on_delete=models.SET_NULL, blank=True, null=True, related_name='excursions_guide', limit_choices_to={'role': 'guide'})
 
     def __str__(self):
         return self.title

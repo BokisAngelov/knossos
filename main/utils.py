@@ -355,8 +355,8 @@ class ExcursionService:
             # Get all pickup points for this availability
             pickup_points = availability.pickup_points.all().order_by('name')
             pickup_points_list = list(pickup_points.values('id', 'name'))
-            pickup_start_time = availability.pickup_start_time.strftime('%H:%M')
-            pickup_end_time = availability.pickup_end_time.strftime('%H:%M')
+            pickup_start_time = availability.pickup_start_time.strftime('%H:%M') if availability.pickup_start_time else None
+            pickup_end_time = availability.pickup_end_time.strftime('%H:%M') if availability.pickup_end_time else None
             
             # Prepare availability details
             availability_details = {
@@ -840,7 +840,8 @@ class RevenueAnalyticsService:
             'excursion_availability',
             'excursion_availability__excursion',
             'excursion_availability__excursion__provider',
-            'excursion_availability__excursion__guide'
+            'user',
+            'user__profile'
         )
         
         # Total revenue metrics
@@ -905,22 +906,24 @@ class RevenueAnalyticsService:
                 'bookings': item['booking_count']
             })
         
-        # Revenue by guide
-        revenue_by_guide = []
-        guide_data = bookings.exclude(
-            excursion_availability__excursion__guide__isnull=True
+        # Revenue by representative
+        revenue_by_representative = []
+        representative_data = bookings.exclude(
+            Q(user__isnull=True) | Q(user__profile__isnull=True)
+        ).filter(
+            user__profile__role='representative'
         ).values(
-            'excursion_availability__excursion__guide__id',
-            'excursion_availability__excursion__guide__name'
+            'user__profile__id',
+            'user__profile__name'
         ).annotate(
             revenue=Sum('total_price'),
             booking_count=Count('id')
         ).order_by('-revenue')[:10]
         
-        for item in guide_data:
-            revenue_by_guide.append({
-                'guide_id': item['excursion_availability__excursion__guide__id'],
-                'guide_name': item['excursion_availability__excursion__guide__name'],
+        for item in representative_data:
+            revenue_by_representative.append({
+                'representative_id': item['user__profile__id'],
+                'representative_name': item['user__profile__name'],
                 'revenue': item['revenue'],
                 'bookings': item['booking_count']
             })
@@ -951,7 +954,7 @@ class RevenueAnalyticsService:
             'card_revenue': card_revenue,
             'revenue_by_excursion': revenue_by_excursion,
             'revenue_by_provider': revenue_by_provider,
-            'revenue_by_guide': revenue_by_guide,
+            'revenue_by_representative': revenue_by_representative,
             'daily_revenue': daily_revenue,
         }
 

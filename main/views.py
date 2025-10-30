@@ -2021,7 +2021,7 @@ def group_export_csv(request, pk):
     writer.writerow([])
     
     # Column headers
-    headers = ['#', 'Pickup Group', 'Pickup Point', 'Pickup Time', 'Guest Name', 'Phone', 'Hotel/Location', 'Adults', 'Kids', 'Infants', 'Total']
+    headers = ['#', 'Pickup Group', 'Pickup Point', 'Pickup Time', 'Guest Name', 'Phone', 'Hotel/Location', 'Adults', 'Children', 'Infants', 'Total']
     writer.writerow(headers)
     
     # Data rows
@@ -2377,12 +2377,23 @@ def manage_reps(request):
             name = request.POST.get('name', '').strip()
             email = request.POST.get('email', '').strip()
             phone = request.POST.get('phone', '').strip()
+            password = request.POST.get('password', '').strip()
             
-            if name and email:
+            if name and email and phone and password:
+                username = email.split('@')[0] 
+                base_username = username
+                counter = 1
+
+                while User.objects.filter(username=username).exists():
+                    username = f"{base_username}{counter}"
+                    counter += 1
                 # Create User first
                 user = User.objects.create_user(
-                    username=email,
+                    username=username,
                     email=email,
+                    password=password,
+                    first_name=name.split()[0],
+                    last_name=' '.join(name.split()[1:]),
                 )
                 rep = UserProfile.objects.create(
                     user=user,
@@ -2399,17 +2410,22 @@ def manage_reps(request):
             name = request.POST.get('name', '').strip()
             email = request.POST.get('email', '').strip()
             phone = request.POST.get('phone', '').strip()
+            password = request.POST.get('password', '').strip()
             
             if name:
                 rep.name = name
                 rep.email = email
                 rep.phone = phone
+                if password:
+                    rep.user.set_password(password)
+                    rep.user.save()
                 rep.save()
                 messages.success(request, 'Representative updated successfully.')
 
         elif action_type == 'delete_rep':
-            rep = get_object_or_404(User, pk=item_id)    
-
+            rep = get_object_or_404(UserProfile, pk=item_id)    
+            rep.user.delete()
+            rep.delete()
             messages.success(request, 'Representative deleted successfully.')
             return redirect('manage_reps')
 

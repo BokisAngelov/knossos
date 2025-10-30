@@ -13,8 +13,8 @@
                 </svg>
                 Back to Dashboard
             </a>
-            <h1 class="text-2xl font-bold">Representatives</h1>
-            <p class="text-sm text-brown">Manage your representative information</p>
+            <h1 class="text-3xl font-bold page-header-color">Representatives</h1>
+            <p class="text-md font-semibold text-purple">Manage your representative information</p>
         </div>
         <button type="button" id="add-rep-btn" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -98,7 +98,14 @@
                                     </div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                    <button type="button" class="edit-btn text-blue-600 hover:text-blue-800 mr-2">
+                                    <button type="button" class="view-btn text-turquaz hover:text-turquaz-dark mr-2" data-id="{{ rep.user.id }}">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                        </svg>
+
+                                    </button>
+                                    <button type="button" class="edit-btn text-blue hover:text-blue-dark mr-2">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                                         </svg>
@@ -215,6 +222,7 @@
   <input type="hidden" name="name" id="add-rep-name">
   <input type="hidden" name="email" id="add-rep-email">
   <input type="hidden" name="phone" id="add-rep-phone">
+  <input type="hidden" name="password" id="add-rep-password">
 </form>
 
 <form id="edit-rep-form" action="{% url 'manage_reps' %}" method="post" class="hidden">
@@ -224,6 +232,7 @@
   <input type="hidden" name="name" id="edit-rep-name">
   <input type="hidden" name="email" id="edit-rep-email">
   <input type="hidden" name="phone" id="edit-rep-phone">
+  <input type="hidden" name="password" id="edit-rep-password">
 </form>
 
 <form id="delete-rep-form" action="{% url 'manage_reps' %}" method="post" class="hidden">
@@ -237,6 +246,15 @@
     // Add Representative
     const addRepBtn = document.getElementById('add-rep-btn');
     const addRepBtnEmpty = document.getElementById('add-rep-btn-empty');
+    const viewRepBtn = document.querySelectorAll('.view-btn');
+
+    viewRepBtn.forEach(btn => {
+      btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        const repId = this.dataset.id;
+        window.location.href = `/profile/${repId}`;
+      });
+    });
     
     function showAddRepModal() {
       Swal.fire({
@@ -245,6 +263,7 @@
           <input id="swal-name" class="swal2-input" placeholder="Full Name">
           <input id="swal-email" class="swal2-input" placeholder="Email">
           <input id="swal-phone" class="swal2-input" placeholder="Phone Number">
+          <input type="password" id="swal-password" class="swal2-input" placeholder="Password">
         `,
         focusConfirm: false,
         showCancelButton: true,
@@ -253,13 +272,13 @@
           const name = document.getElementById('swal-name').value;
           const email = document.getElementById('swal-email').value;
           const phone = document.getElementById('swal-phone').value;
-          
-          if (!name || !email || !phone) {
+          const password = document.getElementById('swal-password').value;
+          if (!name || !email || !phone || !password) {
             Swal.showValidationMessage('Please fill in all fields');
             return false;
           }
           
-          return { name, email, phone };
+          return { name, email, phone, password };
         }
       }).then((result) => {
         if (result.isConfirmed) {
@@ -267,6 +286,7 @@
           document.getElementById('add-rep-name').value = result.value.name;
           document.getElementById('add-rep-email').value = result.value.email;
           document.getElementById('add-rep-phone').value = result.value.phone;
+          document.getElementById('add-rep-password').value = result.value.password;
           form.submit();
         }
       });
@@ -287,7 +307,7 @@
         btn.addEventListener('click', function(e) {
           e.preventDefault();
           const row = this.closest('tr');
-          const spans = row.querySelectorAll('.editable-name, .editable-email, .editable-phone');
+          const spans = row.querySelectorAll('.editable-name, .editable-email, .editable-phone, .editable-password');
           const inputs = row.querySelectorAll('.edit-input');
           
           // Hide spans, show inputs
@@ -314,6 +334,7 @@
           document.getElementById('edit-rep-name').value = inputs[0].value.trim();
           document.getElementById('edit-rep-email').value = inputs[1].value.trim();
           document.getElementById('edit-rep-phone').value = inputs[2].value.trim();
+          document.getElementById('edit-rep-password').value = inputs[3].value.trim();
           document.getElementById('edit-rep-form').submit();
         });
       });
@@ -323,7 +344,7 @@
         btn.addEventListener('click', function(e) {
           e.preventDefault();
           const row = this.closest('tr');
-          const spans = row.querySelectorAll('.editable-name, .editable-email, .editable-phone');
+          const spans = row.querySelectorAll('.editable-name, .editable-email, .editable-phone, .editable-password');
           const inputs = row.querySelectorAll('.edit-input');
           
           // Reset input values
