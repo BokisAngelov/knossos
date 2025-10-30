@@ -14,8 +14,8 @@
                 </svg>
                 Back to Dashboard
             </a>
-            <h1 class="text-3xl font-bold text-header-grey">Reservations</h1>
-            <p class="text-md text-header-grey">Manage your reservation information</p>
+            <h1 class="text-3xl font-bold page-header-color mb-1">Reservations</h1>
+            <p class="text-md font-semibold text-purple">Manage your reservation information</p>
         </div>
         <button type="button" id="add-reservation-btn" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -60,7 +60,7 @@
                     <thead class="text-base">
                         <tr>
                             <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">
-                                Reservation ID
+                                File No/ID
                             </th>
                             <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">
                                 Customer
@@ -292,7 +292,7 @@
       Swal.fire({
         title: 'Add Reservation',
         html: `
-          <input id="swal-customer-voucher-id" class="swal2-input" placeholder="Voucher ID">
+          <input id="swal-customer-voucher-id" class="swal2-input" placeholder="File No/ID">
         
         `,
         focusConfirm: false,

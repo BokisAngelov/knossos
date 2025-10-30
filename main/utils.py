@@ -355,6 +355,8 @@ class ExcursionService:
             # Get all pickup points for this availability
             pickup_points = availability.pickup_points.all().order_by('name')
             pickup_points_list = list(pickup_points.values('id', 'name'))
+            pickup_start_time = availability.pickup_start_time.strftime('%H:%M')
+            pickup_end_time = availability.pickup_end_time.strftime('%H:%M')
             
             # Prepare availability details
             availability_details = {
@@ -363,6 +365,8 @@ class ExcursionService:
                 'child_price': float(availability.child_price) if availability.child_price else 0,
                 'infant_price': float(availability.infant_price) if availability.infant_price else 0,
                 'pickup_points': pickup_points_list,
+                'pickup_start_time': pickup_start_time,
+                'pickup_end_time': pickup_end_time,
                 'max_guests': availability.max_guests,
                 'booked_guests': availability.booked_guests,
             }

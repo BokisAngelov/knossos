@@ -154,6 +154,7 @@
                         <div class="grid grid-cols-2 gap-2">
                             <div class="flex flex-col gap-2">
                                 <h2 class="text-xl font-semibold text-purple">Pickup Points</h2>
+                                <p class="region-pickup-time">Pickup time: {{ excursion_availability.pickup_start_time|time:"H:i" }} - {{ excursion_availability.pickup_end_time|time:"H:i" }}</p>
                                 <div class="flex gap-6" id="pickup-points-display">
                                     <div class="flex flex-col gap-2">
                                         <p class="text-sm text-gray-500">Select a region to view pickup points</p>
@@ -519,6 +520,7 @@
         const infantPriceEl = document.getElementById('infant-price');
         const selectedRegionNameEl = document.getElementById('selected-region-name');
         const pickupPointsDisplayEl = document.getElementById('pickup-points-display');
+        const regionPickupTime = document.querySelector('.region-pickup-time');
         
         if (!regionId) {
             // Reset prices to 0.00 if no region selected
@@ -528,6 +530,7 @@
             if (selectedRegionNameEl) selectedRegionNameEl.textContent = 'Please select a region';
             if (pickupPointsDisplayEl) {
                 pickupPointsDisplayEl.innerHTML = '<div class="flex flex-col gap-2"><p class="text-sm text-gray-500">Select a region to view pickup points</p></div>';
+                regionPickupTime.textContent = '';
             }
             return;
         }
@@ -536,6 +539,8 @@
         if (availabilities && availabilities.length > 0) {
             // Use the first availability for this region
             currentAvailability = availabilities[0];
+
+            regionPickupTime.textContent = `Pickup time: ${currentAvailability.pickup_start_time} - ${currentAvailability.pickup_end_time}`;
             
             // Display prices in the existing elements
             if (adultPriceEl) adultPriceEl.textContent = currentAvailability.adult_price.toFixed(2);

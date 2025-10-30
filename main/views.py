@@ -3142,6 +3142,7 @@ def staff_list(request):
 
 @user_passes_test(is_staff) 
 def manage_staff(request):
+    
     if request.method == 'POST':
         action_type = request.POST.get('action_type')
         item_id = request.POST.get('item_id')
@@ -3151,6 +3152,8 @@ def manage_staff(request):
             email = request.POST.get('email', '').strip()
             phone = request.POST.get('phone', '').strip()
             password = request.POST.get('password', '').strip()
+            is_superadmin = request.POST.get('is_superadmin', '').strip()
+            is_superadmin = True if is_superadmin == 'true' else False
 
 
             if name and email and password:
@@ -3177,9 +3180,10 @@ def manage_staff(request):
                     email=email,
                     phone=phone,
                     role='admin',
+                    is_superadmin=is_superadmin,
                 )   
                 messages.success(request, 'Staff member created successfully.')
-                # return redirect('staff_list')
+                return redirect('staff_list')
             
         elif action_type == 'edit_staff':
             staff_profile = get_object_or_404(UserProfile, pk=item_id)
@@ -3187,24 +3191,29 @@ def manage_staff(request):
             email = request.POST.get('email', '').strip()
             phone = request.POST.get('phone', '').strip()
             # role = request.POST.get('role', '').strip()
-            password = request.POST.get('password', '').strip()
+            new_password = request.POST.get('password', '').strip()
+            is_superadmin = request.POST.get('is_superadmin', '').strip()
+            is_superadmin = True if is_superadmin == 'true' else False
 
             if name:
                 staff_profile.name = name
                 staff_profile.email = email
                 staff_profile.phone = phone
                 staff_profile.role = "admin"
-                staff_profile.password = password
+                if new_password:
+                    staff_profile.user.set_password(new_password)
+                    staff_profile.user.save()
+                staff_profile.is_superadmin = is_superadmin
                 staff_profile.save()
                 messages.success(request, 'Staff member updated successfully.')
-                # return redirect('staff_list')
+                return redirect('staff_list')
 
         elif action_type == 'delete_staff':
             staff_profile = get_object_or_404(UserProfile, pk=item_id)
             # Delete the user, which will cascade delete the UserProfile
             staff_profile.user.delete()
             messages.success(request, 'Staff member deleted successfully.')
-            # return redirect('staff_list')
+            return redirect('staff_list')
     
     # Get all staff profiles (UserProfile objects with role='admin')
     staff = UserProfile.objects.filter(role='admin', user__is_staff=True).select_related('user')

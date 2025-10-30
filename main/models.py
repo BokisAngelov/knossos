@@ -75,6 +75,7 @@ class UserProfile(models.Model):
     # region = models.ForeignKey(Region, on_delete=models.SET_NULL, blank=True, null=True, related_name='user_profiles')
     pickup_group = models.ForeignKey(PickupGroup, on_delete=models.SET_NULL, blank=True, null=True, related_name='user_profiles')
     password_reset_token = models.CharField(max_length=255, null=True, blank=True)
+    is_superadmin = models.BooleanField(default=False)
 
     def __str__(self):
         return self.name

@@ -53,6 +53,7 @@
                     </svg>
                     {% if group.status == 'sent' %}Sent{% else %}Send Group List{% endif %}
                 </button>
+                
             </form>
         </div>
     </div>
@@ -91,7 +92,7 @@
                 <p class="mt-1 text-sm text-gray-900">{{ group.guide.name }}</p>
             </div>
             <div>
-                <p class="text-sm font-medium text-gray-500">Provider</p>
+                <p class="text-sm font-medium text-gray-500">Supplier</p>
                 <p class="mt-1 text-sm text-gray-900">{{ group.provider.name }} ({{ group.provider.email }})</p>
             </div>
         </div>
@@ -108,6 +109,9 @@
     <div class="bg-white shadow rounded-lg overflow-hidden">
         <div class="px-6 py-4 border-b border-gray-200">
             <h2 class="text-lg font-semibold text-gray-900">Guest List</h2>
+            {% if not all_times_set %}
+                    <span class="text-xs">* You need to set all pickup times before sending the group list</span>
+                {% endif %}
         </div>
         
         {% if pickup_groups %}
@@ -321,18 +325,21 @@ document.addEventListener('DOMContentLoaded', function() {
     if (sendGroupForm) {
         sendGroupForm.addEventListener('submit', function(e) {
             if (groupStatus !== 'sent') {
-                const confirmed = confirm(
-                    'Are you sure you want to send this group list?\n\n' +
-                    'This will:\n' +
-                    '- Send the group list to the transportation company\n' +
-                    '- Mark the availability date as inactive\n' +
-                    '- Mark this group as sent\n\n' +
-                    'You can still edit pickup times after sending.'
-                );
+                e.preventDefault();
                 
-                if (!confirmed) {
-                    e.preventDefault();
-                }
+                Swal.fire({
+                    title: 'Are you sure?',
+                    text: 'This will send the group list to the transportation company, mark the availability date as inactive, and mark this group as sent. You can still edit pickup times after sending.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#3085d6',
+                    cancelButtonColor: '#d33',
+                    confirmButtonText: 'Yes, send it!'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        sendGroupForm.submit();
+                    }
+                });
             }
         });
     }
