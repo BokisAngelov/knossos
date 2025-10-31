@@ -265,25 +265,118 @@ class BookingService:
             return None
     
     @staticmethod
-    def calculate_pricing(total_price, partial_price):
-        """Calculate final pricing after partial payment."""
-        if partial_price > 0:
-            final_price = total_price - partial_price
+    def calculate_referral_discount(base_price, referral_code_obj):
+        """
+        Calculate referral discount amount.
+        
+        Args:
+            base_price: Original price before any discounts (Decimal)
+            referral_code_obj: ReferralCode instance
+            
+        Returns:
+            dict: Contains discount_amount and discounted_price
+        """
+        from decimal import Decimal
+        
+        if not referral_code_obj or not referral_code_obj.discount:
             return {
-                'total_price': final_price,
-                'partial_paid': partial_price
+                'discount_amount': Decimal('0'),
+                'discounted_price': base_price
+            }
+        
+        # Convert to Decimal for proper calculation
+        base_price_decimal = Decimal(str(base_price))
+        discount_percentage = Decimal(str(referral_code_obj.discount))
+        
+        # Calculate discount
+        discount_amount = (base_price_decimal * discount_percentage) / Decimal('100')
+        discounted_price = base_price_decimal - discount_amount
+        
+        return {
+            'discount_amount': discount_amount.quantize(Decimal('0.01')),
+            'discounted_price': discounted_price.quantize(Decimal('0.01'))
+        }
+    
+    @staticmethod
+    def calculate_pricing(base_price, referral_discount_amount, partial_price):
+        """
+        Calculate final pricing with referral discount and partial payment.
+        
+        Calculation order:
+        1. Base Price
+        2. Apply Referral Discount
+        3. Apply Partial Payment
+        
+        Args:
+            base_price: Original price before any discounts (Decimal)
+            referral_discount_amount: Amount discounted from referral code (Decimal)
+            partial_price: Amount already paid (int/Decimal)
+            
+        Returns:
+            dict: Contains total_price (final amount to pay) and partial_paid
+        """
+        from decimal import Decimal
+        
+        # Ensure everything is Decimal
+        base_price_decimal = Decimal(str(base_price))
+        discount_amount_decimal = Decimal(str(referral_discount_amount or 0))
+        partial_price_decimal = Decimal(str(partial_price or 0))
+        
+        # Step 1: Apply referral discount
+        discounted_price = base_price_decimal - discount_amount_decimal
+        
+        # Step 2: Apply partial payment
+        if partial_price_decimal > 0:
+            final_price = discounted_price - partial_price_decimal
+            return {
+                'total_price': final_price.quantize(Decimal('0.01')),
+                'partial_paid': partial_price_decimal.quantize(Decimal('0.01'))
             }
         else:
             return {
-                'total_price': total_price,
-                'partial_paid': 0 if partial_price else None
+                'total_price': discounted_price.quantize(Decimal('0.01')),
+                'partial_paid': Decimal('0') if partial_price else None
             }
+    
+    @staticmethod
+    def handle_referral_code(referral_code_str):
+        """
+        Handle referral code lookup and validation.
+        
+        Args:
+            referral_code_str: Referral code string
+            
+        Returns:
+            ReferralCode instance or None
+        """
+        if not referral_code_str:
+            return None
+        
+        try:
+            from .models import ReferralCode
+            code = ReferralCode.objects.get(
+                code=referral_code_str.strip().upper(),
+                status='active'
+            )
+            
+            # Check if expired
+            if code.is_expired:
+                code.status = 'inactive'
+                code.save()
+                return None
+            
+            return code
+        except ReferralCode.DoesNotExist:
+            return None
     
     @staticmethod
     @transaction.atomic
     def create_booking(user, excursion_availability, booking_data, guest_data, 
                       voucher_instance, selected_date, availability_id, pickup_point=None):
-        """Create a booking with all related operations."""
+        """
+        Create a booking with all related operations.
+        Note: Referral codes are applied later at checkout.
+        """
         # Validate remaining seats
         remaining_seats = BookingService.get_remaining_seats(
             excursion_availability, selected_date
@@ -293,6 +386,14 @@ class BookingService:
             raise ValidationError(
                 f'The selected date has not enough seats available. Remaining seats: {remaining_seats}'
             )
+        
+        # Calculate pricing (without referral discount for now)
+        base_price = booking_data['total_price']
+        pricing_data = BookingService.calculate_pricing(
+            base_price,
+            0,  # No referral discount yet
+            booking_data['partial_price']
+        )
         
         # Create booking
         booking = Booking.objects.create(
@@ -305,12 +406,9 @@ class BookingService:
             total_kids=booking_data['children'],
             total_infants=booking_data['infants'],
             date=selected_date,
-            price=booking_data['total_price'],
+            price=base_price,
             pickup_point=pickup_point,
-            **BookingService.calculate_pricing(
-                booking_data['total_price'], 
-                booking_data['partial_price']
-            )
+            **pricing_data
         )
         
         # Update availability counts
@@ -323,6 +421,46 @@ class BookingService:
         
         excursion_availability.booked_guests += booking_data['total_guests']
         excursion_availability.save()
+        
+        return booking
+    
+    @staticmethod
+    @transaction.atomic
+    def apply_referral_code_to_booking(booking, referral_code_instance):
+        """
+        Apply a referral code to an existing booking and recalculate pricing.
+        
+        Args:
+            booking: Booking instance
+            referral_code_instance: ReferralCode instance
+            
+        Returns:
+            Updated booking instance
+        """
+        if not referral_code_instance:
+            raise ValidationError('Invalid referral code.')
+        
+        # Get base price
+        base_price = booking.price
+        
+        # Calculate referral discount
+        referral_discount_data = BookingService.calculate_referral_discount(
+            base_price,
+            referral_code_instance
+        )
+        
+        # Calculate new final pricing
+        pricing_data = BookingService.calculate_pricing(
+            base_price,
+            referral_discount_data['discount_amount'],
+            booking.partial_paid or 0
+        )
+        
+        # Update booking
+        booking.referral_code = referral_code_instance
+        booking.referral_discount_amount = referral_discount_data['discount_amount']
+        booking.total_price = pricing_data['total_price']
+        booking.save()
         
         return booking
 

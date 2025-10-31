@@ -34,6 +34,8 @@ urlpatterns = [
     path('signup/', views.signup, name='signup'),
     path('profile/<int:pk>/', views.profile, name='profile'),
     path('profile/<int:pk>/edit/', views.profile_edit, name='profile_edit'),
+    path('manage_referral_codes/', views.manage_referral_codes, name='manage_referral_codes'),
+    path('validate_referral_code/', views.validate_referral_code, name='validate_referral_code'),
     path('logout/', views.logout_view, name='logout'),
     path('password_reset/', views.password_reset_form, name='password_reset_form'),
     path('password_reset_token/<str:token>/', views.password_reset_token, name='password_reset_token'),
@@ -58,6 +60,8 @@ urlpatterns = [
     path('get_available_regions/', views.get_available_regions, name='get_available_regions'),
     path('admin_reservations/', views.admin_reservations, name='admin_reservations'),
     path('manage_reservations/', views.manage_reservations, name='manage_reservations'),
+    path('agents_list/', views.agents_list, name='agents_list'),
+    path('manage_agents/', views.manage_agents, name='manage_agents'),
     # location urls
     path('hotel_list/', views.hotel_list, name='hotel_list'),
     path('manage_hotels/', views.manage_hotels, name='manage_hotels'),

@@ -727,7 +727,7 @@ def _handle_ajax_booking_submission(request, excursion_availability):
             except Region.DoesNotExist:
                 pass
         
-        # Create booking
+        # Create booking (referral code will be applied at checkout)
         booking = BookingService.create_booking(
             user=request.user,
             excursion_availability=excursion_availability,
@@ -760,6 +760,74 @@ def _handle_ajax_booking_submission(request, excursion_availability):
             'message': str(e),
             'errors': getattr(booking_form, 'errors', {}) if 'booking_form' in locals() else {}
         })
+
+def validate_referral_code(request):
+    """AJAX endpoint to validate referral code and return discount info"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            code = data.get('code', '').strip().upper()
+            
+            if not code:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Please enter a referral code.'
+                })
+            
+            from .models import ReferralCode
+            from django.utils import timezone
+            
+            try:
+                referral_code = ReferralCode.objects.get(code=code)
+                
+                # Check if code is active
+                if referral_code.status != 'active':
+                    return JsonResponse({
+                        'success': False,
+                        'message': 'This referral code is inactive.'
+                    })
+                
+                # Check if code is expired
+                if referral_code.is_expired:
+                    # Auto-update status to inactive
+                    referral_code.status = 'inactive'
+                    referral_code.save()
+                    return JsonResponse({
+                        'success': False,
+                        'message': 'This referral code has expired.'
+                    })
+                
+                # Code is valid!
+                return JsonResponse({
+                    'success': True,
+                    'message': 'Referral code applied successfully!',
+                    'discount_percentage': float(referral_code.discount),
+                    'code_id': referral_code.id,
+                    'code': referral_code.code,
+                    'agent_name': referral_code.agent.name if referral_code.agent else 'N/A'
+                })
+                
+            except ReferralCode.DoesNotExist:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Invalid referral code.'
+                })
+                
+        except json.JSONDecodeError:
+            return JsonResponse({
+                'success': False,
+                'message': 'Invalid request format.'
+            })
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'message': f'Error validating code: {str(e)}'
+            })
+    
+    return JsonResponse({
+        'success': False,
+        'message': 'Invalid request method.'
+    })
 
 def get_user_details_cookies(request):
     
@@ -1118,8 +1186,30 @@ def booking_detail(request, pk):
 def checkout(request, booking_pk):
     booking = get_object_or_404(Booking, pk=booking_pk)
      
-
     if request.method == 'POST':
+        action_type = request.POST.get('action_type')
+        
+        # Handle referral code application
+        if action_type == 'apply_referral':
+            referral_code_str = request.POST.get('referral_code', '').strip()
+            
+            if referral_code_str:
+                referral_code_instance = BookingService.handle_referral_code(referral_code_str)
+                
+                if referral_code_instance:
+                    try:
+                        BookingService.apply_referral_code_to_booking(booking, referral_code_instance)
+                        messages.success(request, f'Referral code "{referral_code_instance.code}" applied successfully!')
+                    except Exception as e:
+                        messages.error(request, f'Error applying code: {str(e)}')
+                else:
+                    messages.error(request, 'Invalid or expired referral code.')
+            else:
+                messages.error(request, 'Please enter a referral code.')
+            
+            return redirect('checkout', booking_pk=booking_pk)
+        
+        # Handle payment completion
         # TODO: integrate Stripe payment here
         # booking.payment_status = 'completed'
         booking.save()
@@ -1295,11 +1385,133 @@ def profile(request, pk):
         messages.error(request, "You don't have permission to view this profile.")
         return redirect('homepage')
     
+    # Get referral codes if profile is an agent
+    referral_codes = None
+    if profile.role == 'agent':
+        from .models import ReferralCode
+        referral_codes = ReferralCode.objects.filter(agent=profile).order_by('-created_at')
+    
     return render(request, 'main/accounts/profile.html', {
         'bookings': bookings,
         'user_profile': profile,
         'reservations': reservations,
+        'referral_codes': referral_codes,
     })    
+
+@user_passes_test(is_staff)
+def manage_referral_codes(request):
+    """Handle referral code generation and editing for agents"""
+    if request.method == 'POST':
+        action_type = request.POST.get('action_type')
+        agent_id = request.POST.get('agent_id')
+        
+        if not agent_id:
+            messages.error(request, 'Agent ID is required.')
+            return redirect('agents_list')
+        
+        agent = get_object_or_404(UserProfile, id=agent_id, role='agent')
+        
+        if action_type == 'generate_code':
+            discount = request.POST.get('discount', '').strip()
+            expires_at = request.POST.get('expires_at', '').strip()
+            
+            if not discount or not expires_at:
+                messages.error(request, 'Discount and expiration date are required.')
+                return redirect('profile', pk=agent.user.id)
+            
+            try:
+                from .models import ReferralCode
+                from django.utils import timezone
+                import datetime
+                
+                # Parse the expiration date
+                expires_datetime = datetime.datetime.strptime(expires_at, '%Y-%m-%d')
+                expires_datetime = timezone.make_aware(
+                    datetime.datetime.combine(expires_datetime.date(), datetime.time(23, 59, 59))
+                )
+                
+                # Generate unique code
+                code = ReferralCode.generate_unique_code(agent.name, float(discount))
+                
+                # Create the referral code
+                ReferralCode.objects.create(
+                    code=code,
+                    agent=agent,
+                    discount=float(discount),
+                    expires_at=expires_datetime,
+                    status='active'
+                )
+                
+                messages.success(request, f'Referral code "{code}" generated successfully!')
+                return redirect('profile', pk=agent.user.id)
+                
+            except ValueError as e:
+                messages.error(request, f'Invalid discount or date format: {str(e)}')
+                return redirect('profile', pk=agent.user.id)
+            except Exception as e:
+                messages.error(request, f'Error generating code: {str(e)}')
+                return redirect('profile', pk=agent.user.id)
+        
+        elif action_type == 'edit_code':
+            code_id = request.POST.get('code_id')
+            discount = request.POST.get('discount', '').strip()
+            expires_at = request.POST.get('expires_at', '').strip()
+            status = request.POST.get('status', '').strip()
+            
+            if not code_id:
+                messages.error(request, 'Code ID is required.')
+                return redirect('profile', pk=agent.user.id)
+            
+            try:
+                from .models import ReferralCode
+                from django.utils import timezone
+                import datetime
+                
+                code = get_object_or_404(ReferralCode, id=code_id, agent=agent)
+                
+                if discount:
+                    code.discount = float(discount)
+                
+                if expires_at:
+                    expires_datetime = datetime.datetime.strptime(expires_at, '%Y-%m-%d')
+                    code.expires_at = timezone.make_aware(
+                        datetime.datetime.combine(expires_datetime.date(), datetime.time(23, 59, 59))
+                    )
+                
+                if status:
+                    code.status = status
+                
+                code.save()
+                messages.success(request, f'Referral code "{code.code}" updated successfully!')
+                return redirect('profile', pk=agent.user.id)
+                
+            except ValueError as e:
+                messages.error(request, f'Invalid discount or date format: {str(e)}')
+                return redirect('profile', pk=agent.user.id)
+            except Exception as e:
+                messages.error(request, f'Error updating code: {str(e)}')
+                return redirect('profile', pk=agent.user.id)
+        
+        elif action_type == 'delete_code':
+            code_id = request.POST.get('code_id')
+            
+            if not code_id:
+                messages.error(request, 'Code ID is required.')
+                return redirect('profile', pk=agent.user.id)
+            
+            try:
+                from .models import ReferralCode
+                code = get_object_or_404(ReferralCode, id=code_id, agent=agent)
+                code_str = code.code
+                code.delete()
+                messages.success(request, f'Referral code "{code_str}" deleted successfully!')
+                return redirect('profile', pk=agent.user.id)
+                
+            except Exception as e:
+                messages.error(request, f'Error deleting code: {str(e)}')
+                return redirect('profile', pk=agent.user.id)
+    
+    return redirect('agents_list')
 
 @login_required
 def profile_edit(request, pk):
@@ -1350,7 +1562,7 @@ def admin_dashboard(request, pk):
     upcoming_excursions = AvailabilityDays.objects.filter(excursion_availability__status='active', date_day__gte=timezone.now()).order_by('date_day')[:5]
 
     total_revenue = Booking.objects.filter(payment_status='completed').aggregate(
-        total=Sum('price')
+        total=Sum('total_price')
     )['total'] or 0
     
     # Recent bookings
@@ -2497,7 +2709,7 @@ def manage_clients(request):
                     return redirect('clients_list')
             
         elif action_type == 'edit_client':
-            client = get_object_or_404(UserProfile, pk=item_id)
+            client = get_object_or_404(UserProfile, user__id=item_id, role='client')
             name = request.POST.get('name', '').strip()
             email = request.POST.get('email', '').strip()
             phone = request.POST.get('phone', '').strip()   
@@ -2533,6 +2745,115 @@ def manage_clients(request):
         'page_obj': page_obj,
         'search_query': search_query,
     })
+
+@user_passes_test(is_staff)
+def agents_list(request):
+    """List all agents with their latest active referral code"""
+    agents = UserProfile.objects.filter(role='agent').order_by('name')
+    
+    # Handle search
+    search_query = request.GET.get('search', '').strip()
+    if search_query:
+        agents = agents.filter(
+            Q(name__icontains=search_query) |
+            Q(email__icontains=search_query) |
+            Q(phone__icontains=search_query)
+        )
+    
+    paginator = Paginator(agents, 15)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    return render(request, 'main/admin/agents_list.html', {
+        'agents': page_obj.object_list,
+        'page_obj': page_obj,
+        'search_query': search_query,
+    })
+
+@user_passes_test(is_staff)
+def manage_agents(request):
+    """Manage agents CRUD operations"""
+    if request.method == 'POST':
+        action_type = request.POST.get('action_type')
+        item_id = request.POST.get('item_id')
+
+        if action_type == 'add_agent':
+            name = request.POST.get('name', '').strip()
+            email = request.POST.get('email', '').strip()
+            phone = request.POST.get('phone', '').strip()
+            password = request.POST.get('password', '').strip()
+            
+            if name and email and password:
+                try:
+                    username = email.split('@')[0] 
+                    base_username = username
+                    counter = 1
+
+                    while User.objects.filter(username=username).exists():
+                        username = f"{base_username}{counter}"
+                        counter += 1
+                    
+                    # Create User first
+                    user = User.objects.create_user(
+                        username=username,
+                        email=email,
+                        password=password,
+                    )
+                    
+                    if user:
+                        # Create UserProfile for agent
+                        UserProfile.objects.create(
+                            user=user,
+                            name=name,
+                            email=email,
+                            phone=phone,
+                            role='agent'
+                        )
+                        messages.success(request, 'Agent created successfully.')
+                        return redirect('agents_list')
+                    else:
+                        messages.error(request, 'Error creating user.')
+                        return redirect('agents_list')
+                except Exception as e:
+                    messages.error(request, f'Error creating agent: {str(e)}')
+                    return redirect('agents_list')
+            else:
+                messages.error(request, 'Please fill in all required fields.')
+                return redirect('agents_list')
+            
+        elif action_type == 'edit_agent':
+            agent = get_object_or_404(UserProfile, user__id=item_id, role='agent')
+            name = request.POST.get('name', '').strip()
+            email = request.POST.get('email', '').strip()
+            phone = request.POST.get('phone', '').strip()   
+            
+            if name:
+                agent.name = name
+                agent.email = email
+                agent.phone = phone
+                agent.save()
+                messages.success(request, 'Agent updated successfully.')
+            return redirect('agents_list')
+    
+        elif action_type == 'delete_agent':
+            user = get_object_or_404(User, pk=item_id)
+            user.delete()
+            messages.success(request, 'Agent deleted successfully.')
+            return redirect('agents_list')
+        
+        elif action_type == 'bulk_delete':
+            selected_ids = request.POST.getlist('selected_agents')
+            if selected_ids:
+                agents_to_delete = UserProfile.objects.filter(id__in=selected_ids, role='agent')
+                count = agents_to_delete.count()
+                # Delete associated users
+                for agent in agents_to_delete:
+                    if agent.user:
+                        agent.user.delete()
+                messages.success(request, f'{count} agent(s) deleted successfully.')
+            return redirect('agents_list')
+        
+    return redirect('agents_list')
     
 @user_passes_test(is_staff)
 def guides_list(request):

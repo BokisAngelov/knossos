@@ -3,7 +3,7 @@ from django.db.models.signals import post_save, post_delete, pre_save
 from django.db import transaction
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from .models import Feedback, Excursion, ExcursionImage, ExcursionAvailability, Reservation, UserProfile, Group, AvailabilityDays
+from .models import Feedback, Excursion, ExcursionImage, ExcursionAvailability, Reservation, UserProfile, Group, AvailabilityDays, ReferralCode
 import os
 import shutil
 import logging
@@ -435,5 +435,56 @@ def handle_group_deletion(sender, instance, **kwargs):
             )
     except Exception as e:
         logger.error(f"Error reactivating AvailabilityDays after deleting group {instance.name}: {str(e)}")
+
+
+@receiver(post_save, sender=ReferralCode)
+def check_referral_code_expiration_on_save(sender, instance, created, **kwargs):
+    """
+    Check if referral code is expired and update status accordingly.
+    This runs every time a referral code is saved.
+    
+    Args:
+        sender: The ReferralCode model class
+        instance: The actual ReferralCode instance being saved
+        created: Boolean indicating if this is a new instance
+        **kwargs: Additional keyword arguments
+    """
+    # Only check expiration for existing codes that are active
+    # Skip for newly created codes to avoid recursion
+    if not created and instance.status == 'active':
+        was_expired = instance.check_and_update_expiration()
+        if was_expired:
+            logger.info(f"Referral code '{instance.code}' automatically marked as inactive (expired)")
+
+
+def check_all_expired_referral_codes():
+    """
+    Utility function to check all active referral codes and expire them if needed.
+    This should be called from a management command or scheduled task.
+    
+    Usage:
+        From Django shell:
+        >>> from main.signals import check_all_expired_referral_codes
+        >>> count = check_all_expired_referral_codes()
+        
+        From management command:
+        python manage.py expire_referral_codes
+    
+    Returns:
+        int: Number of codes that were expired
+    """
+    from django.utils import timezone
+    
+    expired_codes = ReferralCode.objects.filter(
+        status='active',
+        expires_at__lt=timezone.now()
+    )
+    
+    count = expired_codes.update(status='inactive')
+    
+    if count > 0:
+        logger.info(f"Expired {count} referral code(s) via batch check")
+    
+    return count
 
 

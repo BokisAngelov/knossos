@@ -426,7 +426,7 @@ class BookingForm(forms.ModelForm):
             'total_price', 'partial_paid',
             'total_adults', 'total_kids', 'total_infants',
             'price', 'user', 'voucher_id', 'date', 'pickup_point',
-            'payment_status', 'partial_paid_method', 'regions'
+            'payment_status', 'partial_paid_method', 'regions', 'referral_code', 'referral_discount_amount'
         ]
         widgets = {
             'pickup_point': forms.Select(attrs={'class': 'form-control'}),

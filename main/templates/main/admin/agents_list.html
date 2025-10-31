@@ -1,0 +1,552 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+    
+<div class="container mx-auto px-4 py-8">
+    <!-- Header Section -->
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <a href="{% url 'admin_dashboard' user.profile.id %}" class="inline-flex items-center mb-4 text-blue font-semibold text-sm hover:opacity-80">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                Back to Dashboard
+            </a>
+            <h1 class="text-3xl font-bold page-header-color">Agents</h1>
+            <p class="text-md text-purple font-semibold">Manage your agent information</p>
+        </div>
+        <button type="button" id="add-agent-btn" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            Add Agent
+        </button>
+    </div>
+
+    <!-- Search and Filter Section -->
+    <div class="bg-white rounded-lg p-4 mb-6">
+        <form method="get" class="flex flex-wrap gap-4">
+            <div class="flex-1 min-w-[200px]">
+                <label for="search" class="sr-only">Search</label>
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                    </div>
+                    <input type="text" name="search" id="search" value="{{ request.GET.search }}" 
+                           class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                           placeholder="Search agents...">
+                </div>
+            </div>
+            <div class="flex gap-4">
+                <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    Search
+                </button>
+                <a href="{% url 'agents_list' %}" class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    Clear
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Agents Table -->
+    <div class="bg-white rounded-lg p-6">
+        {% if page_obj.object_list %}
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-sm">
+                    <thead class="text-base">
+                        <tr>
+                            <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">
+                                Name
+                            </th>
+                            <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">
+                                Email
+                            </th>
+                            <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">
+                                Phone
+                            </th>
+                            <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">
+                                Referral Code
+                            </th>
+                            <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">
+                                Status
+                            </th>
+                            <th scope="col" class="px-4 py-3 text-right font-semibold text-header-grey tracking-wider text-lg">
+                                Actions
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for agent in page_obj %}
+                            {% with latest_code=agent.get_latest_active_referral_code active_count=agent.get_active_referral_codes_count %}
+                            <tr data-id="{{ agent.user.id }}">
+                                <td class="px-4 py-4 whitespace-nowrap">
+                                    <span class="editable-name font-normal">{{ agent.name|title }}</span>
+                                    <input type="text" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ agent.name }}">
+                                </td>
+                                <td class="px-4 py-4 whitespace-nowrap">
+                                    <span class="editable-email font-normal">{{ agent.email }}</span>
+                                    <input type="email" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ agent.email }}">
+                                </td>
+                                <td class="px-4 py-4 whitespace-nowrap">
+                                    <span class="editable-phone font-normal">{{ agent.phone }}</span>
+                                    <input type="tel" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ agent.phone }}">
+                                </td>
+                                <td class="px-4 py-4 whitespace-nowrap">
+                                    {% if latest_code %}
+                                        <div class="flex flex-col">
+                                            <span class="font-semibold text-blue-600">{{ latest_code.code }}</span>
+                                            <span class="text-xs text-gray-500">
+                                                Expires: {{ latest_code.expires_at|date:"M d, Y" }}
+                                            </span>
+                                            {% if active_count > 1 %}
+                                                <span class="text-xs text-purple font-semibold mt-1">
+                                                    (+{{ active_count|add:"-1" }} more active)
+                                                </span>
+                                            {% endif %}
+                                        </div>
+                                    {% else %}
+                                        <span class="text-gray-400 italic text-sm">No active code</span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-4 py-4 whitespace-nowrap">
+                                    <span class="px-2 inline-flex text-xs leading-5 font-normal rounded-full text-white
+                                        {% if agent.status == 'active' %}bg-green 
+                                        {% else %}bg-red{% endif %}">
+                                        {{ agent.status|title }}
+                                    </span>
+                                </td>
+                                <td class="px-4 py-4 whitespace-nowrap flex justify-end">
+                                    <button type="button" class="view-btn text-turquaz hover:opacity-80 font-normal mr-2" data-id="{{ agent.user.id }}">
+                                        <svg class="w-6 h-6 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                        </svg>
+                                    </button>
+                                    <button type="button" class="edit-btn text-blue hover:opacity-80 font-normal mr-2">
+                                        <svg class="w-6 h-6 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                        </svg>
+                                    </button>
+                                    <button type="button" class="delete-btn text-orange hover:opacity-80 font-normal">
+                                        <svg class="w-6 h-6 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                    </button>
+                                    <button type="button" class="save-btn hidden text-green hover:opacity-80 font-normal">
+                                        <svg class="w-6 h-6 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                        </svg>
+                                    </button>
+                                    <button type="button" class="cancel-btn hidden text-gray hover:opacity-80 font-normal">
+                                        <svg class="w-6 h-6 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endwith %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            {% if page_obj.paginator.num_pages > 1 %}
+            <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+                <div class="flex-1 flex justify-between sm:hidden">
+                    {% if page_obj.has_previous %}
+                        <a href="?page={{ page_obj.previous_page_number }}" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                            Previous
+                        </a>
+                    {% endif %}
+                    {% if page_obj.has_next %}
+                        <a href="?page={{ page_obj.next_page_number }}" class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                            Next
+                        </a>
+                    {% endif %}
+                </div>
+                <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                    <div>
+                        <p class="text-sm text-gray-700 font-normal">
+                            Showing
+                            <span class="font-medium">{{ page_obj.start_index }}</span>
+                            to
+                            <span class="font-medium">{{ page_obj.end_index }}</span>
+                            of
+                            <span class="font-medium">{{ page_obj.paginator.count }}</span>
+                            results
+                        </p>
+                    </div>
+                    <div>
+                        <nav class="relative z-0 inline-flex rounded-md -space-x-px" aria-label="Pagination">
+                            {% if page_obj.has_previous %}
+                                <a href="?page={{ page_obj.previous_page_number }}" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                    <span class="sr-only">Previous</span>
+                                    <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                        <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                    </svg>
+                                </a>
+                            {% endif %}
+
+                            {% for num in page_obj.paginator.page_range %}
+                                {% if page_obj.number == num %}
+                                    <span class="relative inline-flex items-center px-4 py-2 border border-blue-500 bg-blue-50 text-sm font-medium text-blue-600">
+                                        {{ num }}
+                                    </span>
+                                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                    <a href="?page={{ num }}" class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+                                        {{ num }}
+                                    </a>
+                                {% endif %}
+                            {% endfor %}
+
+                            {% if page_obj.has_next %}
+                                <a href="?page={{ page_obj.next_page_number }}" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                    <span class="sr-only">Next</span>
+                                    <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                        <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                                    </svg>
+                                </a>
+                            {% endif %}
+                        </nav>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        {% else %}
+            <div class="text-center py-12">
+                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+                <h3 class="mt-2 text-sm font-medium text-gray-900">No agents found</h3>
+                <p class="mt-1 text-sm text-gray-500">Get started by adding a new agent.</p>
+                <div class="mt-6">
+                    <button type="button" id="add-agent-btn-empty" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                        Add Agent
+                    </button>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>  
+
+<!-- Hidden forms for submitting actions -->
+<form id="add-agent-form" action="{% url 'manage_agents' %}" method="post" class="hidden">
+    {% csrf_token %}
+    <input type="hidden" name="action_type" value="add_agent">
+    <input type="hidden" name="name" id="add-agent-name">
+    <input type="hidden" name="email" id="add-agent-email">
+    <input type="hidden" name="phone" id="add-agent-phone">
+    <input type="hidden" name="password" id="add-agent-password">
+</form>
+
+<form id="edit-agent-form" action="{% url 'manage_agents' %}" method="post" class="hidden">
+    {% csrf_token %}
+    <input type="hidden" name="action_type" value="edit_agent">
+    <input type="hidden" name="item_id" id="edit-agent-id">
+    <input type="hidden" name="name" id="edit-agent-name">
+    <input type="hidden" name="email" id="edit-agent-email">
+    <input type="hidden" name="phone" id="edit-agent-phone">
+</form>
+
+<form id="delete-agent-form" action="{% url 'manage_agents' %}" method="post" class="hidden">
+    {% csrf_token %}
+    <input type="hidden" name="action_type" value="delete_agent">
+    <input type="hidden" name="item_id" id="delete-agent-id">
+</form>
+
+<form id="bulk-actions-form" action="{% url 'manage_agents' %}" method="post" class="hidden">
+    {% csrf_token %}
+    <input type="hidden" name="action_type" id="bulk-action-type">
+    <div id="bulk-selected-agents"></div>
+</form>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+
+        // View Agent
+        const viewAgentBtn = document.querySelectorAll('.view-btn');
+        viewAgentBtn.forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                const agentID = this.dataset.id;
+                window.location.href = `/profile/${agentID}`;
+            });
+        });
+
+
+        // Add Agent
+        const addAgentBtn = document.getElementById('add-agent-btn');
+        const addAgentBtnEmpty = document.getElementById('add-agent-btn-empty');
+        
+        function showAddAgentModal() {
+            Swal.fire({
+                title: 'Add Agent',
+                html: `
+                    <input id="swal-name" class="swal2-input" placeholder="Full Name">
+                    <input id="swal-email" class="swal2-input" placeholder="Email">
+                    <input id="swal-phone" class="swal2-input" placeholder="Phone Number">
+                    <input id="swal-password" type="password" class="swal2-input" placeholder="Password">
+                `,
+                focusConfirm: false,
+                showCancelButton: true,
+                confirmButtonText: 'Add Agent',
+                preConfirm: () => {
+                    const name = document.getElementById('swal-name').value;
+                    const email = document.getElementById('swal-email').value;
+                    const phone = document.getElementById('swal-phone').value;
+                    const password = document.getElementById('swal-password').value;
+
+                    if (!name || !email || !phone || !password) {
+                        Swal.showValidationMessage('Please fill in all fields');
+                        return false;
+                    }
+                    
+                    return { name, email, phone, password };
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const form = document.getElementById('add-agent-form');
+                    document.getElementById('add-agent-name').value = result.value.name;
+                    document.getElementById('add-agent-email').value = result.value.email;
+                    document.getElementById('add-agent-phone').value = result.value.phone;
+                    document.getElementById('add-agent-password').value = result.value.password;
+                    form.submit();  
+                }
+            });
+        }
+
+        if (addAgentBtn) {
+            addAgentBtn.addEventListener('click', showAddAgentModal);
+        }
+        if (addAgentBtnEmpty) {
+            addAgentBtnEmpty.addEventListener('click', showAddAgentModal);
+        }
+
+        // Bulk Actions
+        const selectAllCheckbox = document.getElementById('select-all-checkbox');
+        const agentCheckboxes = document.querySelectorAll('.agent-checkbox');
+        const bulkActionsDiv = document.getElementById('bulk-actions');
+        const selectedCountSpan = document.getElementById('selected-count');
+        const selectAllBtn = document.getElementById('select-all-btn');
+        const bulkActivateBtn = document.getElementById('bulk-activate-btn');
+        const bulkDeactivateBtn = document.getElementById('bulk-deactivate-btn');
+        const bulkDeleteBtn = document.getElementById('bulk-delete-btn');
+
+        function updateBulkActions() {
+            const checkedBoxes = document.querySelectorAll('.agent-checkbox:checked');
+            const totalBoxes = document.querySelectorAll('.agent-checkbox');
+            
+            if (checkedBoxes.length > 0) {
+                bulkActionsDiv.classList.remove('hidden');
+                selectedCountSpan.textContent = `${checkedBoxes.length} agent(s) selected`;
+                
+                // Update select all checkbox
+                if (checkedBoxes.length === totalBoxes.length) {
+                    selectAllCheckbox.checked = true;
+                    selectAllCheckbox.indeterminate = false;
+                } else if (checkedBoxes.length > 0) {
+                    selectAllCheckbox.indeterminate = true;
+                } else {
+                    selectAllCheckbox.checked = false;
+                    selectAllCheckbox.indeterminate = false;
+                }
+            } else {
+                bulkActionsDiv.classList.add('hidden');
+                selectAllCheckbox.checked = false;
+                selectAllCheckbox.indeterminate = false;
+            }
+        }
+
+        function selectAll() {
+            const checkboxes = document.querySelectorAll('.agent-checkbox');
+            const selectAllCheckbox = document.getElementById('select-all-checkbox');
+            
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = selectAllCheckbox.checked;
+            });
+            updateBulkActions();
+        }
+
+        function submitBulkAction(actionType) {
+            const checkedBoxes = document.querySelectorAll('.agent-checkbox:checked');
+            if (checkedBoxes.length === 0) {
+                Swal.fire('No Selection', 'Please select at least one agent.', 'warning');
+                return;
+            }
+
+            let confirmMessage = '';
+            let confirmIcon = 'warning';
+            
+            switch(actionType) {
+                case 'bulk_delete':
+                    confirmMessage = `Are you sure you want to delete ${checkedBoxes.length} agent(s)?`;
+                    confirmIcon = 'warning';
+                    break;
+                case 'bulk_activate':
+                    confirmMessage = `Are you sure you want to activate ${checkedBoxes.length} agent(s)?`;
+                    confirmIcon = 'question';
+                    break;
+                case 'bulk_deactivate':
+                    confirmMessage = `Are you sure you want to deactivate ${checkedBoxes.length} agent(s)?`;
+                    confirmIcon = 'question';
+                    break;
+            }
+
+            Swal.fire({
+                title: 'Confirm Action',
+                text: confirmMessage,
+                icon: confirmIcon,
+                showCancelButton: true,
+                confirmButtonColor: actionType === 'bulk_delete' ? '#d33' : '#3085d6',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Yes, proceed!'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const form = document.getElementById('bulk-actions-form');
+                    const actionTypeInput = document.getElementById('bulk-action-type');
+                    const selectedAgentsDiv = document.getElementById('bulk-selected-agents');
+                    
+                    // Clear previous inputs
+                    selectedAgentsDiv.innerHTML = '';
+                    
+                    // Add selected agent IDs
+                    checkedBoxes.forEach(checkbox => {
+                        const input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = 'selected_agents';
+                        input.value = checkbox.value;
+                        selectedAgentsDiv.appendChild(input);
+                    });
+                    
+                    actionTypeInput.value = actionType;
+                    form.submit();
+                }
+            });
+        }
+
+        // Event listeners for bulk actions
+        if (selectAllCheckbox) {
+            selectAllCheckbox.addEventListener('change', selectAll);
+        }
+
+        if (selectAllBtn) {
+            selectAllBtn.addEventListener('click', function() {
+                const selectAllCheckbox = document.getElementById('select-all-checkbox');
+                selectAllCheckbox.checked = !selectAllCheckbox.checked;
+                selectAll();
+            });
+        }
+
+        agentCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', updateBulkActions);
+        });
+
+        if (bulkActivateBtn) {
+            bulkActivateBtn.addEventListener('click', () => submitBulkAction('bulk_activate'));
+        }
+
+        if (bulkDeactivateBtn) {
+            bulkDeactivateBtn.addEventListener('click', () => submitBulkAction('bulk_deactivate'));
+        }
+
+        if (bulkDeleteBtn) {
+            bulkDeleteBtn.addEventListener('click', () => submitBulkAction('bulk_delete'));
+        }
+
+        // Setup table editing
+        const table = document.querySelector('table');
+        if (table) {
+            // Edit buttons
+            table.querySelectorAll('.edit-btn').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const row = this.closest('tr');
+                    const spans = row.querySelectorAll('.editable-name, .editable-email, .editable-phone');
+                    const inputs = row.querySelectorAll('.edit-input');
+                    
+                    // Hide spans, show inputs
+                    spans.forEach(span => span.classList.add('hidden'));
+                    inputs.forEach(input => input.classList.remove('hidden'));
+                    inputs[0].focus();
+                    
+                    // Toggle buttons
+                    row.querySelectorAll('.edit-btn, .delete-btn, .view-btn').forEach(el => el.classList.add('hidden'));
+                    row.querySelectorAll('.save-btn, .cancel-btn').forEach(el => el.classList.remove('hidden'));
+                });
+            });
+            
+            // Save buttons
+            table.querySelectorAll('.save-btn').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const row = this.closest('tr');
+                    const itemId = row.dataset.id;
+                    const inputs = row.querySelectorAll('.edit-input');
+                    
+                    // Update form and submit
+                    document.getElementById('edit-agent-id').value = itemId;
+                    document.getElementById('edit-agent-name').value = inputs[0].value.trim();
+                    document.getElementById('edit-agent-email').value = inputs[1].value.trim();
+                    document.getElementById('edit-agent-phone').value = inputs[2].value.trim();
+                    document.getElementById('edit-agent-form').submit();
+                });
+            });
+            
+            // Cancel buttons
+            table.querySelectorAll('.cancel-btn').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const row = this.closest('tr');
+                    const spans = row.querySelectorAll('.editable-name, .editable-email, .editable-phone');
+                    const inputs = row.querySelectorAll('.edit-input');
+                    
+                    // Reset input values
+                    inputs.forEach((input, index) => {
+                        input.value = spans[index].textContent.trim();
+                    });
+                    
+                    // Show spans, hide inputs
+                    spans.forEach(span => span.classList.remove('hidden'));
+                    inputs.forEach(input => input.classList.add('hidden'));
+                    
+                    // Toggle buttons back
+                    row.querySelectorAll('.edit-btn, .delete-btn, .view-btn').forEach(el => el.classList.remove('hidden'));
+                    row.querySelectorAll('.save-btn, .cancel-btn').forEach(el => el.classList.add('hidden'));
+                });
+            });
+            
+            // Delete buttons
+            table.querySelectorAll('.delete-btn').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const row = this.closest('tr');
+                    const itemId = row.dataset.id;
+                    const name = row.querySelector('.editable-name').textContent;
+                    
+                    Swal.fire({
+                        title: 'Are you sure?',
+                        text: `Do you want to delete agent "${name}"?`,
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#d33',
+                        cancelButtonColor: '#3085d6',
+                        confirmButtonText: 'Yes, delete it!'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            document.getElementById('delete-agent-id').value = itemId;
+                            document.getElementById('delete-agent-form').submit();
+                        }
+                    });
+                });
+            });
+        }
+    });
+</script>
+{% endblock %}

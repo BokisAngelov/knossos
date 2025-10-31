@@ -57,16 +57,21 @@
                     <p class="text-lg font-bold text-brown-light">{{ booking.created_at|date:"F d, Y" }}</p>
                 </div>
                 <div class="bg-white rounded-lg shadow-sm p-4 border-brown">
-                    <h4 class="text-md font-semibold text-brown-light mb-1">Total Price</h4>
+                    <h4 class="text-md font-semibold text-brown-light mb-1">Base Price</h4>
                     <p class="text-lg font-bold text-brown-light">€{{ booking.price }}</p>
                 </div>
                 <div class="bg-white rounded-lg shadow-sm p-4 border-brown">
                     <h4 class="text-md font-semibold text-brown-light mb-1">Partial Payment</h4>
                     <p class="text-lg font-bold text-brown-light">€{% if booking.partial_paid %}{{ booking.partial_paid }}{% else %}0.00{% endif %}</p>
                 </div>
-                <div class="bg-white rounded-lg shadow-sm p-4 border-brown">
-                    <h4 class="text-md font-semibold text-brown-light mb-1">Number of Guests</h4>
-                    <p class="text-lg font-bold text-brown-light">{{ booking.total_adults }} Adults | {{ booking.total_kids }} Children | {{ booking.total_infants }} Infants</p>
+                
+                <div class="bg-blue-50 rounded-lg shadow-sm p-4 border-2 border-blue-200">
+                    <h4 class="text-md font-semibold text-blue-700 mb-1">Final Amount</h4>
+                    <p class="text-xl font-bold text-blue-900">€{{ booking.total_price }}</p>
+                    {% if booking.referral_code and booking.referral_discount_amount %}
+                    <p class="text-xs mt-1">Referral Discount: {{ booking.get_referral_discount_percentage }}% (-€{{ booking.referral_discount_amount }})</p>
+                    <p class="text-xs">Code: {{ booking.referral_code.code }}</p>
+                    {% endif %}
                 </div>
                 
                 
@@ -121,6 +126,10 @@
                     <p class="text-lg font-bold text-turquaz"><a href="{% url 'admin_reservations' %}" class="text-blue hover:opacity-80">{{ booking.voucher_id }}</a></p>
                 </div>
                 {% endif %}
+                <div class="bg-white rounded-lg shadow-sm p-4 border-brown">
+                    <h4 class="text-md font-semibold text-brown-light mb-1">Number of Guests</h4>
+                    <p class="text-lg font-bold text-brown-light">{{ booking.total_adults }} Adults | {{ booking.total_kids }} Children | {{ booking.total_infants }} Infants</p>
+                </div>
             </div>
         </div>
     </div>

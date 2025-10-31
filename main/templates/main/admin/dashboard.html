@@ -27,7 +27,7 @@
       </div>
       <div class="bg-white p-4">
         <p class="text-xl text-header-grey font-bold">Revenue</p>
-        <p class="text-3xl font-bold text-purple">€{{ total_revenue }}</p>
+        <p class="text-3xl font-bold text-purple">€{{ total_revenue|floatformat:2 }}</p>
       </div>
       
     </div>
@@ -252,7 +252,7 @@
       <!-- User Management Section -->
       <div>
         <h2 class="text-2xl font-semibold text-green mb-4">User Management</h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 xl:grid-cols-5 gap-6">
 
           <!-- Staff -->
           <div class="bg-white p-5 rounded-lg">
@@ -267,13 +267,27 @@
             </ul> 
           </div>
 
+          <!-- Agents -->
+          <div class="bg-white p-5 rounded-lg">
+            <div class="flex items-center mb-4">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+              </svg>
+              <h3 class="text-lg font-bold text-header-grey">Agents</h3>
+            </div>
+            <ul class="space-y-2">
+              <li><a href="{% url 'agents_list' %}" class="text-blue font-semibold hover:opacity-80">Manage Agents</a></li>
+            </ul>
+          </div>
+          
+
           <!-- Representatives -->
           <div class="bg-white p-5 rounded-lg">
             <div class="flex items-center mb-4">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-orange-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
               </svg>
-              <h3 class="text-lg font-bold text-header-grey">Representatives (TBU)</h3>
+              <h3 class="text-lg font-bold text-header-grey">Representatives</h3>
             </div>
             <ul class="space-y-2">
               <li><a href="{% url 'reps_list' %}" class="text-blue font-semibold hover:opacity-80">Manage Representatives</a></li>
@@ -286,7 +300,7 @@
               <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-purple-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />  
               </svg>
-              <h3 class="text-lg font-bold text-header-grey">Guides (TBU)</h3>
+              <h3 class="text-lg font-bold text-header-grey">Guides</h3>
             </div>
             <ul class="space-y-2">
               <li><a href="{% url 'guides_list' %}" class="text-blue font-semibold hover:opacity-80">Manage Guides</a></li>
@@ -358,7 +372,7 @@
                   </span>
                 </td> 
                 <td class="px-4 py-4 whitespace-nowrap text-sm table-text font-normal">
-                  €{{ booking.price }}
+                  €{{ booking.total_price }}
                 </td>
                 <td class="px-4 py-4 whitespace-nowrap flex justify-end">
                   <a href="{% url 'booking_detail' booking.id %}" class="text-turquaz hover:opacity-80 font-normal">
