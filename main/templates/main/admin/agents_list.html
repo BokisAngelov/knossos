@@ -71,6 +71,9 @@
                                 Referral Code
                             </th>
                             <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">
+                                Bookings
+                            </th>
+                            <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">
                                 Status
                             </th>
                             <th scope="col" class="px-4 py-3 text-right font-semibold text-header-grey tracking-wider text-lg">
@@ -110,6 +113,9 @@
                                     {% else %}
                                         <span class="text-gray-400 italic text-sm">No active code</span>
                                     {% endif %}
+                                </td>
+                                <td class="px-4 py-4 whitespace-nowrap">
+                                    <span class="font-normal">{{ agent.get_total_bookings_referral.0 }} | €{{ agent.get_total_bookings_referral.1|floatformat:2 }}</span>
                                 </td>
                                 <td class="px-4 py-4 whitespace-nowrap">
                                     <span class="px-2 inline-flex text-xs leading-5 font-normal rounded-full text-white
@@ -261,11 +267,6 @@
     <input type="hidden" name="item_id" id="delete-agent-id">
 </form>
 
-<form id="bulk-actions-form" action="{% url 'manage_agents' %}" method="post" class="hidden">
-    {% csrf_token %}
-    <input type="hidden" name="action_type" id="bulk-action-type">
-    <div id="bulk-selected-agents"></div>
-</form>
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -327,137 +328,6 @@
         }
         if (addAgentBtnEmpty) {
             addAgentBtnEmpty.addEventListener('click', showAddAgentModal);
-        }
-
-        // Bulk Actions
-        const selectAllCheckbox = document.getElementById('select-all-checkbox');
-        const agentCheckboxes = document.querySelectorAll('.agent-checkbox');
-        const bulkActionsDiv = document.getElementById('bulk-actions');
-        const selectedCountSpan = document.getElementById('selected-count');
-        const selectAllBtn = document.getElementById('select-all-btn');
-        const bulkActivateBtn = document.getElementById('bulk-activate-btn');
-        const bulkDeactivateBtn = document.getElementById('bulk-deactivate-btn');
-        const bulkDeleteBtn = document.getElementById('bulk-delete-btn');
-
-        function updateBulkActions() {
-            const checkedBoxes = document.querySelectorAll('.agent-checkbox:checked');
-            const totalBoxes = document.querySelectorAll('.agent-checkbox');
-            
-            if (checkedBoxes.length > 0) {
-                bulkActionsDiv.classList.remove('hidden');
-                selectedCountSpan.textContent = `${checkedBoxes.length} agent(s) selected`;
-                
-                // Update select all checkbox
-                if (checkedBoxes.length === totalBoxes.length) {
-                    selectAllCheckbox.checked = true;
-                    selectAllCheckbox.indeterminate = false;
-                } else if (checkedBoxes.length > 0) {
-                    selectAllCheckbox.indeterminate = true;
-                } else {
-                    selectAllCheckbox.checked = false;
-                    selectAllCheckbox.indeterminate = false;
-                }
-            } else {
-                bulkActionsDiv.classList.add('hidden');
-                selectAllCheckbox.checked = false;
-                selectAllCheckbox.indeterminate = false;
-            }
-        }
-
-        function selectAll() {
-            const checkboxes = document.querySelectorAll('.agent-checkbox');
-            const selectAllCheckbox = document.getElementById('select-all-checkbox');
-            
-            checkboxes.forEach(checkbox => {
-                checkbox.checked = selectAllCheckbox.checked;
-            });
-            updateBulkActions();
-        }
-
-        function submitBulkAction(actionType) {
-            const checkedBoxes = document.querySelectorAll('.agent-checkbox:checked');
-            if (checkedBoxes.length === 0) {
-                Swal.fire('No Selection', 'Please select at least one agent.', 'warning');
-                return;
-            }
-
-            let confirmMessage = '';
-            let confirmIcon = 'warning';
-            
-            switch(actionType) {
-                case 'bulk_delete':
-                    confirmMessage = `Are you sure you want to delete ${checkedBoxes.length} agent(s)?`;
-                    confirmIcon = 'warning';
-                    break;
-                case 'bulk_activate':
-                    confirmMessage = `Are you sure you want to activate ${checkedBoxes.length} agent(s)?`;
-                    confirmIcon = 'question';
-                    break;
-                case 'bulk_deactivate':
-                    confirmMessage = `Are you sure you want to deactivate ${checkedBoxes.length} agent(s)?`;
-                    confirmIcon = 'question';
-                    break;
-            }
-
-            Swal.fire({
-                title: 'Confirm Action',
-                text: confirmMessage,
-                icon: confirmIcon,
-                showCancelButton: true,
-                confirmButtonColor: actionType === 'bulk_delete' ? '#d33' : '#3085d6',
-                cancelButtonColor: '#6c757d',
-                confirmButtonText: 'Yes, proceed!'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    const form = document.getElementById('bulk-actions-form');
-                    const actionTypeInput = document.getElementById('bulk-action-type');
-                    const selectedAgentsDiv = document.getElementById('bulk-selected-agents');
-                    
-                    // Clear previous inputs
-                    selectedAgentsDiv.innerHTML = '';
-                    
-                    // Add selected agent IDs
-                    checkedBoxes.forEach(checkbox => {
-                        const input = document.createElement('input');
-                        input.type = 'hidden';
-                        input.name = 'selected_agents';
-                        input.value = checkbox.value;
-                        selectedAgentsDiv.appendChild(input);
-                    });
-                    
-                    actionTypeInput.value = actionType;
-                    form.submit();
-                }
-            });
-        }
-
-        // Event listeners for bulk actions
-        if (selectAllCheckbox) {
-            selectAllCheckbox.addEventListener('change', selectAll);
-        }
-
-        if (selectAllBtn) {
-            selectAllBtn.addEventListener('click', function() {
-                const selectAllCheckbox = document.getElementById('select-all-checkbox');
-                selectAllCheckbox.checked = !selectAllCheckbox.checked;
-                selectAll();
-            });
-        }
-
-        agentCheckboxes.forEach(checkbox => {
-            checkbox.addEventListener('change', updateBulkActions);
-        });
-
-        if (bulkActivateBtn) {
-            bulkActivateBtn.addEventListener('click', () => submitBulkAction('bulk_activate'));
-        }
-
-        if (bulkDeactivateBtn) {
-            bulkDeactivateBtn.addEventListener('click', () => submitBulkAction('bulk_deactivate'));
-        }
-
-        if (bulkDeleteBtn) {
-            bulkDeleteBtn.addEventListener('click', () => submitBulkAction('bulk_delete'));
         }
 
         // Setup table editing

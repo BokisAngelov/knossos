@@ -86,6 +86,20 @@ class UserProfile(models.Model):
         if self.user:
             return self.user.bookings.count()
         return 0
+
+    def get_total_bookings_referral(self):
+        from django.db.models import Sum
+        """Get total number of excursion bookings for this user"""
+        total_bookings = 0
+        total_spent = 0
+        if self.user:
+            referral_codes = ReferralCode.objects.filter(agent=self)
+            for referral_code in referral_codes:
+                bookings = Booking.objects.filter(referral_code=referral_code)
+                total_bookings += bookings.count()
+                total_spent += bookings.aggregate(total=Sum('total_price'))['total']
+            return total_bookings, total_spent
+        return 0, 0
     
     def get_total_spent(self):
         """Calculate total amount spent on bookings"""

@@ -1374,8 +1374,18 @@ def password_reset_token(request, token):
 @login_required
 def profile(request, pk):
     user = get_object_or_404(User, pk=pk)
-    bookings = Booking.objects.filter(user=user, deleteByUser=False).order_by('-created_at')
     profile = UserProfile.objects.get(user=user)
+    
+    # Get bookings - for agents, include bookings using their referral codes
+    if profile.role == 'agent':
+        # Include both: bookings made by this user AND bookings using their referral codes
+        bookings = Booking.objects.filter(
+            Q(user=user, deleteByUser=False) | 
+            Q(referral_code__agent=profile, deleteByUser=False)
+        ).distinct().order_by('-created_at')
+    else:
+        # For non-agents, only show their own bookings
+        bookings = Booking.objects.filter(user=user, deleteByUser=False).order_by('-created_at')
     
     # Get reservations linked to this user profile
     reservations = Reservation.objects.filter(client_profile=profile).order_by('-created_at')
@@ -2984,7 +2994,7 @@ def admin_reservations(request):
 def bookings_list(request):
 
     search_query = request.GET.get('search', '')
-    bookings = Booking.objects.all().order_by('-date')
+    bookings = Booking.objects.all().order_by('-id')
     
     # Apply search filter if search query is provided
     if search_query:

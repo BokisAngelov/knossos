@@ -227,7 +227,10 @@
 
   <!-- Bookings Section -->
   <div class="bg-white p-6">
-    <h2 class="text-xl font-semibold text-purple mb-4">Your Bookings</h2>
+    <h2 class="text-xl font-semibold text-purple mb-4">
+      Bookings <span class="text-sm font-normal text-gray-500">({{ bookings.count }} {% if user_profile.role == 'agent' %} - includes bookings using your referral codes{% endif %})
+      </span>      
+    </h2>
     
     {% if bookings %}
       <div class="overflow-x-auto">
@@ -239,6 +242,9 @@
               <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">Guests</th>
               <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">Status</th>
               <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">Price</th>
+              {% if user_profile.role == 'agent' %}
+              <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">Type</th>
+              {% endif %}
               <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg text-right">Actions</th>
             </tr>
           </thead>
@@ -263,8 +269,25 @@
                   </span>
                 </td>
                 <td class="px-4 py-4 whitespace-nowrap text-sm font-normal">
-                  €{{ booking.total_price }}
+                  <div class="flex flex-col">
+                    <span class="font-semibold">€{{ booking.total_price }}</span>
+                    {% if booking.referral_discount_amount and booking.referral_discount_amount > 0 %}
+                      <span class="text-xs text-green-600">-€{{ booking.referral_discount_amount }} discount</span>
+                    {% endif %}
+                  </div>
                 </td>
+                {% if user_profile.role == 'agent' %}
+                <td class="px-4 py-4 whitespace-nowrap">
+                  {% if booking.referral_code and booking.referral_code.agent.id == user_profile.id %}
+                    <span class="px-2 inline-flex text-xs leading-5 font-semibold">
+                      Referral
+                    </span>
+                    <div class="px-2 text-xs">{{ booking.referral_code.code }}</div>
+                  {% else %}
+                    <span class="text-xs text-gray-400">Own Booking</span>
+                  {% endif %}
+                </td>
+                {% endif %}
                 <td class="px-4 py-4 whitespace-nowrap text-right text-sm font-normal flex justify-end">
                   <a href="{% url 'booking_detail' booking.id %}" class="text-blue-600 hover:text-blue-800">
                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -273,7 +296,7 @@
                     </svg>
                   </a>
                   {% if booking.payment_status != "completed" %}
-                  <a data-booking-id="{{ booking.id }}" href="/checkout/{{ booking.id }}" id="complete-booking-btn" class="text-green-600 hover:text-green-800">
+                  <!-- <a data-booking-id="{{ booking.id }}" href="/checkout/{{ booking.id }}" id="complete-booking-btn" class="text-green-600 hover:text-green-800">
                     <svg xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" width="20" height="20" viewBox="0 0 50 50">
                       <path d="M 42.964844 8.6894531 A 1.0001 1.0001 0 0 0 42.160156 9.1582031 L 21.699219 40.867188 L 7.671875 28.158203 A 1.0004048 1.0004048 0 1 0 6.328125 29.640625 L 21.228516 43.140625 A 1.0001 1.0001 0 0 0 22.740234 42.941406 L 43.839844 10.242188 A 1.0001 1.0001 0 0 0 42.964844 8.6894531 z"></path>
                       </svg>
@@ -282,7 +305,7 @@
                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>
-                </a>
+                </a> -->
                 {% endif %}
                 </td>
               </tr>

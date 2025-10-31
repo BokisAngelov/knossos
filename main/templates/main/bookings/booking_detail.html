@@ -24,8 +24,8 @@
             {% if user.is_staff %}
             <div class="float-right absolute right-0 bottom-0">
                 <input type="hidden" id="booking-id" value="{{ booking.id }}">
-                <a id="edit-booking" class="relative px-4 py-1 text-white bg-turquaz rounded-md font-semibold hover:opacity-80" href="{% url 'booking_edit' booking.id %}">
-                    Edit</a>
+                <!-- <a id="edit-booking" class="relative px-4 py-1 text-white bg-turquaz rounded-md font-semibold hover:opacity-80" href="{% url 'booking_edit' booking.id %}">
+                    Edit</a> -->
                 {% if booking.payment_status == 'pending' or booking.payment_status == 'cancelled' %}
                 <a id="complete-payment" class="h-8 px-4 py-1 text-white bg-green rounded-md font-semibold hover:opacity-80" href="#">Complete</a>
                 {% endif %}
