@@ -457,6 +457,70 @@ def check_referral_code_expiration_on_save(sender, instance, created, **kwargs):
             logger.info(f"Referral code '{instance.code}' automatically marked as inactive (expired)")
 
 
+@receiver(pre_save, sender=UserProfile)
+def track_agent_status_change(sender, instance, **kwargs):
+    """Track the old status before save to detect changes for agents."""
+    if instance.pk and instance.role == 'agent':
+        try:
+            old_instance = UserProfile.objects.get(pk=instance.pk)
+            instance._old_status = old_instance.status
+        except UserProfile.DoesNotExist:
+            instance._old_status = None
+    else:
+        instance._old_status = None
+
+
+@receiver(post_save, sender=UserProfile)
+def handle_agent_status_change(sender, instance, created, **kwargs):
+    """
+    When an agent's status changes, update their referral codes accordingly:
+    - If agent becomes inactive: deactivate all active referral codes
+    - If agent becomes active: reactivate non-expired referral codes
+    """
+    # Only process for agents, not new profiles
+    if created or instance.role != 'agent':
+        return
+    
+    # Check if status changed
+    old_status = getattr(instance, '_old_status', None)
+    if old_status is None or old_status == instance.status:
+        return
+    
+    try:
+        from django.utils import timezone
+        
+        if instance.status == 'inactive' and old_status == 'active':
+            # Agent became inactive - deactivate all active referral codes
+            updated_count = ReferralCode.objects.filter(
+                agent=instance,
+                status='active'
+            ).update(status='inactive')
+            
+            if updated_count > 0:
+                logger.info(
+                    f"Agent '{instance.name}' (ID: {instance.id}) became inactive. "
+                    f"Deactivated {updated_count} referral code(s)."
+                )
+        
+        elif instance.status == 'active' and old_status == 'inactive':
+            # Agent became active - reactivate non-expired referral codes
+            now = timezone.now()
+            updated_count = ReferralCode.objects.filter(
+                agent=instance,
+                status='inactive',
+                expires_at__gt=now
+            ).update(status='active')
+            
+            if updated_count > 0:
+                logger.info(
+                    f"Agent '{instance.name}' (ID: {instance.id}) became active. "
+                    f"Reactivated {updated_count} non-expired referral code(s)."
+                )
+    
+    except Exception as e:
+        logger.error(f"Error updating referral codes for agent {instance.name} (ID: {instance.id}): {str(e)}")
+
+
 def check_all_expired_referral_codes():
     """
     Utility function to check all active referral codes and expire them if needed.

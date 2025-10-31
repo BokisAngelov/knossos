@@ -52,76 +52,80 @@
     </div>
 
     <!-- Representatives Table -->
-    <div class="bg-white rounded-lg shadow-md overflow-hidden">
+    <div class="bg-white p-6">        
         {% if reps %}
             <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
+                <table class="min-w-full text-sm">
+                    <thead class="text-base">
                         <tr>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">
                                 Name
                             </th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">
                                 Email
                             </th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">
                                 Phone
                             </th>
-                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">
+                                Status
+                            </th>
+                            <th class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg text-right">
                                 Actions
                             </th>
                         </tr>
                     </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
+                    <tbody>
                         {% for rep in reps %}
-                            <tr data-id="{{ rep.id }}">
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="flex items-center">
-                                        <div class="ml-4">
-                                            <div class="text-sm font-medium text-gray-900">
-                                                <span class="editable-name">{{ rep.name }}</span>
-                                                <input type="text" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ rep.name }}">
-                                            </div>
-                                        </div>
-                                    </div>
+                            <tr class="font-medium" data-id="{{ rep.id }}">
+                                <td class="px-4 py-4 whitespace-nowrap">
+                                    <span class="editable-name text-sm font-normal">{{ rep.name }}</span>
+                                    <input type="text" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ rep.name }}">
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="text-sm text-gray-900">
-                                        <span class="editable-email">{{ rep.email }}</span>
-                                        <input type="email" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ rep.email }}">
-                                    </div>
+                                <td class="px-4 py-4 whitespace-nowrap">
+                                    <span class="editable-email text-sm font-normal">{{ rep.email }}</span>
+                                    <input type="email" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ rep.email }}">
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="text-sm text-gray-500">
-                                        <span class="editable-phone">{{ rep.phone }}</span>
-                                        <input type="tel" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ rep.phone }}">
-                                    </div>
+                                <td class="px-4 py-4 whitespace-nowrap">
+                                    <span class="editable-phone text-sm font-normal">{{ rep.phone }}</span>
+                                    <input type="tel" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ rep.phone }}">
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                    <button type="button" class="view-btn text-turquaz hover:text-turquaz-dark mr-2" data-id="{{ rep.user.id }}">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <td class="px-4 py-4 whitespace-nowrap">
+                                    <span class="editable-status">
+                                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                            {% if rep.status == 'active' %}bg-green-100 text-green-800{% else %}bg-red-100 text-red-800{% endif %}">
+                                            {{ rep.status|title }}
+                                        </span>
+                                    </span>
+                                    <select class="edit-input hidden w-full border rounded px-2 py-1 bg-white">
+                                        <option value="active" {% if rep.status == 'active' %}selected{% endif %}>Active</option>
+                                        <option value="inactive" {% if rep.status == 'inactive' %}selected{% endif %}>Inactive</option>
+                                    </select>
+                                </td>
+                                <td class="px-4 py-4 whitespace-nowrap flex justify-end">
+                                    <button type="button" class="view-btn text-turquaz hover:opacity-80 font-semibold mr-2" data-id="{{ rep.user.id }}">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                         </svg>
-
                                     </button>
-                                    <button type="button" class="edit-btn text-blue hover:text-blue-dark mr-2">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <button type="button" class="edit-btn text-blue hover:opacity-80 font-semibold mr-2">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                                         </svg>
                                     </button>
-                                    <button type="button" class="delete-btn text-red-600 hover:text-red-800 mr-2">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <button type="button" class="delete-btn text-orange hover:opacity-80 font-semibold mr-2">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                         </svg>
                                     </button>
-                                    <button type="button" class="save-btn hidden text-green-600 hover:text-green-800">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <button type="button" class="save-btn hidden text-green hover:opacity-80 font-semibold mr-2">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                                         </svg>
                                     </button>
-                                    <button type="button" class="cancel-btn hidden text-gray-600 hover:text-gray-800">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <button type="button" class="cancel-btn hidden text-gray hover:opacity-80 font-semibold">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                                         </svg>
                                     </button>
@@ -196,20 +200,14 @@
             </div>
             {% endif %}
         {% else %}
-            <div class="text-center py-12">
-                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                </svg>
-                <h3 class="mt-2 text-sm font-medium text-gray-900">No representatives found</h3>
-                <p class="mt-1 text-sm text-gray-500">Get started by adding a new representative.</p>
-                <div class="mt-6">
-                    <button type="button" id="add-rep-btn-empty" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                        </svg>
-                        Add Representative
-                    </button>
-                </div>
+            <p class="text-header-grey font-semibold">No representatives found.</p>
+            <div class="mt-6">
+                <button type="button" id="add-rep-btn-empty" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                    Add Representative
+                </button>
             </div>
         {% endif %}
     </div>
@@ -232,6 +230,7 @@
   <input type="hidden" name="name" id="edit-rep-name">
   <input type="hidden" name="email" id="edit-rep-email">
   <input type="hidden" name="phone" id="edit-rep-phone">
+  <input type="hidden" name="status" id="edit-rep-status">
   <input type="hidden" name="password" id="edit-rep-password">
 </form>
 
@@ -307,7 +306,7 @@
         btn.addEventListener('click', function(e) {
           e.preventDefault();
           const row = this.closest('tr');
-          const spans = row.querySelectorAll('.editable-name, .editable-email, .editable-phone, .editable-password');
+          const spans = row.querySelectorAll('.editable-name, .editable-email, .editable-phone, .editable-status');
           const inputs = row.querySelectorAll('.edit-input');
           
           // Hide spans, show inputs
@@ -316,7 +315,7 @@
           inputs[0].focus();
           
           // Toggle buttons
-          row.querySelectorAll('.edit-btn, .delete-btn').forEach(el => el.classList.add('hidden'));
+          row.querySelectorAll('.edit-btn, .delete-btn, .view-btn').forEach(el => el.classList.add('hidden'));
           row.querySelectorAll('.save-btn, .cancel-btn').forEach(el => el.classList.remove('hidden'));
         });
       });
@@ -334,7 +333,7 @@
           document.getElementById('edit-rep-name').value = inputs[0].value.trim();
           document.getElementById('edit-rep-email').value = inputs[1].value.trim();
           document.getElementById('edit-rep-phone').value = inputs[2].value.trim();
-          document.getElementById('edit-rep-password').value = inputs[3].value.trim();
+          document.getElementById('edit-rep-status').value = inputs[3].value;
           document.getElementById('edit-rep-form').submit();
         });
       });
@@ -344,12 +343,24 @@
         btn.addEventListener('click', function(e) {
           e.preventDefault();
           const row = this.closest('tr');
-          const spans = row.querySelectorAll('.editable-name, .editable-email, .editable-phone, .editable-password');
+          const spans = row.querySelectorAll('.editable-name, .editable-email, .editable-phone, .editable-status');
           const inputs = row.querySelectorAll('.edit-input');
           
           // Reset input values
           inputs.forEach((input, index) => {
-            input.value = spans[index].textContent;
+            if (input.tagName === 'SELECT') {
+              // Reset select to original value - status field
+              const statusSpan = spans[3];
+              const statusText = statusSpan ? statusSpan.textContent.trim().toLowerCase() : '';
+              for (let i = 0; i < input.options.length; i++) {
+                if (input.options[i].value === statusText) {
+                  input.selectedIndex = i;
+                  break;
+                }
+              }
+            } else {
+              input.value = spans[index].textContent.trim();
+            }
           });
           
           // Show spans, hide inputs
@@ -357,7 +368,7 @@
           inputs.forEach(input => input.classList.add('hidden'));
           
           // Toggle buttons back
-          row.querySelectorAll('.edit-btn, .delete-btn').forEach(el => el.classList.remove('hidden'));
+          row.querySelectorAll('.edit-btn, .delete-btn, .view-btn').forEach(el => el.classList.remove('hidden'));
           row.querySelectorAll('.save-btn, .cancel-btn').forEach(el => el.classList.add('hidden'));
         });
       });

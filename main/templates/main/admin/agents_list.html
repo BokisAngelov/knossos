@@ -118,11 +118,16 @@
                                     <span class="font-normal">{{ agent.get_total_bookings_referral.0 }} | €{{ agent.get_total_bookings_referral.1|floatformat:2 }}</span>
                                 </td>
                                 <td class="px-4 py-4 whitespace-nowrap">
-                                    <span class="px-2 inline-flex text-xs leading-5 font-normal rounded-full text-white
-                                        {% if agent.status == 'active' %}bg-green 
-                                        {% else %}bg-red{% endif %}">
-                                        {{ agent.status|title }}
+                                    <span class="editable-status">
+                                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                            {% if agent.status == 'active' %}bg-green-100 text-green-800{% else %}bg-red-100 text-red-800{% endif %}">
+                                            {{ agent.status|title }}
+                                        </span>
                                     </span>
+                                    <select class="edit-input hidden w-full border rounded px-2 py-1 bg-white">
+                                        <option value="active" {% if agent.status == 'active' %}selected{% endif %}>Active</option>
+                                        <option value="inactive" {% if agent.status == 'inactive' %}selected{% endif %}>Inactive</option>
+                                    </select>
                                 </td>
                                 <td class="px-4 py-4 whitespace-nowrap flex justify-end">
                                     <button type="button" class="view-btn text-turquaz hover:opacity-80 font-normal mr-2" data-id="{{ agent.user.id }}">
@@ -259,6 +264,7 @@
     <input type="hidden" name="name" id="edit-agent-name">
     <input type="hidden" name="email" id="edit-agent-email">
     <input type="hidden" name="phone" id="edit-agent-phone">
+    <input type="hidden" name="status" id="edit-agent-status">
 </form>
 
 <form id="delete-agent-form" action="{% url 'manage_agents' %}" method="post" class="hidden">
@@ -338,7 +344,7 @@
                 btn.addEventListener('click', function(e) {
                     e.preventDefault();
                     const row = this.closest('tr');
-                    const spans = row.querySelectorAll('.editable-name, .editable-email, .editable-phone');
+                    const spans = row.querySelectorAll('.editable-name, .editable-email, .editable-phone, .editable-status');
                     const inputs = row.querySelectorAll('.edit-input');
                     
                     // Hide spans, show inputs
@@ -365,6 +371,7 @@
                     document.getElementById('edit-agent-name').value = inputs[0].value.trim();
                     document.getElementById('edit-agent-email').value = inputs[1].value.trim();
                     document.getElementById('edit-agent-phone').value = inputs[2].value.trim();
+                    document.getElementById('edit-agent-status').value = inputs[3].value;
                     document.getElementById('edit-agent-form').submit();
                 });
             });
@@ -374,12 +381,24 @@
                 btn.addEventListener('click', function(e) {
                     e.preventDefault();
                     const row = this.closest('tr');
-                    const spans = row.querySelectorAll('.editable-name, .editable-email, .editable-phone');
+                    const spans = row.querySelectorAll('.editable-name, .editable-email, .editable-phone, .editable-status');
                     const inputs = row.querySelectorAll('.edit-input');
                     
                     // Reset input values
                     inputs.forEach((input, index) => {
-                        input.value = spans[index].textContent.trim();
+                        if (input.tagName === 'SELECT') {
+                            // Reset select to original value - status field
+                            const statusSpan = spans[3];
+                            const statusText = statusSpan ? statusSpan.textContent.trim().toLowerCase() : '';
+                            for (let i = 0; i < input.options.length; i++) {
+                                if (input.options[i].value === statusText) {
+                                    input.selectedIndex = i;
+                                    break;
+                                }
+                            }
+                        } else {
+                            input.value = spans[index].textContent.trim();
+                        }
                     });
                     
                     // Show spans, hide inputs

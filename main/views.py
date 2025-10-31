@@ -2632,17 +2632,22 @@ def manage_reps(request):
             name = request.POST.get('name', '').strip()
             email = request.POST.get('email', '').strip()
             phone = request.POST.get('phone', '').strip()
+            status = request.POST.get('status', '').strip()
             password = request.POST.get('password', '').strip()
             
             if name:
                 rep.name = name
                 rep.email = email
                 rep.phone = phone
+                # Handle status update
+                if status:
+                    rep.status = status.lower()
                 if password:
                     rep.user.set_password(password)
                     rep.user.save()
                 rep.save()
                 messages.success(request, 'Representative updated successfully.')
+                return redirect('reps_list')
 
         elif action_type == 'delete_rep':
             rep = get_object_or_404(UserProfile, pk=item_id)    
@@ -2835,12 +2840,16 @@ def manage_agents(request):
             agent = get_object_or_404(UserProfile, user__id=item_id, role='agent')
             name = request.POST.get('name', '').strip()
             email = request.POST.get('email', '').strip()
-            phone = request.POST.get('phone', '').strip()   
+            phone = request.POST.get('phone', '').strip()
+            status = request.POST.get('status', '').strip()
             
             if name:
                 agent.name = name
                 agent.email = email
                 agent.phone = phone
+                # Handle status update (referral codes will be updated by signal)
+                if status:
+                    agent.status = status.lower()
                 agent.save()
                 messages.success(request, 'Agent updated successfully.')
             return redirect('agents_list')
@@ -2913,13 +2922,18 @@ def manage_guides(request):
             name = request.POST.get('name', '').strip()
             email = request.POST.get('email', '').strip()
             phone = request.POST.get('phone', '').strip()
+            status = request.POST.get('status', '').strip()
 
             if name:
                 guide.name = name
                 guide.email = email
                 guide.phone = phone
+                # Handle status update
+                if status:
+                    guide.status = status.lower()
                 guide.save()
                 messages.success(request, 'Guide updated successfully.')
+                return redirect('guides_list')
 
         elif action_type == 'delete_guide':
             guide = get_object_or_404(UserProfile, pk=item_id)
