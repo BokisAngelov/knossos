@@ -142,7 +142,8 @@ select option {
 .swal2-input{
     color: #463229!important;
     border: 2px solid #666666 !important;
-    margin: 1em 2em 3px;
+    margin: 1em auto;
+    display: block;
 }
 .swal2-input:focus {
     border: 2px solid #666666 !important;

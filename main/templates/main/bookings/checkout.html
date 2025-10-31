@@ -34,7 +34,7 @@
                         </div>
                         <div class="bg-gray-50 rounded-lg p-4">
                             <h4 class="text-sm font-medium text-gray-500 mb-1">Number of Guests</h4>
-                            <p class="text-lg font-semibold text-gray-900">{{ booking.total_adults }} Adults | {{ booking.total_kids }} Kids | {{ booking.total_infants }} Infants</p>
+                            <p class="text-lg font-semibold text-gray-900">{{ booking.total_adults }} Adults | {{ booking.total_kids }} Children | {{ booking.total_infants }} Infants</p>
                         </div>
                         <div class="bg-gray-50 rounded-lg p-4">
                             <h4 class="text-sm font-medium text-gray-500 mb-1">Contact Name</h4>
@@ -86,6 +86,35 @@
 
         <!-- Right Column - Payment Information -->
         <div class="space-y-6">
+            <!-- Apply Referral Code (if not already applied) -->
+            {% if not booking.referral_code %}
+            <div class="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6">
+                <div class="flex items-start">
+                    <div class="flex-shrink-0">
+                        <svg class="h-5 w-5 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                        </svg>
+                    </div>
+                    <div class="ml-3 flex-1">
+                        <p class="text-sm font-medium text-blue-800">Have a referral code?</p>
+                        <div class="mt-2">
+                            <form id="apply-referral-form" method="post">
+                                {% csrf_token %}
+                                <input type="hidden" name="action_type" value="apply_referral">
+                                <div class="flex gap-2">
+                                    <input type="text" name="referral_code" id="referral-code" class="flex-1 px-3 py-2 text-sm border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white" placeholder="Enter code" style="text-transform: uppercase;">
+                                    <button type="submit" id="apply-referral-btn" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none">
+                                        Apply
+                                    </button>
+                                </div>
+                                <div id="referral-message" class="hidden mt-2 text-sm"></div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
             <!-- Payment Summary -->
             <div class="bg-white shadow overflow-hidden sm:rounded-lg">
                 <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
@@ -93,24 +122,42 @@
                 </div>
                 <div class="border-t border-gray-200">
                     <div class="p-6 space-y-4">
+                        <!-- Base Price -->
                         <div class="flex justify-between items-center">
-                            <span class="text-gray-600">Total Price:</span>
+                            <span class="text-gray-600">Base Price:</span>
                             <span class="text-lg font-semibold text-gray-900">€{{ booking.price }}</span>
                         </div>
-                        {% if user.is_staff or user.profile.role == 'representative' %}
+                        
+                        <!-- Referral Code Discount -->
+                        {% if booking.referral_code and booking.referral_discount_amount %}
+                        <div class="flex justify-between items-center bg-green-50 -mx-6 px-6 py-3">
+                            <div class="flex flex-col">
+                                <span class="text-gray-700 font-medium">Referral Code Discount:</span>
+                                <span class="text-xs text-gray-500">Code: {{ booking.referral_code.code }} ({{ booking.get_referral_discount_percentage }}%)</span>
+                            </div>
+                            <span class="text-lg font-semibold text-green-700">-€{{ booking.referral_discount_amount }}</span>
+                        </div>
                         <div class="flex justify-between items-center">
-                            <span class="text-gray-600">Partial Payment: </span>
-                            <span class="text-lg font-semibold text-gray-900">€{% if booking.partial_paid %}{{ booking.partial_paid }} ({{ booking.partial_paid_method|title }}){% else %}0.00{% endif %} </span>
+                            <span class="text-gray-600">Price After Discount:</span>
+                            <span class="text-lg font-semibold text-gray-900">€{{ booking.get_discounted_price }}</span>
                         </div>
                         {% endif %}
+                        
+                        <!-- Partial Payment (Staff/Rep only) -->
+                        {% if user.is_staff or user.profile.role == 'representative' %}
+                        {% if booking.partial_paid and booking.partial_paid > 0 %}
                         <div class="flex justify-between items-center">
-                            <span class="text-gray-600">Discount:</span>
-                            <span class="text-lg font-semibold text-gray-900">€{% if booking.discount %}{{ booking.discount }}{% else %}0.00{% endif %}</span>
+                            <span class="text-gray-600">Partial Payment:</span>
+                            <span class="text-lg font-semibold text-gray-900">-€{{ booking.partial_paid }} ({{ booking.partial_paid_method|title }})</span>
                         </div>
+                        {% endif %}
+                        {% endif %}
+                        
+                        <!-- Final Amount Due -->
                         <div class="border-t border-gray-200 pt-4">
                             <div class="flex justify-between items-center">
                                 <span class="text-xl font-bold text-gray-900">Amount Due:</span>
-                                <span class="text-2xl font-bold text-blue-600">€{% if booking.total_price %}{{ booking.total_price }}{% else %}{{ booking.price }}{% endif %}</span>
+                                <span class="text-2xl font-bold text-blue-600">€{{ booking.total_price }}</span>
                             </div>
                         </div>
                     </div>
@@ -222,6 +269,22 @@
 </div>
 
 <script>
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    const csrftoken = getCookie('csrftoken');
+    
     function completeBooking() {
         console.log('completeBooking');
         booking_pk = "{{ booking.pk }}";
@@ -236,27 +299,28 @@
 
 
     document.addEventListener('DOMContentLoaded', function() {
-        // Placeholder for Stripe integration
-        console.log('Stripe integration will be implemented here');
+        // Referral Code Form Submission
+        const applyReferralForm = document.getElementById('apply-referral-form');
+        const applyReferralBtn = document.getElementById('apply-referral-btn');
         
-        // Form submission handling
-        const paymentForm = document.querySelector('form');
-        if (paymentForm) {
-            paymentForm.addEventListener('submit', function(e) {
+        if (applyReferralForm) {
+            applyReferralForm.addEventListener('submit', function(e) {
                 e.preventDefault();
                 
-                // Show loading state
-                const submitBtn = document.querySelector('button[type="submit"]');
-                const originalText = submitBtn.innerHTML;
-                submitBtn.innerHTML = '<div class="flex items-center justify-center"><svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Processing...</div>';
-                submitBtn.disabled = true;
+                const codeInput = document.getElementById('referral-code');
+                const code = codeInput.value.trim();
                 
-                // Simulate payment processing
-                setTimeout(() => {
-                    submitBtn.innerHTML = originalText;
-                    submitBtn.disabled = false;
-                    alert('Payment processing will be implemented with Stripe integration');
-                }, 2000);
+                if (!code) {
+                    // Show error via Django messages (will appear after reload)
+                    return;
+                }
+                
+                // Show loading state
+                applyReferralBtn.disabled = true;
+                applyReferralBtn.innerHTML = '<svg class="animate-spin h-4 w-4 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Applying...';
+                
+                // Submit the form
+                this.submit();
             });
         }
     });

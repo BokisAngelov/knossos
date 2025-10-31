@@ -105,7 +105,7 @@
             {% if form.total_adults.errors %}<div class="text-red-500 text-xs mt-1">{{ form.total_adults.errors }}</div>{% endif %}
           </div>
           <div class="space-y-1">
-            <label for="{{ form.total_kids.id_for_label }}" class="block text-md font-semibold text-brown-light">{{ form.total_kids.label }}</label>
+            <label for="{{ form.total_kids.id_for_label }}" class="block text-md font-semibold text-brown-light">Children</label>
             <div class="w-full auth-input-field rounded-lg border border-brown text-brown font-semibold">{{ form.total_kids }}</div>
             {% if form.total_kids.errors %}<div class="text-red-500 text-xs mt-1">{{ form.total_kids.errors }}</div>{% endif %}
           </div>

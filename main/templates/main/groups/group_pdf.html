@@ -156,6 +156,11 @@
                 <div class="pickup-point-header">
                     {% if pp_data.pickup_point %}
                         📍 {{ pp_data.pickup_point.name }}
+                        {% if pp_data.pickup_time %}
+                            - ⏰ Pickup Time: {{ pp_data.pickup_time|time:"H:i" }}
+                        {% else %}
+                            - ⏰ Pickup Time: NOT SET
+                        {% endif %}
                     {% else %}
                         📍 No Pickup Point
                     {% endif %}
@@ -169,7 +174,7 @@
                             <th style="width: 18%;">Phone</th>
                             <th style="width: 18%;">Hotel/Location</th>
                             <th style="width: 8%;">Adults</th>
-                            <th style="width: 8%;">Kids</th>
+                            <th style="width: 8%;">Children</th>
                             <th style="width: 8%;">Infants</th>
                             <th style="width: 8%;">Total</th>
                         </tr>

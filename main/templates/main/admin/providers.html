@@ -13,14 +13,14 @@
                 </svg>
                 Back to Dashboard
             </a>
-            <h1 class="text-3xl font-bold page-header-color mb-1">Providers</h1>
-            <p class="text-md font-semibold text-purple">Manage your provider information</p>
+            <h1 class="text-3xl font-bold page-header-color mb-1">Suppliers</h1>
+            <p class="text-md font-semibold text-purple">Manage your supplier information</p>
         </div>
         <button type="button" id="add-provider-btn" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
             </svg>
-            Add Provider
+            Add Supplier
         </button>
     </div>
 
@@ -37,7 +37,7 @@
                     </div>
                     <input type="text" name="search" id="search" value="{{ request.GET.search }}" 
                            class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                           placeholder="Search providers...">
+                           placeholder="Search suppliers...">
                 </div>
             </div>
             <div class="flex gap-4">
@@ -183,14 +183,14 @@
                 <svg class="mx-auto h-12 w-12 text-header-grey" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                 </svg>
-                <h3 class="mt-2 text-sm font-medium text-header-grey">No providers found</h3>
-                <p class="mt-1 text-sm text-header-grey">Get started by adding a new provider.</p>
+                <h3 class="mt-2 text-sm font-medium text-header-grey">No suppliers found</h3>
+                <p class="mt-1 text-sm text-header-grey">Get started by adding a new supplier.</p>
                 <div class="mt-6">
                     <button type="button" id="add-provider-btn-empty" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                         </svg>
-                        Add Provider
+                        Add Supplier
                     </button>
                 </div>
             </div>

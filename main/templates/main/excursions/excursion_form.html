@@ -98,13 +98,15 @@
           <div class="w-full auth-input-field rounded-lg border form-fields-border">{{ form.status }}</div>
           {% if form.status.errors %}<div class="text-red-500 text-xs mt-1">{{ form.status.errors }}</div>{% endif %}
         </div>
+        
       </div>
-
-      <!-- Description -->
-      <div class="space-y-1">
-        <label for="{{ form.description.id_for_label }}" class="block text-md font-semibold text-header-grey">{{ form.description.label }}</label>
-        <div class="w-full auth-input-field">{{ form.description }}</div>
-        {% if form.description.errors %}<div class="text-red-500 text-xs mt-1">{{ form.description.errors }}</div>{% endif %}
+      <!-- Provider -->
+      <div class="flex gap-4">
+        <div class="flex-1 space-y-1">
+          <label for="{{ form.provider.id_for_label }}" class="block text-md font-semibold text-header-grey">Supplier</label>
+          <div class="w-full auth-input-field rounded-lg border form-fields-border">{{ form.provider }}</div>
+          {% if form.provider.errors %}<div class="text-red-500 text-xs mt-1">{{ form.provider.errors }}</div>{% endif %}
+        </div>
       </div>
 
       <!-- Intro Image -->
@@ -114,19 +116,14 @@
         {% if form.intro_image.errors %}<div class="text-red-500 text-xs mt-1">{{ form.intro_image.errors }}</div>{% endif %}
       </div>
 
-      <!-- Provider & Guide -->
-      <div class="flex gap-4">
-        <div class="flex-1 space-y-1">
-          <label for="{{ form.provider.id_for_label }}" class="block text-md font-semibold text-header-grey">{{ form.provider.label }}</label>
-          <div class="w-full auth-input-field rounded-lg border form-fields-border">{{ form.provider }}</div>
-          {% if form.provider.errors %}<div class="text-red-500 text-xs mt-1">{{ form.provider.errors }}</div>{% endif %}
-        </div>
-        <div class="flex-1 space-y-1">
-          <label for="{{ form.guide.id_for_label }}" class="block text-md font-semibold text-header-grey">{{ form.guide.label }}</label>
-          <div class="w-full auth-input-field rounded-lg border form-fields-border">{{ form.guide }}</div>
-          {% if form.guide.errors %}<div class="text-red-500 text-xs mt-1">{{ form.guide.errors }}</div>{% endif %}
-        </div>
+      <!-- Description -->
+      <div class="space-y-1">
+        <label for="{{ form.description.id_for_label }}" class="block text-md font-semibold text-header-grey">{{ form.description.label }}</label>
+        <div class="w-full auth-input-field">{{ form.description }}</div>
+        {% if form.description.errors %}<div class="text-red-500 text-xs mt-1">{{ form.description.errors }}</div>{% endif %}
       </div>
+
+      
 
       <!-- Full Day & On Request -->
       <div class="flex gap-4">

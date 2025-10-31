@@ -572,11 +572,14 @@ def excursion_detail(request, pk):
             request, excursion, feedbacks, user_has_feedback
         )
 
-    # Process availability data
-    availability_dates_by_region, pickup_points = ExcursionService.get_availability_data(
+    # Process availability data organized by region
+    availability_dates_by_region, pickup_points_by_region, region_availability_map = ExcursionService.get_availability_data(
         excursion_availabilities
     )
-    pickup_group_map = ExcursionService.get_pickup_group_map(availability_dates_by_region)
+    region_map = ExcursionService.get_region_map(availability_dates_by_region)
+    
+    # Get only regions that are in the availabilities (not all regions)
+    regions = Region.objects.filter(id__in=availability_dates_by_region.keys())
 
 
     # Handle feedback submission
@@ -602,10 +605,12 @@ def excursion_detail(request, pk):
         'excursion_availability': excursion_availability,
         'booking_form': booking_form,
         'availability_dates_by_region': availability_dates_by_region,
-        'pickup_points': pickup_points,
+        'pickup_points_by_region': pickup_points_by_region,
+        'region_availability_map': region_availability_map,
         'user_has_feedback': user_has_feedback,
-        'pickup_group_map': pickup_group_map,
+        'region_map': region_map,
         'remaining_seats': remaining_seats,
+        'regions': regions,
     })
 
 
@@ -621,9 +626,12 @@ def _render_excursion_without_availability(request, excursion, feedbacks, user_h
         'booking_form': booking_form,
         'excursion_availability': None,
         'availability_dates_by_region': {},
-        'pickup_points': [],
+        'pickup_points_by_region': {},
+        'region_availability_map': {},
         'user_has_feedback': user_has_feedback,
         'remaining_seats': 0,
+        'regions': [],
+        'region_map': {},
     })
 
 
@@ -710,7 +718,16 @@ def _handle_ajax_booking_submission(request, excursion_availability):
             except PickupPoint.DoesNotExist:
                 pass
         
-        # Create booking
+        # Get region
+        region_id = request.POST.get('regions')
+        region = None
+        if region_id:
+            try:
+                region = Region.objects.get(id=region_id)
+            except Region.DoesNotExist:
+                pass
+        
+        # Create booking (referral code will be applied at checkout)
         booking = BookingService.create_booking(
             user=request.user,
             excursion_availability=excursion_availability,
@@ -722,7 +739,8 @@ def _handle_ajax_booking_submission(request, excursion_availability):
             pickup_point=pickup_point
         )
         
-        # Set partial payment method
+        # Set region and partial payment method
+        booking.regions = region
         booking.partial_paid_method = partial_paid_method
         booking.save()
         
@@ -742,6 +760,74 @@ def _handle_ajax_booking_submission(request, excursion_availability):
             'message': str(e),
             'errors': getattr(booking_form, 'errors', {}) if 'booking_form' in locals() else {}
         })
+
+def validate_referral_code(request):
+    """AJAX endpoint to validate referral code and return discount info"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            code = data.get('code', '').strip().upper()
+            
+            if not code:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Please enter a referral code.'
+                })
+            
+            from .models import ReferralCode
+            from django.utils import timezone
+            
+            try:
+                referral_code = ReferralCode.objects.get(code=code)
+                
+                # Check if code is active
+                if referral_code.status != 'active':
+                    return JsonResponse({
+                        'success': False,
+                        'message': 'This referral code is inactive.'
+                    })
+                
+                # Check if code is expired
+                if referral_code.is_expired:
+                    # Auto-update status to inactive
+                    referral_code.status = 'inactive'
+                    referral_code.save()
+                    return JsonResponse({
+                        'success': False,
+                        'message': 'This referral code has expired.'
+                    })
+                
+                # Code is valid!
+                return JsonResponse({
+                    'success': True,
+                    'message': 'Referral code applied successfully!',
+                    'discount_percentage': float(referral_code.discount),
+                    'code_id': referral_code.id,
+                    'code': referral_code.code,
+                    'agent_name': referral_code.agent.name if referral_code.agent else 'N/A'
+                })
+                
+            except ReferralCode.DoesNotExist:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Invalid referral code.'
+                })
+                
+        except json.JSONDecodeError:
+            return JsonResponse({
+                'success': False,
+                'message': 'Invalid request format.'
+            })
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'message': f'Error validating code: {str(e)}'
+            })
+    
+    return JsonResponse({
+        'success': False,
+        'message': 'Invalid request method.'
+    })
 
 def get_user_details_cookies(request):
     
@@ -1100,8 +1186,30 @@ def booking_detail(request, pk):
 def checkout(request, booking_pk):
     booking = get_object_or_404(Booking, pk=booking_pk)
      
-
     if request.method == 'POST':
+        action_type = request.POST.get('action_type')
+        
+        # Handle referral code application
+        if action_type == 'apply_referral':
+            referral_code_str = request.POST.get('referral_code', '').strip()
+            
+            if referral_code_str:
+                referral_code_instance = BookingService.handle_referral_code(referral_code_str)
+                
+                if referral_code_instance:
+                    try:
+                        BookingService.apply_referral_code_to_booking(booking, referral_code_instance)
+                        messages.success(request, f'Referral code "{referral_code_instance.code}" applied successfully!')
+                    except Exception as e:
+                        messages.error(request, f'Error applying code: {str(e)}')
+                else:
+                    messages.error(request, 'Invalid or expired referral code.')
+            else:
+                messages.error(request, 'Please enter a referral code.')
+            
+            return redirect('checkout', booking_pk=booking_pk)
+        
+        # Handle payment completion
         # TODO: integrate Stripe payment here
         # booking.payment_status = 'completed'
         booking.save()
@@ -1266,8 +1374,18 @@ def password_reset_token(request, token):
 @login_required
 def profile(request, pk):
     user = get_object_or_404(User, pk=pk)
-    bookings = Booking.objects.filter(user=user, deleteByUser=False).order_by('-created_at')
     profile = UserProfile.objects.get(user=user)
+    
+    # Get bookings - for agents, include bookings using their referral codes
+    if profile.role == 'agent':
+        # Include both: bookings made by this user AND bookings using their referral codes
+        bookings = Booking.objects.filter(
+            Q(user=user, deleteByUser=False) | 
+            Q(referral_code__agent=profile, deleteByUser=False)
+        ).distinct().order_by('-created_at')
+    else:
+        # For non-agents, only show their own bookings
+        bookings = Booking.objects.filter(user=user, deleteByUser=False).order_by('-created_at')
     
     # Get reservations linked to this user profile
     reservations = Reservation.objects.filter(client_profile=profile).order_by('-created_at')
@@ -1277,11 +1395,133 @@ def profile(request, pk):
         messages.error(request, "You don't have permission to view this profile.")
         return redirect('homepage')
     
+    # Get referral codes if profile is an agent
+    referral_codes = None
+    if profile.role == 'agent':
+        from .models import ReferralCode
+        referral_codes = ReferralCode.objects.filter(agent=profile).order_by('-created_at')
+    
     return render(request, 'main/accounts/profile.html', {
         'bookings': bookings,
         'user_profile': profile,
         'reservations': reservations,
+        'referral_codes': referral_codes,
     })    
+
+@user_passes_test(is_staff)
+def manage_referral_codes(request):
+    """Handle referral code generation and editing for agents"""
+    if request.method == 'POST':
+        action_type = request.POST.get('action_type')
+        agent_id = request.POST.get('agent_id')
+        
+        if not agent_id:
+            messages.error(request, 'Agent ID is required.')
+            return redirect('agents_list')
+        
+        agent = get_object_or_404(UserProfile, id=agent_id, role='agent')
+        
+        if action_type == 'generate_code':
+            discount = request.POST.get('discount', '').strip()
+            expires_at = request.POST.get('expires_at', '').strip()
+            
+            if not discount or not expires_at:
+                messages.error(request, 'Discount and expiration date are required.')
+                return redirect('profile', pk=agent.user.id)
+            
+            try:
+                from .models import ReferralCode
+                from django.utils import timezone
+                import datetime
+                
+                # Parse the expiration date
+                expires_datetime = datetime.datetime.strptime(expires_at, '%Y-%m-%d')
+                expires_datetime = timezone.make_aware(
+                    datetime.datetime.combine(expires_datetime.date(), datetime.time(23, 59, 59))
+                )
+                
+                # Generate unique code
+                code = ReferralCode.generate_unique_code(agent.name, float(discount))
+                
+                # Create the referral code
+                ReferralCode.objects.create(
+                    code=code,
+                    agent=agent,
+                    discount=float(discount),
+                    expires_at=expires_datetime,
+                    status='active'
+                )
+                
+                messages.success(request, f'Referral code "{code}" generated successfully!')
+                return redirect('profile', pk=agent.user.id)
+                
+            except ValueError as e:
+                messages.error(request, f'Invalid discount or date format: {str(e)}')
+                return redirect('profile', pk=agent.user.id)
+            except Exception as e:
+                messages.error(request, f'Error generating code: {str(e)}')
+                return redirect('profile', pk=agent.user.id)
+        
+        elif action_type == 'edit_code':
+            code_id = request.POST.get('code_id')
+            discount = request.POST.get('discount', '').strip()
+            expires_at = request.POST.get('expires_at', '').strip()
+            status = request.POST.get('status', '').strip()
+            
+            if not code_id:
+                messages.error(request, 'Code ID is required.')
+                return redirect('profile', pk=agent.user.id)
+            
+            try:
+                from .models import ReferralCode
+                from django.utils import timezone
+                import datetime
+                
+                code = get_object_or_404(ReferralCode, id=code_id, agent=agent)
+                
+                if discount:
+                    code.discount = float(discount)
+                
+                if expires_at:
+                    expires_datetime = datetime.datetime.strptime(expires_at, '%Y-%m-%d')
+                    code.expires_at = timezone.make_aware(
+                        datetime.datetime.combine(expires_datetime.date(), datetime.time(23, 59, 59))
+                    )
+                
+                if status:
+                    code.status = status
+                
+                code.save()
+                messages.success(request, f'Referral code "{code.code}" updated successfully!')
+                return redirect('profile', pk=agent.user.id)
+                
+            except ValueError as e:
+                messages.error(request, f'Invalid discount or date format: {str(e)}')
+                return redirect('profile', pk=agent.user.id)
+            except Exception as e:
+                messages.error(request, f'Error updating code: {str(e)}')
+                return redirect('profile', pk=agent.user.id)
+        
+        elif action_type == 'delete_code':
+            code_id = request.POST.get('code_id')
+            
+            if not code_id:
+                messages.error(request, 'Code ID is required.')
+                return redirect('profile', pk=agent.user.id)
+            
+            try:
+                from .models import ReferralCode
+                code = get_object_or_404(ReferralCode, id=code_id, agent=agent)
+                code_str = code.code
+                code.delete()
+                messages.success(request, f'Referral code "{code_str}" deleted successfully!')
+                return redirect('profile', pk=agent.user.id)
+                
+            except Exception as e:
+                messages.error(request, f'Error deleting code: {str(e)}')
+                return redirect('profile', pk=agent.user.id)
+    
+    return redirect('agents_list')
 
 @login_required
 def profile_edit(request, pk):
@@ -1332,7 +1572,7 @@ def admin_dashboard(request, pk):
     upcoming_excursions = AvailabilityDays.objects.filter(excursion_availability__status='active', date_day__gte=timezone.now()).order_by('date_day')[:5]
 
     total_revenue = Booking.objects.filter(payment_status='completed').aggregate(
-        total=Sum('price')
+        total=Sum('total_price')
     )['total'] or 0
     
     # Recent bookings
@@ -1412,11 +1652,15 @@ def group_create(request):
 
 @user_passes_test(is_staff)
 def group_detail(request, pk):
+    from .models import GroupPickupPoint
+    
     group = get_object_or_404(Group.objects.prefetch_related(
         'bookings', 
         'bookings__pickup_point',
         'bookings__pickup_point__pickup_group',
-        'bookings__voucher_id'
+        'bookings__voucher_id',
+        'pickup_times',
+        'pickup_times__pickup_point'
     ), pk=pk)
     
     # Group bookings by pickup point for display
@@ -1426,13 +1670,39 @@ def group_detail(request, pk):
         'pickup_point__name'
     )
     
-    #     # Get pickup group summary (hierarchical structure)
+    # Get pickup group summary (hierarchical structure)
     pickup_summary = TransportGroupService.get_pickup_group_summary(bookings)
+    
+    # Get all unique pickup points from bookings
+    unique_pickup_points = set()
+    for booking in bookings:
+        if booking.pickup_point:
+            unique_pickup_points.add(booking.pickup_point)
+    
+    # Get or create GroupPickupPoint entries for each pickup point
+    pickup_times_dict = {}
+    for pickup_point in unique_pickup_points:
+        gpp, created = GroupPickupPoint.objects.get_or_create(
+            group=group,
+            pickup_point=pickup_point
+        )
+        pickup_times_dict[pickup_point.id] = gpp.pickup_time
+    
+    # Add pickup times to the pickup summary structure
+    for pickup_group in pickup_summary:
+        for pickup_point_summary in pickup_group['pickup_point_summaries']:
+            if pickup_point_summary['pickup_point']:
+                pickup_point_id = pickup_point_summary['pickup_point'].id
+                pickup_point_summary['pickup_time'] = pickup_times_dict.get(pickup_point_id)
+    
+    # Check if all pickup times are set
+    all_times_set = all(time is not None for time in pickup_times_dict.values()) and len(pickup_times_dict) > 0
     
     return render(request, 'main/groups/group_detail.html', {
         'group': group,
         'bookings': bookings,
         'pickup_groups': pickup_summary,
+        'all_times_set': all_times_set,
     })
 
 @user_passes_test(is_staff)
@@ -1472,12 +1742,184 @@ def group_delete(request, pk):
     group = get_object_or_404(Group, pk=pk)
     if request.method == 'POST':
         group_name = group.name
+        
+        # Note: AvailabilityDays reactivation is handled automatically via post_delete signal (see signals.py)
         group.delete()
+        
         messages.success(request, f'Group "{group_name}" deleted successfully.')
         return redirect('group_list')
     
     # If GET request, redirect to group detail instead
     return redirect('group_detail', pk=pk)
+
+@user_passes_test(is_staff)
+def set_pickup_time(request, pk):
+    """AJAX endpoint to save pickup time for a specific pickup point in a group"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': 'Invalid request method'}, status=400)
+    
+    try:
+        from .models import GroupPickupPoint
+        import json
+        
+        data = json.loads(request.body)
+        pickup_point_id = data.get('pickup_point_id')
+        pickup_time = data.get('pickup_time')
+        
+        if not pickup_point_id or not pickup_time:
+            return JsonResponse({'success': False, 'message': 'Missing required fields'}, status=400)
+        
+        group = get_object_or_404(Group, pk=pk)
+        pickup_point = get_object_or_404(PickupPoint, pk=pickup_point_id)
+        
+        # Get or create GroupPickupPoint entry
+        gpp, created = GroupPickupPoint.objects.get_or_create(
+            group=group,
+            pickup_point=pickup_point
+        )
+        gpp.pickup_time = pickup_time
+        gpp.save()
+        
+        # Check if all pickup times are now set
+        bookings = group.bookings.all()
+        unique_pickup_points = set()
+        for booking in bookings:
+            if booking.pickup_point:
+                unique_pickup_points.add(booking.pickup_point.id)
+        
+        all_times_set = True
+        for pp_id in unique_pickup_points:
+            try:
+                gpp = GroupPickupPoint.objects.get(group=group, pickup_point_id=pp_id)
+                if not gpp.pickup_time:
+                    all_times_set = False
+                    break
+            except GroupPickupPoint.DoesNotExist:
+                all_times_set = False
+                break
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Pickup time saved successfully',
+            'all_times_set': all_times_set
+        })
+        
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=500)
+
+@user_passes_test(is_staff)
+def group_send(request, pk):
+    """Send group list to transportation company and mark availability as inactive"""
+    if request.method != 'POST':
+        messages.error(request, 'Invalid request method')
+        return redirect('group_detail', pk=pk)
+    
+    try:
+        from .models import GroupPickupPoint, AvailabilityDays
+        from django.core.mail import send_mail
+        from django.conf import settings
+        
+        group = get_object_or_404(Group, pk=pk)
+        
+        # Check if all pickup times are set
+        bookings = group.bookings.all()
+        unique_pickup_points = set()
+        for booking in bookings:
+            if booking.pickup_point:
+                unique_pickup_points.add(booking.pickup_point.id)
+        
+        if not unique_pickup_points:
+            messages.error(request, 'No pickup points found in this group')
+            return redirect('group_detail', pk=pk)
+        
+        # Verify all times are set
+        missing_times = []
+        for pp_id in unique_pickup_points:
+            try:
+                gpp = GroupPickupPoint.objects.get(group=group, pickup_point_id=pp_id)
+                if not gpp.pickup_time:
+                    pickup_point = PickupPoint.objects.get(pk=pp_id)
+                    missing_times.append(pickup_point.name)
+            except GroupPickupPoint.DoesNotExist:
+                pickup_point = PickupPoint.objects.get(pk=pp_id)
+                missing_times.append(pickup_point.name)
+        
+        if missing_times:
+            messages.error(request, f'Please set pickup times for: {", ".join(missing_times)}')
+            return redirect('group_detail', pk=pk)
+        
+        # Note: AvailabilityDays status is now updated via signals (see signals.py)
+        # The signal will automatically mark dates as inactive when group.status = 'sent'
+        # and reactivate them when a sent group is deleted
+        
+        # TODO: Send email to transportation company
+        # You'll need to configure this with the transportation company email
+        # Example:
+        # subject = f'Transport Group List - {group.name}'
+        # message = f'Transport group details for {group.excursion.title} on {group.date}'
+        # send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, ['transport@company.com'])
+        
+        # Mark group as sent
+        group.status = 'sent'
+        group.save()
+        
+        messages.success(
+            request, 
+            f'Group list sent successfully! {updated_count if group.excursion and group.date else 0} availability slot(s) for {group.date} have been disabled.'
+        )
+        return redirect('group_detail', pk=pk)
+        
+    except Exception as e:
+        messages.error(request, f'Error sending group list: {str(e)}')
+        return redirect('group_detail', pk=pk)
+
+@user_passes_test(is_staff)
+def debug_availability_days(request, excursion_id, date):
+    """Debug endpoint to check AvailabilityDays status for a specific excursion and date"""
+    from .models import AvailabilityDays, Excursion
+    from datetime import datetime
+    
+    try:
+        excursion = get_object_or_404(Excursion, pk=excursion_id)
+        date_obj = datetime.strptime(date, '%Y-%m-%d').date()
+        
+        # Get all AvailabilityDays for this excursion and date
+        availability_days = AvailabilityDays.objects.filter(
+            excursion_availability__excursion=excursion,
+            date_day=date_obj
+        ).select_related('excursion_availability')
+        
+        if not availability_days.exists():
+            return JsonResponse({
+                'found': False,
+                'message': f'No AvailabilityDays found for {excursion.title} on {date}',
+                'excursion': excursion.title,
+                'date': date
+            })
+        
+        results = []
+        for ad in availability_days:
+            results.append({
+                'id': ad.id,
+                'date': str(ad.date_day),
+                'status': ad.status,
+                'capacity': ad.capacity,
+                'booked_guests': ad.booked_guests,
+                'availability_id': ad.excursion_availability.id,
+                'availability_range': f"{ad.excursion_availability.start_date} to {ad.excursion_availability.end_date}"
+            })
+        
+        return JsonResponse({
+            'found': True,
+            'count': len(results),
+            'excursion': excursion.title,
+            'date': date,
+            'availability_days': results
+        })
+    except Exception as e:
+        return JsonResponse({
+            'error': str(e)
+        }, status=500)
 
 @user_passes_test(is_staff)
 def get_bookings_for_group(request):
@@ -1588,14 +2030,22 @@ def group_export_pdf(request, pk):
     from xhtml2pdf import pisa
     from io import BytesIO
     from collections import defaultdict
+    from .models import GroupPickupPoint
 
     group = get_object_or_404(Group.objects.prefetch_related(
         'bookings',
         'bookings__pickup_point',
         'bookings__pickup_point__pickup_group',
         'bookings__voucher_id',
-        'bookings__voucher_id__hotel'
+        'bookings__voucher_id__hotel',
+        'pickup_times',
+        'pickup_times__pickup_point'
     ), pk=pk)
+
+    # Get pickup times dictionary
+    pickup_times = {}
+    for gpp in group.pickup_times.all():
+        pickup_times[gpp.pickup_point.id] = gpp.pickup_time
 
     # Get bookings for the group
     bookings = group.bookings.all().order_by(
@@ -1637,8 +2087,14 @@ def group_export_pdf(request, pk):
                 break
         
         if not pickup_point_data:
+            # Get pickup time for this pickup point
+            pickup_time = None
+            if pickup_point:
+                pickup_time = pickup_times.get(pickup_point.id)
+            
             pickup_point_data = {
                 'pickup_point': pickup_point,
+                'pickup_time': pickup_time,
                 'bookings': [],
                 'subtotal': {'adults': 0, 'kids': 0, 'infants': 0, 'total': 0}
             }
@@ -1689,14 +2145,22 @@ def group_export_pdf(request, pk):
 def group_export_csv(request, pk):
     import csv
     from io import StringIO
+    from .models import GroupPickupPoint
     
     group = get_object_or_404(Group.objects.prefetch_related(
         'bookings',
         'bookings__pickup_point',
         'bookings__pickup_point__pickup_group',
         'bookings__voucher_id',
-        'bookings__voucher_id__hotel'
+        'bookings__voucher_id__hotel',
+        'pickup_times',
+        'pickup_times__pickup_point'
     ), pk=pk)
+    
+    # Get pickup times dictionary
+    pickup_times = {}
+    for gpp in group.pickup_times.all():
+        pickup_times[gpp.pickup_point.id] = gpp.pickup_time
     
     # Get bookings for the group
     bookings = group.bookings.all().order_by(
@@ -1738,8 +2202,14 @@ def group_export_csv(request, pk):
                 break
         
         if not pickup_point_data:
+            # Get pickup time for this pickup point
+            pickup_time = None
+            if pickup_point:
+                pickup_time = pickup_times.get(pickup_point.id)
+            
             pickup_point_data = {
                 'pickup_point': pickup_point,
+                'pickup_time': pickup_time,
                 'bookings': [],
                 'subtotal': {'adults': 0, 'kids': 0, 'infants': 0, 'total': 0}
             }
@@ -1773,7 +2243,7 @@ def group_export_csv(request, pk):
     writer.writerow([])
     
     # Column headers
-    headers = ['#', 'Pickup Group', 'Pickup Point', 'Guest Name', 'Phone', 'Hotel/Location', 'Adults', 'Kids', 'Infants', 'Total']
+    headers = ['#', 'Pickup Group', 'Pickup Point', 'Pickup Time', 'Guest Name', 'Phone', 'Hotel/Location', 'Adults', 'Children', 'Infants', 'Total']
     writer.writerow(headers)
     
     # Data rows
@@ -1783,6 +2253,7 @@ def group_export_csv(request, pk):
         
         for pp_data in pg_data['pickup_points']:
             pickup_point_name = pp_data['pickup_point'].name if pp_data['pickup_point'] else 'No Pickup Point'
+            pickup_time_str = pp_data['pickup_time'].strftime('%H:%M') if pp_data['pickup_time'] else 'Not Set'
             
             for booking in pp_data['bookings']:
                 phone = ''
@@ -1802,6 +2273,7 @@ def group_export_csv(request, pk):
                     row_number,
                     pickup_group_name,
                     pickup_point_name,
+                    pickup_time_str,
                     booking.guest_name,
                     phone,
                     hotel,
@@ -1817,6 +2289,7 @@ def group_export_csv(request, pk):
                 '',
                 '',
                 f'SUBTOTAL - {pickup_point_name}',
+                '',
                 f'{len(pp_data["bookings"])} booking(s)',
                 '',
                 '',
@@ -2126,12 +2599,23 @@ def manage_reps(request):
             name = request.POST.get('name', '').strip()
             email = request.POST.get('email', '').strip()
             phone = request.POST.get('phone', '').strip()
+            password = request.POST.get('password', '').strip()
             
-            if name and email:
+            if name and email and phone and password:
+                username = email.split('@')[0] 
+                base_username = username
+                counter = 1
+
+                while User.objects.filter(username=username).exists():
+                    username = f"{base_username}{counter}"
+                    counter += 1
                 # Create User first
                 user = User.objects.create_user(
-                    username=email,
+                    username=username,
                     email=email,
+                    password=password,
+                    first_name=name.split()[0],
+                    last_name=' '.join(name.split()[1:]),
                 )
                 rep = UserProfile.objects.create(
                     user=user,
@@ -2148,17 +2632,22 @@ def manage_reps(request):
             name = request.POST.get('name', '').strip()
             email = request.POST.get('email', '').strip()
             phone = request.POST.get('phone', '').strip()
+            password = request.POST.get('password', '').strip()
             
             if name:
                 rep.name = name
                 rep.email = email
                 rep.phone = phone
+                if password:
+                    rep.user.set_password(password)
+                    rep.user.save()
                 rep.save()
                 messages.success(request, 'Representative updated successfully.')
 
         elif action_type == 'delete_rep':
-            rep = get_object_or_404(User, pk=item_id)    
-
+            rep = get_object_or_404(UserProfile, pk=item_id)    
+            rep.user.delete()
+            rep.delete()
             messages.success(request, 'Representative deleted successfully.')
             return redirect('manage_reps')
 
@@ -2230,7 +2719,7 @@ def manage_clients(request):
                     return redirect('clients_list')
             
         elif action_type == 'edit_client':
-            client = get_object_or_404(UserProfile, pk=item_id)
+            client = get_object_or_404(UserProfile, user__id=item_id, role='client')
             name = request.POST.get('name', '').strip()
             email = request.POST.get('email', '').strip()
             phone = request.POST.get('phone', '').strip()   
@@ -2266,6 +2755,115 @@ def manage_clients(request):
         'page_obj': page_obj,
         'search_query': search_query,
     })
+
+@user_passes_test(is_staff)
+def agents_list(request):
+    """List all agents with their latest active referral code"""
+    agents = UserProfile.objects.filter(role='agent').order_by('name')
+    
+    # Handle search
+    search_query = request.GET.get('search', '').strip()
+    if search_query:
+        agents = agents.filter(
+            Q(name__icontains=search_query) |
+            Q(email__icontains=search_query) |
+            Q(phone__icontains=search_query)
+        )
+    
+    paginator = Paginator(agents, 15)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    return render(request, 'main/admin/agents_list.html', {
+        'agents': page_obj.object_list,
+        'page_obj': page_obj,
+        'search_query': search_query,
+    })
+
+@user_passes_test(is_staff)
+def manage_agents(request):
+    """Manage agents CRUD operations"""
+    if request.method == 'POST':
+        action_type = request.POST.get('action_type')
+        item_id = request.POST.get('item_id')
+
+        if action_type == 'add_agent':
+            name = request.POST.get('name', '').strip()
+            email = request.POST.get('email', '').strip()
+            phone = request.POST.get('phone', '').strip()
+            password = request.POST.get('password', '').strip()
+            
+            if name and email and password:
+                try:
+                    username = email.split('@')[0] 
+                    base_username = username
+                    counter = 1
+
+                    while User.objects.filter(username=username).exists():
+                        username = f"{base_username}{counter}"
+                        counter += 1
+                    
+                    # Create User first
+                    user = User.objects.create_user(
+                        username=username,
+                        email=email,
+                        password=password,
+                    )
+                    
+                    if user:
+                        # Create UserProfile for agent
+                        UserProfile.objects.create(
+                            user=user,
+                            name=name,
+                            email=email,
+                            phone=phone,
+                            role='agent'
+                        )
+                        messages.success(request, 'Agent created successfully.')
+                        return redirect('agents_list')
+                    else:
+                        messages.error(request, 'Error creating user.')
+                        return redirect('agents_list')
+                except Exception as e:
+                    messages.error(request, f'Error creating agent: {str(e)}')
+                    return redirect('agents_list')
+            else:
+                messages.error(request, 'Please fill in all required fields.')
+                return redirect('agents_list')
+            
+        elif action_type == 'edit_agent':
+            agent = get_object_or_404(UserProfile, user__id=item_id, role='agent')
+            name = request.POST.get('name', '').strip()
+            email = request.POST.get('email', '').strip()
+            phone = request.POST.get('phone', '').strip()   
+            
+            if name:
+                agent.name = name
+                agent.email = email
+                agent.phone = phone
+                agent.save()
+                messages.success(request, 'Agent updated successfully.')
+            return redirect('agents_list')
+    
+        elif action_type == 'delete_agent':
+            user = get_object_or_404(User, pk=item_id)
+            user.delete()
+            messages.success(request, 'Agent deleted successfully.')
+            return redirect('agents_list')
+        
+        elif action_type == 'bulk_delete':
+            selected_ids = request.POST.getlist('selected_agents')
+            if selected_ids:
+                agents_to_delete = UserProfile.objects.filter(id__in=selected_ids, role='agent')
+                count = agents_to_delete.count()
+                # Delete associated users
+                for agent in agents_to_delete:
+                    if agent.user:
+                        agent.user.delete()
+                messages.success(request, f'{count} agent(s) deleted successfully.')
+            return redirect('agents_list')
+        
+    return redirect('agents_list')
     
 @user_passes_test(is_staff)
 def guides_list(request):
@@ -2396,7 +2994,7 @@ def admin_reservations(request):
 def bookings_list(request):
 
     search_query = request.GET.get('search', '')
-    bookings = Booking.objects.all().order_by('-date')
+    bookings = Booking.objects.all().order_by('-id')
     
     # Apply search filter if search query is provided
     if search_query:
@@ -2567,7 +3165,7 @@ def manage_reservations(request):
     })
 
 def check_excursion_pickup_groups(request):
-
+    """Legacy endpoint - can be removed if not used elsewhere"""
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
@@ -2579,116 +3177,104 @@ def check_excursion_pickup_groups(request):
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=400)
 
+def get_available_regions(request):
+    """
+    API endpoint to get available regions for an excursion and date range.
+    Uses AvailabilityValidationService for business logic.
+    """
+    if request.method == 'POST':
+        try:
+            from .utils import AvailabilityValidationService
+            from .models import Region
+            
+            data = json.loads(request.body)
+            excursion_id = data.get('excursion_id')
+            start_date = data.get('start_date')
+            end_date = data.get('end_date')
+            current_availability_id = data.get('current_availability_id')
+            
+            if not excursion_id or not start_date or not end_date:
+                return JsonResponse({'error': 'Missing required parameters'}, status=400)
+            
+            # Use service to get conflicting regions
+            used_region_ids = AvailabilityValidationService.get_conflicting_regions(
+                excursion_id=excursion_id,
+                start_date=start_date,
+                end_date=end_date,
+                current_availability_id=current_availability_id
+            )
+            
+            # Get all regions and mark disabled ones
+            all_regions = Region.objects.all().order_by('name')
+            regions_data = [
+                {
+                    'id': region.id,
+                    'name': region.name,
+                    'disabled': region.id in used_region_ids
+                }
+                for region in all_regions
+            ]
+            
+            return JsonResponse({'regions': regions_data})
+            
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
+    
+    return JsonResponse({'error': 'Invalid request method'}, status=400)
+
 @user_passes_test(is_staff)
 def availability_form(request, pk=None):
-
+    """
+    Create or update availability.
+    Uses Django's form validation system with service classes for business logic.
+    """
     availability = None
     if pk:
         availability = get_object_or_404(ExcursionAvailability, pk=pk)
     
     if request.method == 'POST':
         form = ExcursionAvailabilityForm(request.POST, instance=availability)
-        pickup_groups = request.POST.getlist('pickup_groups')
-        excursion = request.POST.get('excursion')
-        start_date = request.POST.get('start_date')
-        end_date = request.POST.get('end_date')
-        # region = request.POST.get('region')
-
-
-        overlapping_query = ExcursionAvailability.objects.filter(
-            excursion=excursion,
-            start_date__lte=end_date,
-            end_date__gte=start_date,
-            pickup_groups__in=pickup_groups,
-            # region=region,
-            status='active'
-        )
-
-        if pk:
-            overlapping_query = overlapping_query.exclude(pk=pk)
         
-        if overlapping_query.exists():
-            error_message = 'Availability already exists for this excursion during the selected dates with the selected pickup groups.'
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return JsonResponse({
-                    'success': False,
-                    'message': error_message,
-                    'errors': [error_message]
-                })
-            form.add_error(None, error_message)
-        elif form.is_valid():
+        # Form validation handles all business logic via clean() method
+        if form.is_valid():
             try:
-                # First validate weekday capacities from form data
-                # max_guests = int(request.POST.get('max_guests', 0))
+                # Get M2M field data from POST
                 selected_weekday_ids = request.POST.getlist('weekdays')
-                pickup_group_ids = pickup_groups
+                pickup_point_ids = request.POST.getlist('pickup_points')
+                region_ids = request.POST.getlist('regions')
 
-                # Validate capacities before saving
-                # for weekday_id in selected_weekday_ids:
-                #     capacity_name = f'weekdays_capacity_{weekday_id}'
-                #     capacity = request.POST.get(capacity_name)
-                #     if capacity:
-                #         try:
-                #             capacity = int(capacity)
-                #             if capacity > max_guests:
-                #                 raise ValueError(f"Capacity for {DayOfWeek.objects.get(id=weekday_id).get_code_display()} cannot be greater than the maximum number of guests.")
-                #         except ValueError as e:
-                #             if str(e).startswith("Capacity for"):
-                #                 raise e
-                #             raise ValueError(f"Invalid capacity value for {DayOfWeek.objects.get(id=weekday_id).get_code_display()}")
-
-                
+                # Save the instance (without M2M relationships yet)
                 availability = form.save(commit=False)
-                excursion_pk = request.POST.get('excursion')
-
-                if not excursion_pk:
-                    raise ValueError("Excursion ID is required")
-                    
-                excursion = get_object_or_404(Excursion, pk=excursion_pk)
-                availability.excursion = excursion
                 
-                # Save the availability to get an ID
+                # Ensure excursion is set
+                if not availability.excursion:
+                    excursion_pk = request.POST.get('excursion')
+                    if not excursion_pk:
+                        raise ValueError("Excursion ID is required")
+                    availability.excursion = get_object_or_404(Excursion, pk=excursion_pk)
+                
+                # Save to get an ID before setting M2M relationships
                 availability.save()
                 
-                # Manually set the weekdays and pickup groups relationships
+                # Set M2M relationships
                 availability.weekdays.set(selected_weekday_ids)
-                availability.pickup_groups.set(pickup_group_ids)
+                availability.pickup_points.set(pickup_point_ids)
+                availability.regions.set(region_ids)
                 
-                # Update weekday capacities
-                # for weekday_id in selected_weekday_ids:
-                #     capacity_name = f'weekdays_capacity_{weekday_id}'
-                #     capacity = request.POST.get(capacity_name)
-                #     if capacity:
-                #         try:
-                #             capacity = int(capacity)
-                #             if capacity == 0:
-                #                 capacity = max_guests
-                #             DayOfWeek.objects.filter(id=weekday_id).update(capacity=capacity)
-                #         except ValueError:
-                #             pass  
-                
-                if excursion.status != 'active':
-                    excursion.status = 'active'
-                    excursion.save()
+                # Activate excursion if it's not already active
+                if availability.excursion.status != 'active':
+                    availability.excursion.status = 'active'
+                    availability.excursion.save()
 
-                # Delete existing AvailabilityDays entries (for both create and update)
+                # Regenerate AvailabilityDays entries
                 AvailabilityDays.objects.filter(excursion_availability=availability).delete()
-
-                # Delete existing PickupGroupAvailability entries (for both create and update)
-                PickupGroupAvailability.objects.filter(excursion_availability=availability).delete()
                 
-                # Get the selected weekdays after saving
+                # Get the selected weekdays and create days
                 selected_weekdays = availability.weekdays.all()
-                
-                # Convert selected weekdays to Python's weekday numbers (0=Monday, 6=Sunday)
-                weekday_numbers = []
                 weekday_mapping = {'MON': 0, 'TUE': 1, 'WED': 2, 'THU': 3, 'FRI': 4, 'SAT': 5, 'SUN': 6}
+                weekday_numbers = [weekday_mapping[w.code] for w in selected_weekdays if w.code in weekday_mapping]
                 
-                for weekday in selected_weekdays:
-                    if weekday.code in weekday_mapping:
-                        weekday_numbers.append(weekday_mapping[weekday.code])
-                
-                # Create an entry for each day in the range that matches selected weekdays
+                # Create AvailabilityDays for each matching day in date range
                 current_date = availability.start_date
                 while current_date <= availability.end_date:
                     if current_date.weekday() in weekday_numbers:
@@ -2698,14 +3284,6 @@ def availability_form(request, pk=None):
                             capacity=availability.max_guests
                         )
                     current_date += timedelta(days=1)
-
-                # Create entries for each pickup group
-                # region_id = availability.region_id
-                for pickup_group in PickupGroup.objects.filter(id__in=pickup_group_ids):
-                    PickupGroupAvailability.objects.create(
-                        excursion_availability=availability,
-                        pickup_group=pickup_group
-                    )
 
                 if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                     return JsonResponse({
@@ -2746,18 +3324,17 @@ def availability_form(request, pk=None):
         'form': form,
         'availability': availability,
         'is_update': bool(pk),
-        'pickup_groups': PickupGroup.objects.all(),
     })
 
 @user_passes_test(is_staff)
 def availability_detail(request, pk):
     availability = get_object_or_404(ExcursionAvailability, pk=pk)
-    pickup_points = PickupPoint.objects.filter(pickup_group__in=availability.pickup_groups.all())
-    pickup_groups = PickupGroup.objects.filter(id__in=availability.pickup_groups.all())
+    pickup_points = availability.pickup_points.all().select_related('pickup_group').order_by('pickup_group__priority', 'priority', 'name')
+    regions = availability.regions.all().order_by('name')
     return render(request, 'main/availabilities/availability_detail.html', {
         'availability': availability,
         'pickup_points': pickup_points,
-        'pickup_groups': pickup_groups,
+        'regions': regions,
     })
 
 @user_passes_test(is_staff)
@@ -2783,18 +3360,18 @@ def availability_delete(request, pk):
     
 @user_passes_test(is_staff)
 def pickup_points_list(request):
-    pickup_points = PickupPoint.objects.all().select_related('pickup_group').order_by('name')
-    pickup_groups = PickupGroup.objects.all()
+    pickup_points = PickupPoint.objects.all().select_related('pickup_group').order_by('-pickup_group__priority', 'name')
+    pickup_groups = PickupGroup.objects.all().order_by('priority')
     
     # Convert pickup groups to JSON-serializable format
-    pickup_groups_json = json.dumps([{'id': group.id, 'name': group.name} for group in pickup_groups])
+    pickup_groups_json = json.dumps([{'id': group.id, 'name': group.name, 'priority': group.priority} for group in pickup_groups])
     
     # Handle search
     search_query = request.GET.get('search', '').strip()
     if search_query:
         pickup_points = pickup_points.filter(
             Q(name__icontains=search_query) |
-            Q(address__icontains=search_query) |
+            # Q(address__icontains=search_query) |
             Q(pickup_group__name__icontains=search_query)
         )
     
@@ -2820,11 +3397,12 @@ def manage_pickup_points(request):
     try:
         if action_type == 'add_point':
             name = request.POST.get('name', '').strip()
-            address = request.POST.get('address', '').strip()
+            # address = request.POST.get('address', '').strip()
+            priority = request.POST.get('priority', '').strip()
             pickup_group_id = request.POST.get('pickup_group')
             google_maps_link = request.POST.get('google_maps_link', '').strip()
 
-            if not all([name, address, pickup_group_id]):
+            if not all([name, pickup_group_id, priority]):
                 messages.error(request, 'Please fill in all required fields')
                 return redirect('pickup_points_list')
             
@@ -2836,7 +3414,7 @@ def manage_pickup_points(request):
             
             PickupPoint.objects.create(
                 name=name,
-                address=address,
+                priority=priority,
                 pickup_group=pickup_group,
                 google_maps_link=google_maps_link if google_maps_link else None,
             )
@@ -2845,11 +3423,12 @@ def manage_pickup_points(request):
         elif action_type == 'edit_point':
             item_id = request.POST.get('item_id')
             name = request.POST.get('name', '').strip()
-            address = request.POST.get('address', '').strip()
+            # address = request.POST.get('address', '').strip()
+            priority = request.POST.get('priority', '').strip()
             pickup_group_id = request.POST.get('pickup_group')
             google_maps_link = request.POST.get('google_maps_link', '').strip()
 
-            if not all([item_id, name, address, pickup_group_id]):
+            if not all([item_id, name, pickup_group_id, priority]):
                 messages.error(request, 'Please fill in all required fields')
                 return redirect('pickup_points_list')
             
@@ -2861,7 +3440,7 @@ def manage_pickup_points(request):
                 return redirect('pickup_points_list')
             
             point.name = name
-            point.address = address
+            point.priority = priority
             point.pickup_group = pickup_group
             point.google_maps_link = google_maps_link if google_maps_link else None
             point.save()
@@ -2910,6 +3489,7 @@ def staff_list(request):
 
 @user_passes_test(is_staff) 
 def manage_staff(request):
+    
     if request.method == 'POST':
         action_type = request.POST.get('action_type')
         item_id = request.POST.get('item_id')
@@ -2919,6 +3499,8 @@ def manage_staff(request):
             email = request.POST.get('email', '').strip()
             phone = request.POST.get('phone', '').strip()
             password = request.POST.get('password', '').strip()
+            is_superadmin = request.POST.get('is_superadmin', '').strip()
+            is_superadmin = True if is_superadmin == 'true' else False
 
 
             if name and email and password:
@@ -2945,9 +3527,10 @@ def manage_staff(request):
                     email=email,
                     phone=phone,
                     role='admin',
+                    is_superadmin=is_superadmin,
                 )   
                 messages.success(request, 'Staff member created successfully.')
-                # return redirect('staff_list')
+                return redirect('staff_list')
             
         elif action_type == 'edit_staff':
             staff_profile = get_object_or_404(UserProfile, pk=item_id)
@@ -2955,24 +3538,29 @@ def manage_staff(request):
             email = request.POST.get('email', '').strip()
             phone = request.POST.get('phone', '').strip()
             # role = request.POST.get('role', '').strip()
-            password = request.POST.get('password', '').strip()
+            new_password = request.POST.get('password', '').strip()
+            is_superadmin = request.POST.get('is_superadmin', '').strip()
+            is_superadmin = True if is_superadmin == 'true' else False
 
             if name:
                 staff_profile.name = name
                 staff_profile.email = email
                 staff_profile.phone = phone
                 staff_profile.role = "admin"
-                staff_profile.password = password
+                if new_password:
+                    staff_profile.user.set_password(new_password)
+                    staff_profile.user.save()
+                staff_profile.is_superadmin = is_superadmin
                 staff_profile.save()
                 messages.success(request, 'Staff member updated successfully.')
-                # return redirect('staff_list')
+                return redirect('staff_list')
 
         elif action_type == 'delete_staff':
             staff_profile = get_object_or_404(UserProfile, pk=item_id)
             # Delete the user, which will cascade delete the UserProfile
             staff_profile.user.delete()
             messages.success(request, 'Staff member deleted successfully.')
-            # return redirect('staff_list')
+            return redirect('staff_list')
     
     # Get all staff profiles (UserProfile objects with role='admin')
     staff = UserProfile.objects.filter(role='admin', user__is_staff=True).select_related('user')
@@ -3210,7 +3798,7 @@ def manage_regions(request):
                      
 @user_passes_test(is_staff)
 def pickup_groups_list(request):
-    pickup_groups = PickupGroup.objects.all()
+    pickup_groups = PickupGroup.objects.all().order_by('priority')
     regions = Region.objects.all()
     # Convert regions to JSON-serializable format
     regions_json = json.dumps([{'id': region.id, 'name': region.name} for region in regions])
@@ -3240,12 +3828,14 @@ def manage_pickup_groups(request):
             if action_type == 'add_group':
                 name = request.POST.get('name', '').strip()
                 code = request.POST.get('code', '').strip()
+                priority = request.POST.get('priority', '').strip()
 
-                if name and code:
+                if name and code and priority:
                     try:
                         PickupGroup.objects.create(
                             name=name,
                             code=code,
+                            priority=priority,
                         )
                         messages.success(request, 'Pickup group created successfully.')
                         return redirect('pickup_groups_list')
@@ -3257,11 +3847,13 @@ def manage_pickup_groups(request):
                 group = get_object_or_404(PickupGroup, pk=item_id)
                 name = request.POST.get('name', '').strip()
                 code = request.POST.get('code', '').strip()
-
+                priority = request.POST.get('priority', '').strip()
                 if name:    
                     group.name = name
                     if code:
                         group.code = code
+                    if priority:
+                        group.priority = priority
                     group.save()
                     messages.success(request, 'Pickup group updated successfully.')
                     return redirect('pickup_groups_list')

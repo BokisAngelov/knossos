@@ -2,19 +2,10 @@
 {% load static %}
 
 {% block extra_css %}
-<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/pikaday/css/pikaday.css">
 <style>
-    #date-picker-inline {
-        min-height: 250px;        
-        position: relative;      
-        border: 1px solid #ccc;  
-        padding: 10px;
+    .flatpickr-calendar {
+        z-index: 9999 !important;
     }
-    .pika-single {
-        position: absolute;
-        z-index: 9999;
-    }
-    
 </style>
 {% endblock %}
 
@@ -159,31 +150,15 @@
                     </div>
 
                     <div class="prose max-w-none mb-6 border-t border-gray-200 pt-4">
-                        <p class="text-sm text-gray-500 mb-4">*Note: Pickup points and prices are based on the pickup group you have selected. <span class="text-sm text-gray-500 font-normal">(Selected Pickup Group: <span class="pickup-region font-semibold">{{ excursion_availability.pickup_groups.all.first.name }}</span>)</span></p>
+                        <p class="text-sm text-gray-500 mb-4">*Note: Pickup points and prices are based on the region you have selected. <span class="text-sm text-gray-500 font-normal">(Selected Region: <span id="selected-region-name" class="pickup-region font-semibold">Please select a region</span>)</span></p>
                         <div class="grid grid-cols-2 gap-2">
                             <div class="flex flex-col gap-2">
                                 <h2 class="text-xl font-semibold text-purple">Pickup Points</h2>
-                                <div class="flex gap-6">
-                                    {% for availability in excursion_availabilities %}
-                                        {% for pick_group in availability.pickup_groups.all %}
-                                            <div class="flex flex-col gap-2 group-{{ pick_group.id }} pickup-group">
-                                                <h2 class="text-lg font-semibold text-gray-900 mt-1">{{ pick_group.name }}</h2>
-                                                <ul class="pickup-points-list">
-                                                    {% for pickup_point in pick_group.pickup_points.all %}
-                                                    <li>
-                                                        <div class="flex items-center py-1">
-                                                            <svg class="mr-2" width="17" height="19" viewBox="0 0 20 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                                <path d="M9.75 23C14.125 18.6 18.5 14.66 18.5 9.8C18.5 4.93989 14.5825 1 9.75 1C4.91751 1 1 4.93989 1 9.8C1 14.66 5.375 18.6 9.75 23Z" stroke="#8E24AA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                                                                <path d="M9.75 13.2222C11.8211 13.2222 13.5 11.5806 13.5 9.55552C13.5 7.53048 11.8211 5.88885 9.75 5.88885C7.67887 5.88885 6 7.53048 6 9.55552C6 11.5806 7.67887 13.2222 9.75 13.2222Z" stroke="#8E24AA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                                                                </svg>                                                                
-                                                            <a href="{% if pickup_point.google_maps_link %}{{ pickup_point.google_maps_link }}{% else %}#{% endif %}">{{ pickup_point.name }}</a>
-                                                        </div>
-                                                    </li>
-                                                    {% endfor %}
-                                                </ul>
-                                            </div>
-                                        {% endfor %}
-                                    {% endfor %}
+                                <p class="region-pickup-time">Pickup time: {{ excursion_availability.pickup_start_time|time:"H:i" }} - {{ excursion_availability.pickup_end_time|time:"H:i" }}</p>
+                                <div class="flex gap-6" id="pickup-points-display">
+                                    <div class="flex flex-col gap-2">
+                                        <p class="text-sm text-gray-500">Select a region to view pickup points</p>
+                                    </div>
                                 </div>
                             </div>
                             
@@ -215,82 +190,152 @@
 
 
             <!-- Feedback Section -->
-            <div class="bg-white p-6">
-                <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-2xl font-semibold text-purple uppercase">Reviews</h2>
-                    {% if excursion.overall_rating %}
-                    <div class="flex items-center">
-                        <svg class="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
-                        </svg>
-                        <span class="ml-1 text-lg font-medium text-gray-900">{{ excursion.overall_rating|floatformat:1 }}</span>
-                        <span class="ml-1 text-sm text-gray-500">({{ excursion.feedback_entries.count }} reviews)</span>
+            <div class="bg-white rounded-lg shadow-sm border border-gray-100 p-8">
+                <!-- Section Header with Overall Rating -->
+                <div class="mb-8">
+                    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-4">
+                        <h2 class="text-3xl font-bold text-purple uppercase tracking-wide">Customer Reviews</h2>
+                        {% if excursion.overall_rating %}
+                        <div class="flex items-center gap-3 bg-gradient-to-r from-purple-50 to-blue-50 px-6 py-3 rounded-lg border border-purple-100">
+                            <div class="flex items-center">
+                                <svg class="w-6 h-6 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                                </svg>
+                                <span class="ml-2 text-2xl font-bold text-gray-900">{{ excursion.overall_rating|floatformat:1 }}</span>
+                            </div>
+                            <div class="border-l border-purple-200 pl-3">
+                                <span class="text-sm font-medium text-gray-600">{{ excursion.feedback_entries.count }} review{{ excursion.feedback_entries.count|pluralize }}</span>
+                            </div>
+                        </div>
+                        {% endif %}
                     </div>
-                    {% endif %}
+                    <div class="h-1 w-24 bg-gradient-to-r from-purple to-blue rounded-full"></div>
                 </div>
 
                 <!-- Feedback Form -->
                 {% if user.is_authenticated %}
                     {% if feedback_form %}
-                        <form method="post" class="mb-8">
-                            {% csrf_token %}
-                            <input type="hidden" name="feedback_submit" value="1">
-                            <div class="space-y-4">
+                        <div class="mb-10 bg-gradient-to-br from-gray-50 to-white border-2 border-purple-100 rounded-xl p-6 shadow-sm">
+                            <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                                <svg class="w-5 h-5 mr-2 text-purple" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                </svg>
+                                Share Your Experience
+                            </h3>
+                            <form method="post" class="space-y-5">
+                                {% csrf_token %}
+                                <input type="hidden" name="feedback_submit" value="1">
+                                <input type="hidden" name="excursion" value="{{ excursion.pk }}">
+                                
                                 <div>
-                                    <label class="block text-sm font-semibold text-header-grey">Rating</label>
-                                    <input type="hidden" name="excursion" value="{{ excursion.pk }}">
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">Your Rating *</label>
                                     <div class="mt-1">
                                         {{ feedback_form.rating }}
                                     </div>
                                     {% if feedback_form.rating.errors %}
-                                        <div class="text-red-600 text-sm mt-1">{{ feedback_form.rating.errors.0 }}</div>
+                                        <div class="flex items-center gap-2 text-red-600 text-sm mt-2">
+                                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                            </svg>
+                                            <span>{{ feedback_form.rating.errors.0 }}</span>
+                                        </div>
                                     {% endif %}
                                 </div>
+                                
                                 <div>
-                                    <label class="block text-sm font-semibold text-header-grey">Your Review</label>
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">Your Review *</label>
                                     <div class="mt-1">
                                         {{ feedback_form.comment }}
                                     </div>
                                     {% if feedback_form.comment.errors %}
-                                        <div class="text-red-600 text-sm mt-1">{{ feedback_form.comment.errors.0 }}</div>
+                                        <div class="flex items-center gap-2 text-red-600 text-sm mt-2">
+                                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                            </svg>
+                                            <span>{{ feedback_form.comment.errors.0 }}</span>
+                                        </div>
                                     {% endif %}
                                 </div>
-                                <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-normal rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 w-full">
+                                
+                                <button type="submit" class="w-full inline-flex justify-center items-center px-6 py-3 border border-transparent shadow-md text-base font-semibold rounded-lg text-white bg-gradient-to-r from-purple to-blue hover:from-purple-700 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple transition-all duration-200 transform hover:scale-[1.02]">
+                                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
                                     Submit Review
                                 </button>
-                            </div>
-                        </form>
+                            </form>
+                        </div>
                     {% elif user_has_feedback %}
-                        <div class="mb-8 p-4 bg-green-50 border border-green-200 rounded-md">
-                            <p class="text-green-800 text-sm">You have already submitted a review for this excursion.</p>
+                        <div class="mb-10 p-5 bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-green-500 rounded-lg shadow-sm">
+                            <div class="flex items-center">
+                                <svg class="w-6 h-6 text-green-600 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                </svg>
+                                <p class="text-green-800 font-medium">Thank you! You have already submitted a review for this excursion.</p>
+                            </div>
                         </div>
                     {% endif %}
                 {% else %}
-                    <div class="mb-8 p-4 bg-gray-50 border border-gray-200 rounded-md">
-                        <p class="text-gray-600 text-sm">Please <a href="{% url 'login' %}" class="text-blue-600 hover:underline">log in</a> to submit a review.</p>
+                    <div class="mb-10 p-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-blue-500 rounded-lg shadow-sm">
+                        <div class="flex items-center">
+                            <svg class="w-6 h-6 text-blue-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <p class="text-gray-700">
+                                <a href="{% url 'login' %}" class="font-semibold text-blue-600 hover:text-blue-700 hover:underline">Log in</a> 
+                                <span class="text-gray-600">or</span> 
+                                <a href="{% url 'signup' %}" class="font-semibold text-blue-600 hover:text-blue-700 hover:underline">sign up</a> 
+                                <span class="text-gray-600">to share your experience</span>
+                            </p>
+                        </div>
                     </div>
                 {% endif %}
 
                 <!-- Feedback List -->
-                <div class="space-y-6">
-                    {% for feedback in excursion.feedback_entries.all %}
-                    <div class="border-b border-gray-200 pb-6 last:border-0 last:pb-0">
-                        <div class="flex items-center mb-2">
-                            <div class="flex items-center">
-                                {% for i in "12345"|make_list %}
-                                <svg class="w-4 h-4 {% if forloop.counter <= feedback.rating %}text-yellow-400{% else %}text-gray-300{% endif %}" fill="currentColor" viewBox="0 0 20 20">
-                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
-                                </svg>
-                                {% endfor %}
+                <div>
+                    <h3 class="text-xl font-semibold text-gray-800 mb-6">All Reviews</h3>
+                    <div class="space-y-5">
+                        {% for feedback in excursion.feedback_entries.all %}
+                        <div class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow duration-200">
+                            <!-- Review Header -->
+                            <div class="flex items-start justify-between mb-4">
+                                <div class="flex items-center gap-3">
+                                    <!-- User Avatar -->
+                                    <div class="w-12 h-12 rounded-full bg-gradient-to-br from-purple to-blue flex items-center justify-center text-white font-bold text-lg shadow-md">
+                                        {{ feedback.author.username|first|upper }}
+                                    </div>
+                                    <div>
+                                        <p class="font-semibold text-gray-900">{{ feedback.author.username }}</p>
+                                        <div class="flex items-center gap-2 mt-1">
+                                            <div class="flex items-center">
+                                                {% for i in "12345"|make_list %}
+                                                <svg class="w-4 h-4 {% if forloop.counter <= feedback.rating %}text-yellow-400{% else %}text-gray-300{% endif %}" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                                                </svg>
+                                                {% endfor %}
+                                            </div>
+                                            <span class="text-sm text-gray-500">•</span>
+                                            <span class="text-sm text-gray-500">{{ feedback.created_at|date:"F j, Y" }}</span>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <span class="ml-2 text-sm text-gray-500">{{ feedback.created_at|date:"F j, Y" }}</span>
+                            
+                            <!-- Review Content -->
+                            <div class="pl-15">
+                                <p class="text-gray-700 leading-relaxed">{{ feedback.comment }}</p>
+                            </div>
                         </div>
-                        <p class="text-gray-700">{{ feedback.comment }}</p>
-                        <p class="text-sm text-gray-500 mt-1">By {{ feedback.author.username }}</p>
+                        {% empty %}
+                        <div class="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
+                            <svg class="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"></path>
+                            </svg>
+                            <p class="text-gray-500 text-lg font-medium mb-2">No reviews yet</p>
+                            <p class="text-gray-400">Be the first to share your experience with this excursion!</p>
+                        </div>
+                        {% endfor %}
                     </div>
-                    {% empty %}
-                    <p class="text-gray-500 text-center py-4">No reviews yet. Be the first to review this excursion!</p>
-                    {% endfor %}
                 </div>
             </div>
         </div>
@@ -311,33 +356,29 @@
                         <input type="hidden" name="{{ availability.id }}-adult-price" value="{{ availability.adult_price }}">
                         <input type="hidden" name="{{ availability.id }}-child-price" value="{{ availability.child_price }}">
                         <input type="hidden" name="{{ availability.id }}-infant-price" value="{{ availability.infant_price }}">
-                        {% for pickup_group in availability.pickup_groups.all %}
-                            <input type="hidden" name="{{ pickup_group.id }}-pickup-group" value="{{ pickup_group.name }}" data-availability-id="{{ availability.id }}">
-                        {% endfor %}
                     {% endfor %}
                     <input type="hidden" name="availability_id" id="availability-id" value="">
-                    <div class="flex flex-col gap-2 pickup-group-div" >
-                        <label class="block text-md font-semibold text-header-grey">Pickup Group</label>
-                        <select name="pickup_group" id="pickup-group" class="mt-1 block w-full pl-3 pr-2 py-2 text-base form-fields-border focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md {% if form.pickup_group.errors %}border-red-500{% endif %}">
-                            {% for group_id, group_name in pickup_group_map.items %}
-                                <option value="{{ group_id }}">{{ group_name }}</option>
+                    <div class="flex flex-col gap-2">
+                        <label class="block text-md font-semibold text-header-grey">Region</label>
+                        <select name="regions" id="regions" class="mt-1 block w-full pl-3 pr-2 py-2 text-base form-fields-border focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md {% if form.regions.errors %}border-red-500{% endif %}">
+                            <option value="">Select a region</option>
+                            {% for region in regions %}
+                                <option value="{{ region.id }}">{{ region.name }}</option>
                             {% endfor %}
                         </select>
-                        {% if form.pickup_group.errors %}
-                        <p class="mt-1 text-sm text-red-600">{{ form.pickup_group.errors.0 }}</p>
+                        {% if form.regions.errors %}
+                        <p class="mt-1 text-sm text-red-600">{{ form.regions.errors.0 }}</p>
                         {% endif %}
                     </div>
                     
                     {{ availability_dates_by_region|json_script:"available-dates-json" }}
-                    {{ pickup_points|json_script:"pickup-points-json" }}
+                    {{ pickup_points_by_region|json_script:"pickup-points-json" }}
+                    {{ region_availability_map|json_script:"region-availability-map-json" }}
 
                     <div class="flex flex-col gap-2">
                         <label class="block text-md font-semibold text-header-grey">Pickup Point</label>
-                        <select name="pickup_point" id="pickup-point" class="mt-1 block w-full pl-3 pr-2 py-2 text-base form-fields-border focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md {% if form.pickup_point.errors %}border-red-500{% endif %}">
-                            <option value="">Select a pickup point</option>
-                            {% for pickup_point in pickup_points %}
-                                <option data-pickup_group="{{ pickup_point.pickup_group }}" value="{{ pickup_point.id }}">{{ pickup_point.name }}</option>
-                            {% endfor %}
+                        <select name="pickup_point" id="pickup-point" class="mt-1 block w-full pl-3 pr-2 py-2 text-base form-fields-border focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md {% if form.pickup_point.errors %}border-red-500{% endif %}" disabled>
+                            <option value="">Select a region first</option>
                         </select>
                         {% if form.pickup_point.errors %}
                             <p class="mt-1 text-sm text-red-600">{{ form.pickup_point.errors.0 }}</p>
@@ -346,7 +387,7 @@
 
                     <div>
                         <label class="block text-md font-semibold text-header-grey">Date</label>
-                        <input type="text" id="date-picker" class="mt-1 block w-full form-fields-border rounded-md px-3 py-2 {% if form.date.errors %}border-red-500{% endif %}" placeholder="Select a date">
+                        <input type="text" id="date-picker" class="mt-1 block w-full form-fields-border rounded-md px-3 py-2 {% if form.date.errors %}border-red-500{% endif %}" placeholder="Select a region first" readonly>
                         <!-- <span id="remaining-seats" class="text-sm text-gray-500">Remaining seats: <span id="remaining-seats-count">{{ remaining_seats }}</span></span> -->
                         
                         {% if form.date.errors %}
@@ -506,39 +547,138 @@
     const csrftoken = getCookie('csrftoken');
 
     const availableDatesByRegion = JSON.parse(document.getElementById('available-dates-json').textContent);
-    const pickupPointsByGroup = JSON.parse(document.getElementById('pickup-points-json').textContent);
+    const pickupPointsByRegion = JSON.parse(document.getElementById('pickup-points-json').textContent);
+    const regionAvailabilityMap = JSON.parse(document.getElementById('region-availability-map-json').textContent);
 
-    const pickupGroupSelect = document.getElementById('pickup-group');
+    const regionSelect = document.getElementById('regions');
     const pickupPointSelect = document.getElementById('pickup-point');
     const datePickerInput = document.getElementById('date-picker');
+    const availabilityIdInput = document.getElementById('availability-id');
     
     const userRole = getCookie('user_role') ? getCookie('user_role') : '';
     const userId = getCookie('user_id') ? getCookie('user_id') : '';
-    // const availabilityIdInput = document.getElementById('availability-id');
-
-    // console.log(availabilityIdInput);
 
     let picker = null;
+    let currentAvailability = null;
 
-    // Helper: update pickup points dropdown for selected group
-    function updatePickupPoints(groupId) {
-        const groupObj = pickupPointsByGroup.find(g => g.pickup_group == groupId);
+    function calculateTotal() {
+        const adults = parseInt(document.querySelector('input[name="adults"]').value) || 0;
+        const children = parseInt(document.querySelector('input[name="children"]').value) || 0;
+        const infants = parseInt(document.querySelector('input[name="infants"]').value) || 0;
+        const availabilityId = availabilityIdInput.value;
+
+        if (!availabilityId) {
+            document.getElementById('total-price').textContent = '0.00';
+            document.getElementById('total-price-input').value = 0;
+            return;
+        }
+
+        const adultPrice = parseFloat(document.querySelector(`input[name="${availabilityId}-adult-price"]`)?.value || 0);
+        const childPrice = parseFloat(document.querySelector(`input[name="${availabilityId}-child-price"]`)?.value || 0);
+        const infantPrice = parseFloat(document.querySelector(`input[name="${availabilityId}-infant-price"]`)?.value || 0);
+        
+        const total = (adults * adultPrice) + (children * childPrice) + (infants * infantPrice);
+        document.getElementById('total-price').textContent = total.toFixed(2);
+        document.getElementById('total-price-input').value = total;
+    }
+
+    // Helper: display price details and pickup points for selected region
+    function displayRegionDetails(regionId) {
+        // Update prices in the existing price details section
+        const adultPriceEl = document.getElementById('adult-price');
+        const childPriceEl = document.getElementById('child-price');
+        const infantPriceEl = document.getElementById('infant-price');
+        const selectedRegionNameEl = document.getElementById('selected-region-name');
+        const pickupPointsDisplayEl = document.getElementById('pickup-points-display');
+        const regionPickupTime = document.querySelector('.region-pickup-time');
+        
+        if (!regionId) {
+            // Reset prices to 0.00 if no region selected
+            if (adultPriceEl) adultPriceEl.textContent = '0.00';
+            if (childPriceEl) childPriceEl.textContent = '0.00';
+            if (infantPriceEl) infantPriceEl.textContent = '0.00';
+            if (selectedRegionNameEl) selectedRegionNameEl.textContent = 'Please select a region';
+            if (pickupPointsDisplayEl) {
+                pickupPointsDisplayEl.innerHTML = '<div class="flex flex-col gap-2"><p class="text-sm text-gray-500">Select a region to view pickup points</p></div>';
+                regionPickupTime.textContent = '';
+            }
+            return;
+        }
+        
+        const availabilities = regionAvailabilityMap[regionId];
+        if (availabilities && availabilities.length > 0) {
+            // Use the first availability for this region
+            currentAvailability = availabilities[0];
+
+            regionPickupTime.textContent = `Pickup time: ${currentAvailability.pickup_start_time} - ${currentAvailability.pickup_end_time}`;
+            
+            // Display prices in the existing elements
+            if (adultPriceEl) adultPriceEl.textContent = currentAvailability.adult_price.toFixed(2);
+            if (childPriceEl) childPriceEl.textContent = currentAvailability.child_price.toFixed(2);
+            if (infantPriceEl) infantPriceEl.textContent = currentAvailability.infant_price.toFixed(2);
+            
+            // Update selected region name
+            const regionOption = regionSelect.querySelector(`option[value="${regionId}"]`);
+            if (selectedRegionNameEl && regionOption) {
+                selectedRegionNameEl.textContent = regionOption.textContent;
+            }
+            
+            // Display pickup points for this region
+            if (pickupPointsDisplayEl && currentAvailability.pickup_points) {
+                let pickupPointsHTML = '<div class="flex flex-col gap-2"><ul class="pickup-points-list">';
+                
+                currentAvailability.pickup_points.forEach(point => {
+                    pickupPointsHTML += `
+                        <li>
+                            <div class="flex items-center py-1">
+                                <svg class="mr-2" width="17" height="19" viewBox="0 0 20 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M9.75 23C14.125 18.6 18.5 14.66 18.5 9.8C18.5 4.93989 14.5825 1 9.75 1C4.91751 1 1 4.93989 1 9.8C1 14.66 5.375 18.6 9.75 23Z" stroke="#8E24AA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    <path d="M9.75 13.2222C11.8211 13.2222 13.5 11.5806 13.5 9.55552C13.5 7.53048 11.8211 5.88885 9.75 5.88885C7.67887 5.88885 6 7.53048 6 9.55552C6 11.5806 7.67887 13.2222 9.75 13.2222Z" stroke="#8E24AA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                                <a href="#">${point.name}</a>
+                            </div>
+                        </li>
+                    `;
+                });
+                
+                pickupPointsHTML += '</ul></div>';
+                pickupPointsDisplayEl.innerHTML = pickupPointsHTML;
+            }
+        }
+    }
+
+    // Helper: update pickup points dropdown for selected region
+    function updatePickupPoints(regionId) {
         pickupPointSelect.innerHTML = '<option value="">Select a pickup point</option>';
-        if (groupObj) {
-            groupObj.points.forEach(point => {
+        
+        if (!regionId) {
+            pickupPointSelect.disabled = true;
+            return;
+        }
+        
+        const pickupPoints = pickupPointsByRegion[regionId];
+        if (pickupPoints && pickupPoints.length > 0) {
+            // Sort points alphabetically
+            const sortedPoints = [...pickupPoints].sort((a, b) => a.name.localeCompare(b.name));
+            
+            // Add options
+            sortedPoints.forEach(point => {
                 const option = document.createElement('option');
                 option.value = point.id;
                 option.textContent = point.name;
                 pickupPointSelect.appendChild(option);
             });
-        }else{
-            console.log('no group found');
+            
+            pickupPointSelect.disabled = false;
+        } else {
+            pickupPointSelect.disabled = true;
+            console.log('No pickup points found for region:', regionId);
         }
     }
 
-    // Helper: update date picker for selected group
-    function updateDatePicker(groupId) {
-        const availableDates = availableDatesByRegion[groupId] || [];
+    // Helper: update date picker for selected region
+    function updateDatePicker(regionId) {
+        const availableDates = availableDatesByRegion[regionId] || [];
         const today = new Date();
         today.setHours(0, 0, 0, 0); // Set to start of today
         
@@ -548,33 +688,63 @@
             return itemDate >= today;
         });
         
-        if (picker) picker.destroy();
-        picker = flatpickr(datePickerInput, {
-            enable: futureAvailableDates.map(item => item.date),
-            dateFormat: "Y-m-d",
-            position: "below",
-            onChange: function(selectedDates, dateStr) {
-                const selectedDate = futureAvailableDates.find(item => item.date === dateStr);
-                // availabilityIdInput.value = selectedDate ? selectedDate.id : '';
-            }
-        });
+        // Destroy existing picker
+        if (picker) {
+            picker.destroy();
+            picker = null;
+        }
+        
+        // Clear values
         datePickerInput.value = '';
-        // availabilityIdInput.value = '';
+        availabilityIdInput.value = '';
+        
+        // Initialize new picker only if there are available dates
+        if (futureAvailableDates.length > 0) {
+            picker = flatpickr(datePickerInput, {
+                enable: futureAvailableDates.map(item => item.date),
+                dateFormat: "Y-m-d",
+                minDate: "today",
+                disableMobile: false,
+                clickOpens: true,
+                allowInput: false,
+                static: false,
+                onChange: function(selectedDates, dateStr) {
+                    const selectedDate = futureAvailableDates.find(item => item.date === dateStr);
+                    if (selectedDate && selectedDate.availability_id) {
+                        availabilityIdInput.value = selectedDate.availability_id;
+                        calculateTotal();
+                    }
+                },
+                onReady: function(selectedDates, dateStr, instance) {
+                    console.log('Flatpickr ready with', futureAvailableDates.length, 'available dates');
+                }
+            });
+            
+            // Make input clickable
+            datePickerInput.placeholder = 'Click to select a date';
+            datePickerInput.disabled = false;
+        } else {
+            datePickerInput.placeholder = 'No available dates for this region';
+            datePickerInput.disabled = true;
+        }
     }
 
-    // On pickup group change, update both date picker and pickup points
-    pickupGroupSelect.addEventListener('change', function() {
-        const groupId = this.value;
-        updateDatePicker(groupId);
-        updatePickupPoints(groupId);
+    // On region change, update everything
+    regionSelect.addEventListener('change', function() {
+        const regionId = this.value;
+        displayRegionDetails(regionId);
+        updatePickupPoints(regionId);
+        updateDatePicker(regionId);
+        calculateTotal();
     });
 
 
     document.addEventListener('DOMContentLoaded', function() {
 
-        const initialGroupId = pickupGroupSelect.value;
-        updateDatePicker(initialGroupId);
-        updatePickupPoints(initialGroupId);
+        // Initialize with no region selected - user must select region first
+        pickupPointSelect.disabled = true;
+        datePickerInput.disabled = true;
+        datePickerInput.placeholder = 'Select a region first';
 
         const notAvailability = document.querySelector('.not-availability');
         const bookingForm = document.getElementById('booking-form');
@@ -584,7 +754,7 @@
         // console.log('voucherCode: ' + voucherCode);
         
         if (!notAvailability) {
-            let picker = null;
+            // let picker = null;
 
             if (userRole == 'client') {
                 console.log('userRole: ' + userRole);
@@ -646,16 +816,16 @@
                             
                             document.querySelector('#guest-name').value = data.return_data.client_name;
                             document.querySelector('#guest-email').value = data.return_data.client_email;
-                            document.querySelector('.pickup-group').classList.add('hidden');
-                            document.querySelector('.group-' + data.return_data.pickup_group_id).classList.remove('hidden');
 
-                            if (data.return_data.pickup_group_id && data.return_data.pickup_point_id) {
-                                document.querySelector('select[name="pickup_group"]').value = data.return_data.pickup_group_id;
-                                updateDatePicker(data.return_data.pickup_group_id);
-                                updatePickupPoints(data.return_data.pickup_group_id);
-                                document.querySelector('#pickup-point').value = data.return_data.pickup_point_id;
-                                document.querySelector('.pickup-group').classList.add('hidden');
-                                document.querySelector('.group-' + data.return_data.pickup_group_id).classList.remove('hidden');
+                            // Pre-select pickup point if available from voucher
+                            if (data.return_data.pickup_point_id) {
+                                // We'll set this after region selection
+                                setTimeout(() => {
+                                    const pickupPointOption = pickupPointSelect.querySelector(`option[value="${data.return_data.pickup_point_id}"]`);
+                                    if (pickupPointOption) {
+                                        pickupPointSelect.value = data.return_data.pickup_point_id;
+                                    }
+                                }, 100);
                             } 
 
                         } else {
@@ -670,144 +840,17 @@
             
             }
             checkVoucher();
-
-            function initializeDatePicker(pickupGroupId) {
-                const availableDates = availableDatesByRegion[pickupGroupId] || [];
-                const today = new Date();
-                today.setHours(0, 0, 0, 0); // Set to start of today
-                
-                // Filter out past dates
-                const futureAvailableDates = availableDates.filter(item => {
-                    const itemDate = new Date(item.date);
-                    return itemDate >= today;
-                });
-
-                // Clear existing picker if it exists
-                if (picker) {
-                    picker.destroy();
-                }
-
-                // Initialize new picker
-                picker = flatpickr("#date-picker", {
-                    enable: futureAvailableDates.map(item => item.date),
-                    dateFormat: "Y-m-d",
-                    position: "below",
-                    onChange: function(selectedDates, dateStr) {
-                        const selectedDate = futureAvailableDates.find(item => item.date === dateStr);
-                        if (selectedDate) {
-                            document.getElementById("availability-id").value = selectedDate.id;
-                        } else {
-                            document.getElementById("availability-id").value = '';
-                        }
-                    },
-                });
-
-                // Clear any previously selected date
-                document.getElementById("availability-id").value = '';
-                document.getElementById("date-picker").value = '';
-            }
-
-            // Initialize date picker for the initially selected region
-            const initialPickupGroup = document.querySelector('select[name="pickup_group"]').value;
-            initializeDatePicker(initialPickupGroup);
-
-            // Update date picker when pickup group changes
-            document.querySelector('select[name="pickup_group"]').addEventListener('change', function(e) {
-                initializeDatePicker(e.target.value);
-                updatePriceAndPickupPoints();
-
-            });
-
-            function calculateTotal() {
-                const pickupGroup = document.querySelector('select[name="pickup_group"]').value;
-                const adults = parseInt(document.querySelector('input[name="adults"]').value) || 0;
-                const children = parseInt(document.querySelector('input[name="children"]').value) || 0;
-                const infants = parseInt(document.querySelector('input[name="infants"]').value) || 0;
-                const availabilityId = document.querySelector(`input[name="${pickupGroup}-pickup-group"]`).dataset.availabilityId;
-
-                // console.log('calculateTotal availabilityId: ' + availabilityId);
-                // console.log(availabilityId);
-
-                const adultPrice = document.querySelector(`input[name="${availabilityId}-adult-price"]`).value;
-                const childPrice = document.querySelector(`input[name="${availabilityId}-child-price"]`).value;
-                const infantPrice = document.querySelector(`input[name="${availabilityId}-infant-price"]`).value;
-                
-                const total = (adults * adultPrice) + (children * childPrice) + (infants * infantPrice);
-                document.getElementById('total-price').textContent = total.toFixed(2);
-                document.getElementById('total-price-input').value = total;
-            }
-
             // Calculate initial total
             calculateTotal();
 
-            function updatePriceAndPickupPoints() {
-                const pickupGroupId = document.querySelector('select[name="pickup_group"]').value;
-                const adults = parseInt(document.querySelector('input[name="adults"]').value) || 0;
-                const children = parseInt(document.querySelector('input[name="children"]').value) || 0;
-                const infants = parseInt(document.querySelector('input[name="infants"]').value) || 0;
-                const availabilityId = document.querySelector(`input[name="${pickupGroupId}-pickup-group"]`).dataset.availabilityId;
-
-                // console.log('updatePriceAndPickupPoints availabilityId: ' + availabilityId);
-
-                const pickupGroupName = document.querySelector(`input[name="${pickupGroupId}-pickup-group"]`).value;
-                // console.log(pickupGroupName);
-                document.querySelector('.pickup-region').textContent = pickupGroupName;
-                document.querySelectorAll('.pickup-group').forEach(group => {
-                    group.classList.add('hidden');
-                });
-                const pickupGroup = document.querySelectorAll('.group-' + pickupGroupId).forEach(group => {
-                    group.classList.remove('hidden');
-                });
-
-                document.querySelectorAll('.pickup-point').forEach(point => {
-                    point.classList.add('hidden');
-                });
-
-                const pickupPoints_options = document.querySelectorAll('select[name="pickup_point"] option');
-                
-                // pickupPoints_options.forEach(point => {
-                //     point.classList.add('hidden');
-                //     if (point.dataset.pickup_group === pickupGroupId) {
-                //         point.classList.remove('hidden');
-                //     }
-                // });
-
-                // Select the first available pickup point for the selected region
-                const pickupPointSelect = document.getElementById('pickup-point');
-                const availableOptions = Array.from(pickupPoints_options).filter(option => 
-                    option.dataset.pickup_group === pickupGroupId && option.value !== ''
-                );
-                
-                if (availableOptions.length > 0) {
-                    pickupPointSelect.value = availableOptions[0].value;
-                } else {
-                    pickupPointSelect.value = '';
-                }
-
-                const adultPrice = document.querySelector(`input[name="${availabilityId}-adult-price"]`).value;
-                const childPrice = document.querySelector(`input[name="${availabilityId}-child-price"]`).value;
-                const infantPrice = document.querySelector(`input[name="${availabilityId}-infant-price"]`).value;
-
-                document.getElementById('adult-price').textContent = adultPrice;
-                document.getElementById('child-price').textContent = childPrice;
-                document.getElementById('infant-price').textContent = infantPrice;
-
-                const total = (adults * adultPrice) + (children * childPrice) + (infants * infantPrice);
-                document.getElementById('total-price').textContent = total.toFixed(2);
-                document.getElementById('total-price-input').value = total;
-
-                calculateTotal();
-            }
-
-            // Add event listeners to number inputs
+            // Add event listeners to number inputs and date picker
             document.querySelectorAll('input[type="number"]').forEach(input => {
                 input.addEventListener('change', calculateTotal);
                 input.addEventListener('input', calculateTotal);    
             });
 
-            document.querySelector('select[name="pickup_group"]').addEventListener('change', updatePriceAndPickupPoints);
-
-            updatePriceAndPickupPoints();
+            // Recalculate when date changes (which sets availability_id)
+            datePickerInput.addEventListener('change', calculateTotal);
 
             document.querySelector('#clear-numbers').addEventListener('click', function(e) {
                 e.preventDefault();
@@ -815,9 +858,6 @@
                     input.value = 0;
                 });
                 calculateTotal();
-                document.querySelector('#remaining-price').textContent = document.querySelector('#total-price').textContent;
-                document.querySelector('#total-price-input').value = document.querySelector('#total-price').textContent;
-                updatePriceAndPickupPoints();
             });
         
             if (document.querySelector('#partial-payment')) {
@@ -885,38 +925,61 @@
                         errorList.innerHTML = '';
                     }
                 }
+                // Clear previous error styling
                 document.querySelectorAll('.border-red-500').forEach(el => el.classList.remove('border-red-500'));
-                document.querySelectorAll('.text-red-600').forEach(el => el.remove());
+                document.querySelectorAll('.text-red-600').forEach(el => {
+                    if (el.tagName === 'P' && el.classList.contains('text-red-600')) {
+                        el.remove();
+                    }
+                });
                 
-                // Get form values
-                const selectedDate = document.getElementById('date-picker').value;
-                // const availabilityId = document.getElementById('availability-id').value;
+                // Get form values using consistent element references
+                const selectedDate = datePickerInput.value.trim();
+                const availabilityId = availabilityIdInput.value.trim();
+                const regionId = regionSelect.value;
+                const pickupPointId = pickupPointSelect.value;
                 const adults = parseInt(document.querySelector('input[name="adults"]').value) || 0;
                 const children = parseInt(document.querySelector('input[name="children"]').value) || 0;
                 const infants = parseInt(document.querySelector('input[name="infants"]').value) || 0;
-                const pickupGroupId = document.querySelector('select[name="pickup_group"]').value;
-                const availabilityId = document.querySelector(`input[name="${pickupGroupId}-pickup-group"]`).dataset.availabilityId;
-                const guestEmail = document.querySelector('#guest-email').value;
-                const guestName = document.querySelector('#guest-name').value;
+                const guestEmail = document.querySelector('#guest-email').value.trim();
+                const guestName = document.querySelector('#guest-name').value.trim();
                 const voucherInput = document.querySelector('#voucher_code');
-                const voucherCode = voucherInput && voucherInput.value ? voucherInput.value : "";
+                const voucherCode = (voucherInput && voucherInput.value) ? voucherInput.value.trim() : "";
                 const partialPaymentInput = document.querySelector('#partial-payment');
-                const partialPayment = partialPaymentInput && partialPaymentInput.value ? partialPaymentInput.value : "";
+                const partialPayment = (partialPaymentInput && partialPaymentInput.value) ? partialPaymentInput.value.trim() : "";
                 const partialPaidMethodInput = document.querySelector('#partial-paid-method');
-                const partialPaidMethod = partialPaidMethodInput && partialPaidMethodInput.value ? partialPaidMethodInput.value : '';
+                const partialPaidMethod = (partialPaidMethodInput && partialPaidMethodInput.value) ? partialPaidMethodInput.value.trim() : '';
                 // Validate form
                 let errors = [];
 
+                // Validate region
+                if (!regionId) {
+                    errors.push({ field: 'regions', message: 'Please select a region.' });
+                    regionSelect.classList.add('border-red-500');
+                    const errorDiv = document.createElement('p');
+                    errorDiv.className = 'mt-1 text-sm text-red-600';
+                    errorDiv.textContent = 'Please select a region.';
+                    regionSelect.parentNode.appendChild(errorDiv);
+                }
+
+                // Validate pickup point
+                if (!pickupPointId) {
+                    errors.push({ field: 'pickup_point', message: 'Please select a pickup point.' });
+                    pickupPointSelect.classList.add('border-red-500');
+                    const errorDiv = document.createElement('p');
+                    errorDiv.className = 'mt-1 text-sm text-red-600';
+                    errorDiv.textContent = 'Please select a pickup point.';
+                    pickupPointSelect.parentNode.appendChild(errorDiv);
+                }
+
+                // Validate date
                 if (!selectedDate || !availabilityId) {
                     errors.push({ field: 'date', message: 'Please select a date.' });
-                    const datePicker = document.getElementById('date-picker');
-                    if (datePicker) {
-                        datePicker.classList.add('border-red-500');
-                        const errorDiv = document.createElement('p');
-                        errorDiv.className = 'mt-1 text-sm text-red-600';
-                        errorDiv.textContent = 'Please select a date.';
-                        datePicker.parentNode.appendChild(errorDiv);
-                    }
+                    datePickerInput.classList.add('border-red-500');
+                    const errorDiv = document.createElement('p');
+                    errorDiv.className = 'mt-1 text-sm text-red-600';
+                    errorDiv.textContent = 'Please select a date.';
+                    datePickerInput.parentNode.appendChild(errorDiv);
                 }
 
                 if (adults + children + infants === 0) {
@@ -958,20 +1021,28 @@
                         errorDiv.textContent = 'Please enter your email.';
                         guestEmailInput.parentNode.appendChild(errorDiv);
                     }
+                } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guestEmail)) {
+                    errors.push({ field: 'guest-email', message: 'Please enter a valid email address.' });
+                    const guestEmailInput = document.querySelector('#guest-email');
+                    if (guestEmailInput) {
+                        guestEmailInput.classList.add('border-red-500');
+                        const errorDiv = document.createElement('p');
+                        errorDiv.className = 'mt-1 text-sm text-red-600';
+                        errorDiv.textContent = 'Please enter a valid email address.';
+                        guestEmailInput.parentNode.appendChild(errorDiv);
+                    }
                 }
 
-                if (userRole == 'admin') {
-                    
-                    if (partialPayment && partialPayment > 0 && !partialPaidMethod) {
-                        errors.push({ field: 'partial-paid-method', message: 'Please select a payment method.' });
-                        const partialPaidMethodInput = document.querySelector('#partial-paid-method');
-                        if (partialPaidMethodInput) {
-                            partialPaidMethodInput.classList.add('border-red-500');
-                            const errorDiv = document.createElement('p');
-                            errorDiv.className = 'mt-1 text-sm text-red-600';
-                            errorDiv.textContent = 'Please select a payment method.';
-                                partialPaidMethodInput.parentNode.appendChild(errorDiv);
-                            }
+                // Validate partial payment for admin/staff
+                if ((userRole === 'admin' || userRole === 'representative') && partialPayment && parseFloat(partialPayment) > 0 && !partialPaidMethod) {
+                    errors.push({ field: 'partial-paid-method', message: 'Please select a payment method for partial payment.' });
+                    const partialPaidMethodInput = document.querySelector('#partial-paid-method');
+                    if (partialPaidMethodInput) {
+                        partialPaidMethodInput.classList.add('border-red-500');
+                        const errorDiv = document.createElement('p');
+                        errorDiv.className = 'mt-1 text-sm text-red-600';
+                        errorDiv.textContent = 'Please select a payment method for partial payment.';
+                        partialPaidMethodInput.parentNode.appendChild(errorDiv);
                     }
                 }
 
@@ -987,9 +1058,11 @@
                 const formData = new FormData(bookingForm);
                 formData.append('selected_date', selectedDate);
                 formData.append('availability_id', availabilityId);
-                formData.append('voucher_code', voucherCode ? voucherCode : "");
-                formData.append('partial_payment', partialPayment ? partialPayment : "");
-                formData.append('partial_paid_method', partialPaidMethod ? partialPaidMethod : "");
+                formData.append('regions', regionId);
+                formData.append('pickup_point', pickupPointId);
+                formData.append('voucher_code', voucherCode || "");
+                formData.append('partial_payment', partialPayment || "");
+                formData.append('partial_paid_method', partialPaidMethod || "");
                 // Submit form via AJAX
                 fetch(window.location.href, {
                     method: 'POST',
@@ -1016,33 +1089,45 @@
                         submitButton.disabled = false;
                         loadingSpinner.classList.add('hidden');
                         submitText.textContent = 'Book Now';
-                        document.getElementById('form-errors').textContent = data.message;
-                        console.log('data.message:', data.message);
+                        
+                        // Map field names to actual input selectors for error display
+                        const fieldSelectors = {
+                            'regions': '#regions',
+                            'pickup_point': '#pickup-point',
+                            'date': '#date-picker',
+                            'guest_name': '#guest-name',
+                            'guest_email': '#guest-email',
+                            'adults': 'input[name="adults"]',
+                            'children': 'input[name="children"]',
+                            'infants': 'input[name="infants"]',
+                            'partial_paid_method': '#partial-paid-method'
+                        };
+                        
                         // Display server-side validation errors
                         if (data.errors) {
-                            console.log('Validation errors:', data.errors);
-                            console.log('Error message:', data.message);
                             Object.keys(data.errors).forEach(field => {
-                                const input = document.querySelector(`[name="${field}"]`);
+                                const selector = fieldSelectors[field] || `[name="${field}"]`;
+                                const input = document.querySelector(selector);
+                                
                                 if (input) {
                                     input.classList.add('border-red-500');
                                     const errorDiv = document.createElement('p');
                                     errorDiv.className = 'mt-1 text-sm text-red-600';
-                                    errorDiv.textContent = data.errors[field][0];
-                                    // errorDiv.textContent = data.errors;
+                                    errorDiv.textContent = Array.isArray(data.errors[field]) ? data.errors[field][0] : data.errors[field];
                                     input.parentNode.appendChild(errorDiv);
                                 }
                             });
-                        } else if (data.message) {
-                            // console.log('Error message:', data.message);
-                            if (formErrors) {
-                                formErrors.classList.remove('hidden');
-                                const errorList = formErrors.querySelector('ul');
-                                if (errorList) {
-                                    const errorItem = document.createElement('li');
-                                    errorItem.textContent = data.message;
-                                    errorList.appendChild(errorItem);
-                                }
+                        }
+                        
+                        // Display general error message
+                        if (data.message && formErrors) {
+                            formErrors.classList.remove('hidden');
+                            const errorList = formErrors.querySelector('ul');
+                            if (errorList) {
+                                errorList.innerHTML = '';
+                                const errorItem = document.createElement('li');
+                                errorItem.textContent = data.message;
+                                errorList.appendChild(errorItem);
                             }
                         }
                     }

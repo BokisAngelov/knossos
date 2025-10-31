@@ -27,7 +27,7 @@
       </div>
       <div class="bg-white p-4">
         <p class="text-xl text-header-grey font-bold">Revenue</p>
-        <p class="text-3xl font-bold text-purple">€{{ total_revenue }}</p>
+        <p class="text-3xl font-bold text-purple">€{{ total_revenue|floatformat:2 }}</p>
       </div>
       
     </div>
@@ -165,6 +165,20 @@
               <li><a href="{% url 'pickup_points_list' %}" class="text-blue font-semibold hover:opacity-80">Manage Pickup Points</a></li>
             </ul>
           </div>
+
+          <!-- Regions -->
+          <div class="bg-white p-5 rounded-lg relative">
+            <div class="flex items-center mb-4">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-indigo-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              <h3 class="text-lg font-bold text-header-grey">Regions</h3>  
+            </div>
+            <ul class="space-y-2">
+              <li><a href="{% url 'region_list' %}" class="text-blue font-semibold hover:opacity-80">Manage Regions</a></li>
+            </ul>
+          </div>
            
         </div>
       </div>
@@ -193,13 +207,13 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15l-3.5-3.5a2.121 2.121 0 010-3l3.5-3.5a2.121 2.121 0 013 0l3.5 3.5a2.121 2.121 0 010 3L15 15a2.121 2.121 0 01-3 0z" />
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.5 8.5l7 7" />
               </svg>
-              <h3 class="text-lg font-bold text-header-grey">Providers</h3>
+              <h3 class="text-lg font-bold text-header-grey">Suppliers</h3>
               <a id="sync-providers-btn" href="#" class="absolute top-2 right-2">
                 <svg id="Layer_1" xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" viewBox="0 0 26.82 26.82"><circle cx="13.41" cy="13.41" r="13.41" style="fill:#2196f3;"/><path d="M12.32,7.32c.23.09.41.26.51.48s.11.48.02.71l-1.21,3.19c-.09.24-.27.42-.48.51s-.47.11-.71.02c-.48-.18-.72-.71-.54-1.19l.52-1.37c-2.12,1.41-2.97,4.2-1.89,6.59.51,1.13,1.4,2.05,2.51,2.59h0c.46.22.65.78.43,1.23-.1.2-.26.35-.45.44-.24.11-.53.11-.78-.01-1.5-.73-2.7-1.97-3.39-3.49-1.45-3.21-.32-6.94,2.5-8.85l-.88-.33c-.48-.18-.72-.71-.54-1.19.18-.48.71-.72,1.19-.54" style="fill:#fff;"/><path d="M14.5,19.5c-.23-.09-.41-.26-.51-.48s-.11-.48-.02-.71l1.21-3.19c.09-.24.27-.42.48-.51s.47-.11.71-.02c.48.18.72.71.54,1.19l-.52,1.37c2.12-1.41,2.97-4.2,1.89-6.59-.51-1.13-1.4-2.05-2.51-2.59h0c-.46-.22-.65-.78-.43-1.23.1-.2.26-.35.45-.44.24-.11.53-.11.78.01,1.5.73,2.7,1.97,3.39,3.49,1.45,3.21.32,6.94-2.5,8.85l.88.33c.48.18.72.71.54,1.19-.18.48-.71.72-1.19.54" style="fill:#fff;"/></svg>
               </a>
             </div>
             <ul class="space-y-2">
-              <li><a href="{% url 'providers_list' %}" class="text-blue font-semibold hover:opacity-80">Manage Providers</a></li>
+              <li><a href="{% url 'providers_list' %}" class="text-blue font-semibold hover:opacity-80">Manage Suppliers</a></li>
             </ul>
           </div>
           <!-- Reservations -->
@@ -238,7 +252,7 @@
       <!-- User Management Section -->
       <div>
         <h2 class="text-2xl font-semibold text-green mb-4">User Management</h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 xl:grid-cols-5 gap-6">
 
           <!-- Staff -->
           <div class="bg-white p-5 rounded-lg">
@@ -253,16 +267,30 @@
             </ul> 
           </div>
 
+          <!-- Agents -->
+          <div class="bg-white p-5 rounded-lg">
+            <div class="flex items-center mb-4">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+              </svg>
+              <h3 class="text-lg font-bold text-header-grey">Agents</h3>
+            </div>
+            <ul class="space-y-2">
+              <li><a href="{% url 'agents_list' %}" class="text-blue font-semibold hover:opacity-80">Manage Agents</a></li>
+            </ul>
+          </div>
+          
+
           <!-- Representatives -->
           <div class="bg-white p-5 rounded-lg">
             <div class="flex items-center mb-4">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-orange-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
               </svg>
-              <h3 class="text-lg font-bold text-header-grey">Representatives (TBU)</h3>
+              <h3 class="text-lg font-bold text-header-grey">Representatives</h3>
             </div>
             <ul class="space-y-2">
-              <!-- <li><a href="{% url 'reps_list' %}" class="text-blue font-semibold hover:opacity-80">Manage Representatives</a></li> -->
+              <li><a href="{% url 'reps_list' %}" class="text-blue font-semibold hover:opacity-80">Manage Representatives</a></li>
             </ul>
           </div>
 
@@ -272,10 +300,10 @@
               <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-purple-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />  
               </svg>
-              <h3 class="text-lg font-bold text-header-grey">Guides (TBU)</h3>
+              <h3 class="text-lg font-bold text-header-grey">Guides</h3>
             </div>
             <ul class="space-y-2">
-              <!-- <li><a href="{% url 'guides_list' %}" class="text-blue font-semibold hover:opacity-80">Manage Guides</a></li> -->
+              <li><a href="{% url 'guides_list' %}" class="text-blue font-semibold hover:opacity-80">Manage Guides</a></li>
             </ul>
           </div>
 
@@ -344,7 +372,7 @@
                   </span>
                 </td> 
                 <td class="px-4 py-4 whitespace-nowrap text-sm table-text font-normal">
-                  €{{ booking.price }}
+                  €{{ booking.total_price }}
                 </td>
                 <td class="px-4 py-4 whitespace-nowrap flex justify-end">
                   <a href="{% url 'booking_detail' booking.id %}" class="text-turquaz hover:opacity-80 font-normal">
@@ -598,7 +626,7 @@
         console.error('Error:', error);
         Swal.fire({
           title: 'Error',
-          text: 'An error occurred while syncing providers.',
+          text: 'An error occurred while syncing suppliers.',
           icon: 'error'
         });
       });

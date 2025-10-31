@@ -2,7 +2,7 @@
 {% load static %}
 
 {% block content %}
-
+    
 <div class="container mx-auto px-4 py-8">
     <!-- Header Section -->
     <div class="flex justify-between items-center mb-6">
@@ -13,19 +13,19 @@
                 </svg>
                 Back to Dashboard
             </a>
-            <h1 class="text-3xl font-bold page-header-color">Guides</h1>
-            <p class="text-md font-semibold text-purple">Manage your guide information</p>
+            <h1 class="text-3xl font-bold page-header-color">Agents</h1>
+            <p class="text-md text-purple font-semibold">Manage your agent information</p>
         </div>
-        <button type="button" id="add-guide-btn" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+        <button type="button" id="add-agent-btn" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
             </svg>
-            Add Guide
+            Add Agent
         </button>
     </div>
 
     <!-- Search and Filter Section -->
-    <div class="bg-white rounded-lg shadow-md p-4 mb-6">
+    <div class="bg-white rounded-lg p-4 mb-6">
         <form method="get" class="flex flex-wrap gap-4">
             <div class="flex-1 min-w-[200px]">
                 <label for="search" class="sr-only">Search</label>
@@ -37,105 +37,130 @@
                     </div>
                     <input type="text" name="search" id="search" value="{{ request.GET.search }}" 
                            class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                           placeholder="Search guides...">
+                           placeholder="Search agents...">
                 </div>
             </div>
             <div class="flex gap-4">
                 <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                     Search
                 </button>
-                <a href="{% url 'guides_list' %}" class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                <a href="{% url 'agents_list' %}" class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                     Clear
                 </a>
             </div>
         </form>
     </div>
 
-    <!-- Guides Table -->
-    <div class="bg-white rounded-lg shadow-md overflow-hidden">
-        {% if guides %}
+    <!-- Agents Table -->
+    <div class="bg-white rounded-lg p-6">
+        {% if page_obj.object_list %}
             <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
+                <table class="min-w-full text-sm">
+                    <thead class="text-base">
                         <tr>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">
                                 Name
                             </th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">
                                 Email
                             </th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">
                                 Phone
                             </th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">
+                                Referral Code
+                            </th>
+                            <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">
+                                Bookings
+                            </th>
+                            <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">
                                 Status
                             </th>
-                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th scope="col" class="px-4 py-3 text-right font-semibold text-header-grey tracking-wider text-lg">
                                 Actions
                             </th>
                         </tr>
                     </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
-                        {% for guide in guides %}
-                            <tr data-id="{{ guide.id }}">
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="flex items-center">
-                                        <div class="ml-4">
-                                            <div class="text-sm font-medium text-gray-900">
-                                                <span class="editable-name">{{ guide.name }}</span>
-                                                <input type="text" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ guide.name }}">
-                                            </div>
+                    <tbody>
+                        {% for agent in page_obj %}
+                            {% with latest_code=agent.get_latest_active_referral_code active_count=agent.get_active_referral_codes_count %}
+                            <tr data-id="{{ agent.user.id }}">
+                                <td class="px-4 py-4 whitespace-nowrap">
+                                    <span class="editable-name font-normal">{{ agent.name|title }}</span>
+                                    <input type="text" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ agent.name }}">
+                                </td>
+                                <td class="px-4 py-4 whitespace-nowrap">
+                                    <span class="editable-email font-normal">{{ agent.email }}</span>
+                                    <input type="email" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ agent.email }}">
+                                </td>
+                                <td class="px-4 py-4 whitespace-nowrap">
+                                    <span class="editable-phone font-normal">{{ agent.phone }}</span>
+                                    <input type="tel" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ agent.phone }}">
+                                </td>
+                                <td class="px-4 py-4 whitespace-nowrap">
+                                    {% if latest_code %}
+                                        <div class="flex flex-col">
+                                            <span class="font-semibold text-blue-600">{{ latest_code.code }}</span>
+                                            <span class="text-xs text-gray-500">
+                                                Expires: {{ latest_code.expires_at|date:"M d, Y" }}
+                                            </span>
+                                            {% if active_count > 1 %}
+                                                <span class="text-xs text-purple font-semibold mt-1">
+                                                    (+{{ active_count|add:"-1" }} more active)
+                                                </span>
+                                            {% endif %}
                                         </div>
-                                    </div>
+                                    {% else %}
+                                        <span class="text-gray-400 italic text-sm">No active code</span>
+                                    {% endif %}
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="text-sm text-gray-900">
-                                        <span class="editable-email">{{ guide.email }}</span>
-                                        <input type="email" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ guide.email }}">
-                                    </div>
+                                <td class="px-4 py-4 whitespace-nowrap">
+                                    <span class="font-normal">{{ agent.get_total_bookings_referral.0 }} | €{{ agent.get_total_bookings_referral.1|floatformat:2 }}</span>
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="text-sm text-gray-500">
-                                        <span class="editable-phone">{{ guide.phone }}</span>
-                                        <input type="tel" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ guide.phone }}">
-                                    </div>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                                        {% if guide.is_active %}bg-green-100 text-green-800{% else %}bg-red-100 text-red-800{% endif %}">
-                                        {{ guide.status|title }}
+                                <td class="px-4 py-4 whitespace-nowrap">
+                                    <span class="px-2 inline-flex text-xs leading-5 font-normal rounded-full text-white
+                                        {% if agent.status == 'active' %}bg-green 
+                                        {% else %}bg-red{% endif %}">
+                                        {{ agent.status|title }}
                                     </span>
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                    <button type="button" class="edit-btn text-blue-600 hover:text-blue-800 mr-2">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <td class="px-4 py-4 whitespace-nowrap flex justify-end">
+                                    <button type="button" class="view-btn text-turquaz hover:opacity-80 font-normal mr-2" data-id="{{ agent.user.id }}">
+                                        <svg class="w-6 h-6 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                        </svg>
+                                    </button>
+                                    <button type="button" class="edit-btn text-blue hover:opacity-80 font-normal mr-2">
+                                        <svg class="w-6 h-6 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                                         </svg>
                                     </button>
-                                    <button type="button" class="delete-btn text-red-600 hover:text-red-800 mr-2">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <button type="button" class="delete-btn text-orange hover:opacity-80 font-normal">
+                                        <svg class="w-6 h-6 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                         </svg>
                                     </button>
-                                    <button type="button" class="save-btn hidden text-green-600 hover:text-green-800">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <button type="button" class="save-btn hidden text-green hover:opacity-80 font-normal">
+                                        <svg class="w-6 h-6 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                                         </svg>
                                     </button>
-                                    <button type="button" class="cancel-btn hidden text-gray-600 hover:text-gray-800">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <button type="button" class="cancel-btn hidden text-gray hover:opacity-80 font-normal">
+                                        <svg class="w-6 h-6 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                                         </svg>
                                     </button>
                                 </td>
                             </tr>
+                            {% endwith %}
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
 
             <!-- Pagination -->
-            {% if is_paginated %}
+            {% if page_obj.paginator.num_pages > 1 %}
             <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
                 <div class="flex-1 flex justify-between sm:hidden">
                     {% if page_obj.has_previous %}
@@ -151,7 +176,7 @@
                 </div>
                 <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
                     <div>
-                        <p class="text-sm text-gray-700">
+                        <p class="text-sm text-gray-700 font-normal">
                             Showing
                             <span class="font-medium">{{ page_obj.start_index }}</span>
                             to
@@ -162,7 +187,7 @@
                         </p>
                     </div>
                     <div>
-                        <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                        <nav class="relative z-0 inline-flex rounded-md -space-x-px" aria-label="Pagination">
                             {% if page_obj.has_previous %}
                                 <a href="?page={{ page_obj.previous_page_number }}" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
                                     <span class="sr-only">Previous</span>
@@ -202,90 +227,107 @@
                 <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                 </svg>
-                <h3 class="mt-2 text-sm font-medium text-gray-900">No guides found</h3>
-                <p class="mt-1 text-sm text-gray-500">Get started by adding a new guide.</p>
+                <h3 class="mt-2 text-sm font-medium text-gray-900">No agents found</h3>
+                <p class="mt-1 text-sm text-gray-500">Get started by adding a new agent.</p>
                 <div class="mt-6">
-                    <button type="button" id="add-guide-btn-empty" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    <button type="button" id="add-agent-btn-empty" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                         </svg>
-                        Add Guide
+                        Add Agent
                     </button>
                 </div>
             </div>
         {% endif %}
     </div>
-</div>
+</div>  
 
 <!-- Hidden forms for submitting actions -->
-<form id="add-guide-form" action="{% url 'manage_guides' %}" method="post" class="hidden">
+<form id="add-agent-form" action="{% url 'manage_agents' %}" method="post" class="hidden">
     {% csrf_token %}
-    <input type="hidden" name="action_type" value="add_guide">
-    <input type="hidden" name="name" id="add-guide-name">
-    <input type="hidden" name="email" id="add-guide-email">
-    <input type="hidden" name="phone" id="add-guide-phone">
+    <input type="hidden" name="action_type" value="add_agent">
+    <input type="hidden" name="name" id="add-agent-name">
+    <input type="hidden" name="email" id="add-agent-email">
+    <input type="hidden" name="phone" id="add-agent-phone">
+    <input type="hidden" name="password" id="add-agent-password">
 </form>
 
-<form id="edit-guide-form" action="{% url 'manage_guides' %}" method="post" class="hidden">
+<form id="edit-agent-form" action="{% url 'manage_agents' %}" method="post" class="hidden">
     {% csrf_token %}
-    <input type="hidden" name="action_type" value="edit_guide">
-    <input type="hidden" name="item_id" id="edit-guide-id">
-    <input type="hidden" name="name" id="edit-guide-name">
-    <input type="hidden" name="email" id="edit-guide-email">
-    <input type="hidden" name="phone" id="edit-guide-phone">
+    <input type="hidden" name="action_type" value="edit_agent">
+    <input type="hidden" name="item_id" id="edit-agent-id">
+    <input type="hidden" name="name" id="edit-agent-name">
+    <input type="hidden" name="email" id="edit-agent-email">
+    <input type="hidden" name="phone" id="edit-agent-phone">
 </form>
 
-<form id="delete-guide-form" action="{% url 'manage_guides' %}" method="post" class="hidden">
+<form id="delete-agent-form" action="{% url 'manage_agents' %}" method="post" class="hidden">
     {% csrf_token %}
-    <input type="hidden" name="action_type" value="delete_guide">
-    <input type="hidden" name="item_id" id="delete-guide-id">
+    <input type="hidden" name="action_type" value="delete_agent">
+    <input type="hidden" name="item_id" id="delete-agent-id">
 </form>
+
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Add Guide
-        const addGuideBtn = document.getElementById('add-guide-btn');
-        const addGuideBtnEmpty = document.getElementById('add-guide-btn-empty');
+
+        // View Agent
+        const viewAgentBtn = document.querySelectorAll('.view-btn');
+        viewAgentBtn.forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                const agentID = this.dataset.id;
+                window.location.href = `/profile/${agentID}`;
+            });
+        });
+
+
+        // Add Agent
+        const addAgentBtn = document.getElementById('add-agent-btn');
+        const addAgentBtnEmpty = document.getElementById('add-agent-btn-empty');
         
-        function showAddGuideModal() {
+        function showAddAgentModal() {
             Swal.fire({
-                title: 'Add Guide',
+                title: 'Add Agent',
                 html: `
                     <input id="swal-name" class="swal2-input" placeholder="Full Name">
                     <input id="swal-email" class="swal2-input" placeholder="Email">
                     <input id="swal-phone" class="swal2-input" placeholder="Phone Number">
+                    <input id="swal-password" type="password" class="swal2-input" placeholder="Password">
                 `,
                 focusConfirm: false,
                 showCancelButton: true,
-                confirmButtonText: 'Add Guide',
+                confirmButtonText: 'Add Agent',
                 preConfirm: () => {
                     const name = document.getElementById('swal-name').value;
                     const email = document.getElementById('swal-email').value;
                     const phone = document.getElementById('swal-phone').value;
-                    
-                    if (!name || !email || !phone) {
+                    const password = document.getElementById('swal-password').value;
+
+                    if (!name || !email || !phone || !password) {
                         Swal.showValidationMessage('Please fill in all fields');
                         return false;
                     }
                     
-                    return { name, email, phone };
+                    return { name, email, phone, password };
                 }
             }).then((result) => {
                 if (result.isConfirmed) {
-                    const form = document.getElementById('add-guide-form');
-                    document.getElementById('add-guide-name').value = result.value.name;
-                    document.getElementById('add-guide-email').value = result.value.email;
-                    document.getElementById('add-guide-phone').value = result.value.phone;
-                    form.submit();
+                    const form = document.getElementById('add-agent-form');
+                    document.getElementById('add-agent-name').value = result.value.name;
+                    document.getElementById('add-agent-email').value = result.value.email;
+                    document.getElementById('add-agent-phone').value = result.value.phone;
+                    document.getElementById('add-agent-password').value = result.value.password;
+                    form.submit();  
                 }
             });
         }
 
-        if (addGuideBtn) {
-            addGuideBtn.addEventListener('click', showAddGuideModal);
+        if (addAgentBtn) {
+            addAgentBtn.addEventListener('click', showAddAgentModal);
         }
-        if (addGuideBtnEmpty) {
-            addGuideBtnEmpty.addEventListener('click', showAddGuideModal);
+        if (addAgentBtnEmpty) {
+            addAgentBtnEmpty.addEventListener('click', showAddAgentModal);
         }
 
         // Setup table editing
@@ -305,7 +347,7 @@
                     inputs[0].focus();
                     
                     // Toggle buttons
-                    row.querySelectorAll('.edit-btn, .delete-btn').forEach(el => el.classList.add('hidden'));
+                    row.querySelectorAll('.edit-btn, .delete-btn, .view-btn').forEach(el => el.classList.add('hidden'));
                     row.querySelectorAll('.save-btn, .cancel-btn').forEach(el => el.classList.remove('hidden'));
                 });
             });
@@ -319,11 +361,11 @@
                     const inputs = row.querySelectorAll('.edit-input');
                     
                     // Update form and submit
-                    document.getElementById('edit-guide-id').value = itemId;
-                    document.getElementById('edit-guide-name').value = inputs[0].value.trim();
-                    document.getElementById('edit-guide-email').value = inputs[1].value.trim();
-                    document.getElementById('edit-guide-phone').value = inputs[2].value.trim();
-                    document.getElementById('edit-guide-form').submit();
+                    document.getElementById('edit-agent-id').value = itemId;
+                    document.getElementById('edit-agent-name').value = inputs[0].value.trim();
+                    document.getElementById('edit-agent-email').value = inputs[1].value.trim();
+                    document.getElementById('edit-agent-phone').value = inputs[2].value.trim();
+                    document.getElementById('edit-agent-form').submit();
                 });
             });
             
@@ -337,7 +379,7 @@
                     
                     // Reset input values
                     inputs.forEach((input, index) => {
-                        input.value = spans[index].textContent;
+                        input.value = spans[index].textContent.trim();
                     });
                     
                     // Show spans, hide inputs
@@ -345,7 +387,7 @@
                     inputs.forEach(input => input.classList.add('hidden'));
                     
                     // Toggle buttons back
-                    row.querySelectorAll('.edit-btn, .delete-btn').forEach(el => el.classList.remove('hidden'));
+                    row.querySelectorAll('.edit-btn, .delete-btn, .view-btn').forEach(el => el.classList.remove('hidden'));
                     row.querySelectorAll('.save-btn, .cancel-btn').forEach(el => el.classList.add('hidden'));
                 });
             });
@@ -360,7 +402,7 @@
                     
                     Swal.fire({
                         title: 'Are you sure?',
-                        text: `Do you want to delete guide "${name}"?`,
+                        text: `Do you want to delete agent "${name}"?`,
                         icon: 'warning',
                         showCancelButton: true,
                         confirmButtonColor: '#d33',
@@ -368,8 +410,8 @@
                         confirmButtonText: 'Yes, delete it!'
                     }).then((result) => {
                         if (result.isConfirmed) {
-                            document.getElementById('delete-guide-id').value = itemId;
-                            document.getElementById('delete-guide-form').submit();
+                            document.getElementById('delete-agent-id').value = itemId;
+                            document.getElementById('delete-agent-form').submit();
                         }
                     });
                 });
