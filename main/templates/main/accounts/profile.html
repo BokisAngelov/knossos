@@ -102,7 +102,7 @@
             <p class="text-base text-gray-900">
               {% if reservation.total_adults %}{{ reservation.total_adults }} Adult{% if reservation.total_adults != 1 %}s{% endif %}{% endif %}
               {% if reservation.total_adults and reservation.total_kids %}, {% endif %}
-              {% if reservation.total_kids %}{{ reservation.total_kids }} Kid{% if reservation.total_kids != 1 %}s{% endif %}{% endif %}
+              {% if reservation.total_kids %}{{ reservation.total_kids }} Children{% endif %}
             </p>
           </div>
           {% endif %}
@@ -111,7 +111,7 @@
           {% if reservation.departure_time %}
           <div>
             <p class="text-sm font-semibold text-gray-600">Departure Time</p>
-            <p class="text-base text-gray-900">{{ reservation.departure_time|time:"H:i" }}</p>
+            <p class="{% if reservation.departure_time_updated %}text-red-900 font-bold {% else %}text-base text-gray-900{% endif %}">{{ reservation.departure_time|time:"H:i" }}</p>
           </div>
           {% endif %}
           
@@ -258,7 +258,7 @@
                   <div class="text-sm font-normal">{{ booking.date }}</div>
                 </td>
                 <td class="px-4 py-4 whitespace-nowrap">
-                  <div class="text-sm font-normal">{% if booking.total_adults %} {{ booking.total_adults }} adults {% endif %}{% if booking.total_kids %}, {{ booking.total_kids }} kids{% endif %}{% if booking.total_infants %}, {{ booking.total_infants }} infants{% endif %}</div>
+                  <div class="text-sm font-normal">{% if booking.total_adults %} {{ booking.total_adults }} Adults {% endif %}{% if booking.total_kids %}, {{ booking.total_kids }} Children{% endif %}{% if booking.total_infants %}, {{ booking.total_infants }} Infants{% endif %}</div>
                 </td>
                 <td class="px-4 py-4 whitespace-nowrap">
                   <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full text-white

@@ -580,6 +580,11 @@ def excursion_detail(request, pk):
     
     # Get only regions that are in the availabilities (not all regions)
     regions = Region.objects.filter(id__in=availability_dates_by_region.keys())
+    
+    # Get user's default pickup point (from voucher/reservation or bookings)
+    user_pickup_point_id, user_region_id = _get_user_default_pickup_point(
+        request, excursion_availabilities, pickup_points_by_region
+    )
 
 
     # Handle feedback submission
@@ -611,6 +616,8 @@ def excursion_detail(request, pk):
         'region_map': region_map,
         'remaining_seats': remaining_seats,
         'regions': regions,
+        'user_pickup_point_id': user_pickup_point_id,
+        'user_region_id': user_region_id,
     })
 
 
@@ -640,6 +647,72 @@ def _get_feedback_form(user, user_has_feedback, excursion):
     if user.is_authenticated and not user_has_feedback:
         return FeedbackForm(author=user, excursion=excursion)
     return None
+
+
+def _get_user_default_pickup_point(request, excursion_availabilities, pickup_points_by_region):
+    """
+    Get user's default pickup point from voucher/reservation or recent bookings.
+    Check if it's available in the current excursion's availabilities.
+    
+    Args:
+        request: HTTP request object
+        excursion_availabilities: QuerySet of ExcursionAvailability objects
+        pickup_points_by_region: Dict mapping region IDs to pickup points
+    
+    Returns:
+        tuple: (pickup_point_id, region_id) or (None, None) if not found
+    """
+    user_pickup_point_id = None
+    
+    # Try to get pickup point from cookies (set by voucher)
+    pickup_point_cookie = request.COOKIES.get('pickup_point')
+    if pickup_point_cookie:
+        try:
+            user_pickup_point_id = int(pickup_point_cookie)
+        except (ValueError, TypeError):
+            pass
+    
+    # If not in cookies, try to get from user's most recent reservation
+    if not user_pickup_point_id and request.user.is_authenticated:
+        try:
+            user_profile = UserProfile.objects.get(user=request.user)
+            # Get most recent reservation with a pickup point
+            latest_reservation = Reservation.objects.filter(
+                client_profile=user_profile,
+                pickup_point__isnull=False
+            ).order_by('-created_at').first()
+            
+            if latest_reservation and latest_reservation.pickup_point:
+                user_pickup_point_id = latest_reservation.pickup_point.id
+        except UserProfile.DoesNotExist:
+            pass
+    
+    # If still not found, try to get from user's most recent booking
+    if not user_pickup_point_id and request.user.is_authenticated:
+        latest_booking = Booking.objects.filter(
+            user=request.user,
+            pickup_point__isnull=False
+        ).order_by('-created_at').first()
+        
+        if latest_booking and latest_booking.pickup_point:
+            user_pickup_point_id = latest_booking.pickup_point.id
+    
+    # If we have a pickup point, check if it's available in this excursion
+    if user_pickup_point_id:
+        try:
+            pickup_point = PickupPoint.objects.get(id=user_pickup_point_id)
+            
+            # Check if this pickup point is in any of the excursion's availabilities
+            for availability in excursion_availabilities:
+                if pickup_point in availability.pickup_points.all():
+                    # Find which region contains this pickup point for this excursion
+                    for region_id, points in pickup_points_by_region.items():
+                        if any(p['id'] == user_pickup_point_id for p in points):
+                            return user_pickup_point_id, region_id
+        except PickupPoint.DoesNotExist:
+            pass
+    
+    return None, None
 
 
 def _handle_feedback_submission(request, excursion, user_has_feedback, pk):

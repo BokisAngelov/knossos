@@ -371,9 +371,11 @@
                         {% endif %}
                     </div>
                     
-                    {{ availability_dates_by_region|json_script:"available-dates-json" }}
-                    {{ pickup_points_by_region|json_script:"pickup-points-json" }}
-                    {{ region_availability_map|json_script:"region-availability-map-json" }}
+    {{ availability_dates_by_region|json_script:"available-dates-json" }}
+    {{ pickup_points_by_region|json_script:"pickup-points-json" }}
+    {{ region_availability_map|json_script:"region-availability-map-json" }}
+    <input type="hidden" id="user-pickup-point-id" value="{{ user_pickup_point_id|default:'' }}">
+    <input type="hidden" id="user-region-id" value="{{ user_region_id|default:'' }}">
 
                     <div class="flex flex-col gap-2">
                         <label class="block text-md font-semibold text-header-grey">Pickup Point</label>
@@ -840,6 +842,39 @@
             
             }
             checkVoucher();
+            
+            // Auto-select user's pickup point if available in this excursion
+            function autoSelectUserPickupPoint() {
+                const userPickupPointId = document.getElementById('user-pickup-point-id')?.value;
+                const userRegionId = document.getElementById('user-region-id')?.value;
+                
+                if (userPickupPointId && userRegionId) {
+                    console.log('Auto-selecting user pickup point:', userPickupPointId, 'in region:', userRegionId);
+                    
+                    // Select the region
+                    regionSelect.value = userRegionId;
+                    
+                    // Trigger region change to populate pickup points and dates
+                    displayRegionDetails(userRegionId);
+                    updatePickupPoints(userRegionId);
+                    updateDatePicker(userRegionId);
+                    
+                    // Wait a bit for the pickup points to be populated, then select the pickup point
+                    setTimeout(() => {
+                        const pickupPointOption = pickupPointSelect.querySelector(`option[value="${userPickupPointId}"]`);
+                        if (pickupPointOption) {
+                            pickupPointSelect.value = userPickupPointId;
+                            console.log('User pickup point auto-selected successfully');
+                        } else {
+                            console.log('User pickup point not found in dropdown');
+                        }
+                    }, 100);
+                }
+            }
+            
+            // Call auto-select after a small delay to ensure DOM is ready
+            setTimeout(autoSelectUserPickupPoint, 200);
+            
             // Calculate initial total
             calculateTotal();
 
