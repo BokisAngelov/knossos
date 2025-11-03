@@ -48,7 +48,7 @@
       </div>
     {% endif %}
 
-    <form method="POST" action="{% url 'profile_edit' pk=user.id %}" class="space-y-4">
+    <form method="POST" action="{% url 'profile_edit' pk=user_profile.user.id %}" class="space-y-4">
       {% csrf_token %}
 
       {% for field in form %}
@@ -79,7 +79,7 @@
     </form>
     
     <div class="text-center mt-4 text-sm text-gray-600">
-      <p><a href="{% url 'profile' pk=user.id %}" class="text-blue-600 hover:text-blue-800 font-medium">Back to Profile</a></p>
+      <p><a href="{% url 'profile' pk=user_profile.user.id %}" class="text-blue-600 hover:text-blue-800 font-medium">Back to Profile</a></p>
     </div>
   </div>
 </div>

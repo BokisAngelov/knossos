@@ -15,12 +15,14 @@
             <h1 class="text-3xl font-bold page-header-color">Staff</h1>
             <p class="text-md text-purple font-semibold">Manage your staff information</p>
         </div>
+        {% if request.user.profile.is_superadmin %}
         <button type="button" id="add-staff-btn" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
             </svg>
             Add Staff
         </button>
+        {% endif %}
     </div>
 
     <!-- Search and Filter Section -->
@@ -66,9 +68,14 @@
                             <th scope="col" class="px-4 py-3 text-left text-header-grey font-semibold text-black-600 tracking-wider text-lg">
                                 Phone
                             </th>
+                            {% if request.user.profile.is_superadmin %}
+                            <th scope="col" class="px-4 py-3 text-left text-header-grey font-semibold text-black-600 tracking-wider text-lg">
+                                Is Superadmin
+                            </th>
                             <th scope="col" class="px-4 py-3 text-right text-header-grey font-semibold text-black-600 tracking-wider text-lg">
                                 Actions
                             </th>
+                            {% endif %}
                         </tr>
                     </thead>
                     <tbody>
@@ -85,6 +92,11 @@
                                 <td class="px-4 py-4 whitespace-nowrap">
                                     <span class="editable-phone font-normal">{{ staff.phone }}</span>
                                     <input type="text" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ staff.phone }}">
+                                </td>
+                                {% if request.user.profile.is_superadmin %}
+                                <td class="px-4 py-4 whitespace-nowrap">
+                                    <span class="editable-is-superadmin font-normal">{{ staff.is_superadmin|yesno:"Yes,No" }}</span>
+                                    <input type="checkbox" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ staff.is_superadmin }}" {% if staff.is_superadmin %}checked{% endif %}>
                                 </td>
                                 <td class="px-4 py-4 whitespace-nowrap flex justify-end">
                                     <button type="button" class="edit-btn text-blue hover:opacity-80 font-semibold mr-2">
@@ -108,6 +120,7 @@
                                         </svg>
                                     </button>
                                 </td>
+                                {% endif %}
                             </tr>
                         {% endfor %}
                     </tbody>
@@ -205,6 +218,7 @@
   <input type="hidden" name="email" id="add-staff-email">
   <input type="hidden" name="phone" id="add-staff-phone">
   <input type="hidden" name="password" id="add-staff-password">
+  <input type="hidden" name="is_superadmin" id="add-staff-is-superadmin">
 </form>
 
 <form id="edit-staff-form" action="{% url 'manage_staff' %}" method="post" class="hidden">
@@ -214,6 +228,7 @@
   <input type="hidden" name="name" id="edit-staff-name">
   <input type="hidden" name="email" id="edit-staff-email">
   <input type="hidden" name="phone" id="edit-staff-phone">
+  <input type="hidden" name="is_superadmin" id="edit-staff-is-superadmin">
 </form>
 
 <form id="delete-staff-form" action="{% url 'manage_staff' %}" method="post" class="hidden">
@@ -236,6 +251,8 @@
           <input id="swal-email" class="swal2-input" placeholder="Email">
           <input id="swal-phone" class="swal2-input" placeholder="Phone Number">
           <input type="password" id="swal-password" class="swal2-input" placeholder="Password">
+          <label for="swal-is-superadmin" class="swal2-label">Is Superadmin</label>
+          <input type="checkbox" id="swal-is-superadmin" class="swal2-checkbox">
         `,
         focusConfirm: false,
         showCancelButton: true,
@@ -245,13 +262,13 @@
           const email = document.getElementById('swal-email').value;
           const phone = document.getElementById('swal-phone').value;
           const password = document.getElementById('swal-password').value;
-          
+          const isSuperadmin = document.getElementById('swal-is-superadmin').checked;
           if (!name || !email || !phone || !password) {
             Swal.showValidationMessage('Please fill in all fields');
             return false;
           }
           
-          return { name, email, phone, password };
+          return { name, email, phone, password, isSuperadmin };
         }
       }).then((result) => {
         if (result.isConfirmed) {
@@ -260,6 +277,7 @@
           document.getElementById('add-staff-email').value = result.value.email;
           document.getElementById('add-staff-phone').value = result.value.phone;
           document.getElementById('add-staff-password').value = result.value.password;
+          document.getElementById('add-staff-is-superadmin').value = result.value.isSuperadmin ? 'true' : 'false';
           form.submit();
         }
       });
@@ -280,7 +298,7 @@
         btn.addEventListener('click', function(e) {
           e.preventDefault();
           const row = this.closest('tr');
-          const spans = row.querySelectorAll('.editable-name, .editable-email');
+          const spans = row.querySelectorAll('.editable-name, .editable-email, .editable-phone, .editable-is-superadmin');
           const inputs = row.querySelectorAll('.edit-input');
           
           // Hide spans, show inputs
@@ -307,6 +325,7 @@
           document.getElementById('edit-staff-name').value = inputs[0].value.trim();
           document.getElementById('edit-staff-email').value = inputs[1].value.trim();
           document.getElementById('edit-staff-phone').value = inputs[2].value.trim();
+          document.getElementById('edit-staff-is-superadmin').value = inputs[3].checked ? 'true' : 'false';
           document.getElementById('edit-staff-form').submit();
         });
       });
@@ -316,7 +335,7 @@
         btn.addEventListener('click', function(e) {
           e.preventDefault();
           const row = this.closest('tr');
-          const spans = row.querySelectorAll('.editable-name, .editable-email, .editable-phone');
+          const spans = row.querySelectorAll('.editable-name, .editable-email, .editable-phone, .editable-is-superadmin');
           const inputs = row.querySelectorAll('.edit-input');
           
           // Reset input values

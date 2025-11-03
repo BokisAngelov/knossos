@@ -23,7 +23,7 @@
         <p class="text-sm text-gray-500">{% if user_profile.phone %}Phone: {{ user_profile.phone }}{% endif %}</p>
       </div>
       {% if request.user.id == user.id or request.user.is_staff %}
-      <a href="{% url 'profile_edit' pk=user.id %}" class="mt-4 md:mt-0 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 inline-flex items-center">
+      <a href="{% url 'profile_edit' pk=user_profile.user.id %}" class="mt-4 md:mt-0 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 inline-flex items-center">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
         </svg>
@@ -41,6 +41,12 @@
     
     <div class="space-y-4">
       {% for reservation in reservations %}
+      {% if reservation.departure_time_updated %}
+      <div class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded relative w-auto inline-block" role="alert">
+        <strong class="font-bold">Notification!</strong>
+        <span class="block sm:inline">Flight time has been updated. Please check your reservation details.</span>
+      </div>  
+      {% endif %}
       <div class="">
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <!-- Voucher ID -->
@@ -96,7 +102,7 @@
             <p class="text-base text-gray-900">
               {% if reservation.total_adults %}{{ reservation.total_adults }} Adult{% if reservation.total_adults != 1 %}s{% endif %}{% endif %}
               {% if reservation.total_adults and reservation.total_kids %}, {% endif %}
-              {% if reservation.total_kids %}{{ reservation.total_kids }} Kid{% if reservation.total_kids != 1 %}s{% endif %}{% endif %}
+              {% if reservation.total_kids %}{{ reservation.total_kids }} Children{% endif %}
             </p>
           </div>
           {% endif %}
@@ -105,7 +111,7 @@
           {% if reservation.departure_time %}
           <div>
             <p class="text-sm font-semibold text-gray-600">Departure Time</p>
-            <p class="text-base text-gray-900">{{ reservation.departure_time|time:"H:i" }}</p>
+            <p class="{% if reservation.departure_time_updated %}text-red-900 font-bold {% else %}text-base text-gray-900{% endif %}">{{ reservation.departure_time|time:"H:i" }}</p>
           </div>
           {% endif %}
           
@@ -131,9 +137,100 @@
   </div>
   {% endif %}
 
+  <!-- Referral Codes Section (Only for Agents) -->
+  {% if user_profile.role == 'agent' and referral_codes is not None %}
+  <div class="bg-white rounded-lg p-6 mb-8">
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-xl font-semibold text-purple">Referral Codes</h2>
+      {% if request.user.is_staff %}
+      <button type="button" id="generate-code-btn" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+        </svg>
+        Generate New Code
+      </button>
+      {% endif %}
+    </div>
+    
+    {% if referral_codes %}
+      <div class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+          <thead class="text-base">
+            <tr>
+              <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">Code</th>
+              <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">Discount</th>
+              <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">Expires At</th>
+              <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">Status</th>
+              <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">Used in Bookings</th>
+              {% if request.user.is_staff %}
+              <th scope="col" class="px-4 py-3 text-right font-semibold text-header-grey tracking-wider text-lg">Actions</th>
+              {% endif %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for code in referral_codes %}
+              <tr class="border-t border-gray-200">
+                <td class="px-4 py-4 whitespace-nowrap">
+                  <div class="text-sm font-semibold text-blue-600">{{ code.code }}</div>
+                </td>
+                <td class="px-4 py-4 whitespace-nowrap">
+                  <div class="text-sm font-normal">{{ code.discount }}%</div>
+                </td>
+                <td class="px-4 py-4 whitespace-nowrap">
+                  <div class="text-sm font-normal">
+                    {{ code.expires_at|date:"M d, Y H:i" }}
+                    {% if code.is_expired %}
+                      <span class="ml-2 text-xs text-red font-semibold">(Expired)</span>
+                    {% endif %}
+                  </div>
+                </td>
+                <td class="px-4 py-4 whitespace-nowrap">
+                  <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full text-white
+                    {% if code.status == 'active' and not code.is_expired %}bg-green
+                    {% else %}bg-gray-400{% endif %}">
+                    {{ code.status|title }}
+                  </span>
+                </td>
+                <td class="px-4 py-4 whitespace-nowrap">
+                  <div class="text-sm font-normal">{{ code.bookings.count }}</div>
+                </td>
+                {% if request.user.is_staff %}
+                <td class="px-4 py-4 whitespace-nowrap text-right flex justify-end">
+                  <button type="button" class="edit-code-btn text-blue hover:opacity-80 font-normal mr-2" data-code-id="{{ code.id }}" data-code="{{ code.code }}" data-discount="{{ code.discount }}" data-expires="{{ code.expires_at|date:'Y-m-d' }}" data-status="{{ code.status }}">
+                    <svg class="w-6 h-6 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                    </svg>
+                  </button>
+                  <button type="button" class="delete-code-btn text-orange hover:opacity-80 font-normal" data-code-id="{{ code.id }}" data-code="{{ code.code }}">
+                    <svg class="w-6 h-6 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                </td>
+                {% endif %}
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="text-center py-8">
+        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+        </svg>
+        <h3 class="mt-2 text-sm font-medium text-gray-900">No referral codes yet</h3>
+        <p class="mt-1 text-sm text-gray-500">{% if request.user.is_staff %}Get started by generating a new referral code.{% else %}Contact an admin to generate referral codes for you.{% endif %}</p>
+      </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
   <!-- Bookings Section -->
   <div class="bg-white p-6">
-    <h2 class="text-xl font-semibold text-purple mb-4">Your Bookings</h2>
+    <h2 class="text-xl font-semibold text-purple mb-4">
+      Bookings <span class="text-sm font-normal text-gray-500">({{ bookings.count }} {% if user_profile.role == 'agent' %} - includes bookings using your referral codes{% endif %})
+      </span>      
+    </h2>
     
     {% if bookings %}
       <div class="overflow-x-auto">
@@ -145,6 +242,9 @@
               <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">Guests</th>
               <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">Status</th>
               <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">Price</th>
+              {% if user_profile.role == 'agent' %}
+              <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">Type</th>
+              {% endif %}
               <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg text-right">Actions</th>
             </tr>
           </thead>
@@ -158,7 +258,7 @@
                   <div class="text-sm font-normal">{{ booking.date }}</div>
                 </td>
                 <td class="px-4 py-4 whitespace-nowrap">
-                  <div class="text-sm font-normal">{% if booking.total_adults %} {{ booking.total_adults }} adults {% endif %}{% if booking.total_kids %}, {{ booking.total_kids }} kids{% endif %}{% if booking.total_infants %}, {{ booking.total_infants }} infants{% endif %}</div>
+                  <div class="text-sm font-normal">{% if booking.total_adults %} {{ booking.total_adults }} Adults {% endif %}{% if booking.total_kids %}, {{ booking.total_kids }} Children{% endif %}{% if booking.total_infants %}, {{ booking.total_infants }} Infants{% endif %}</div>
                 </td>
                 <td class="px-4 py-4 whitespace-nowrap">
                   <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full text-white
@@ -169,8 +269,25 @@
                   </span>
                 </td>
                 <td class="px-4 py-4 whitespace-nowrap text-sm font-normal">
-                  €{{ booking.total_price }}
+                  <div class="flex flex-col">
+                    <span class="font-semibold">€{{ booking.total_price }}</span>
+                    {% if booking.referral_discount_amount and booking.referral_discount_amount > 0 %}
+                      <span class="text-xs text-green-600">-€{{ booking.referral_discount_amount }} discount</span>
+                    {% endif %}
+                  </div>
                 </td>
+                {% if user_profile.role == 'agent' %}
+                <td class="px-4 py-4 whitespace-nowrap">
+                  {% if booking.referral_code and booking.referral_code.agent.id == user_profile.id %}
+                    <span class="px-2 inline-flex text-xs leading-5 font-semibold">
+                      Referral
+                    </span>
+                    <div class="px-2 text-xs">{{ booking.referral_code.code }}</div>
+                  {% else %}
+                    <span class="text-xs text-gray-400">Own Booking</span>
+                  {% endif %}
+                </td>
+                {% endif %}
                 <td class="px-4 py-4 whitespace-nowrap text-right text-sm font-normal flex justify-end">
                   <a href="{% url 'booking_detail' booking.id %}" class="text-blue-600 hover:text-blue-800">
                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -179,7 +296,7 @@
                     </svg>
                   </a>
                   {% if booking.payment_status != "completed" %}
-                  <a data-booking-id="{{ booking.id }}" href="/checkout/{{ booking.id }}" id="complete-booking-btn" class="text-green-600 hover:text-green-800">
+                  <!-- <a data-booking-id="{{ booking.id }}" href="/checkout/{{ booking.id }}" id="complete-booking-btn" class="text-green-600 hover:text-green-800">
                     <svg xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" width="20" height="20" viewBox="0 0 50 50">
                       <path d="M 42.964844 8.6894531 A 1.0001 1.0001 0 0 0 42.160156 9.1582031 L 21.699219 40.867188 L 7.671875 28.158203 A 1.0004048 1.0004048 0 1 0 6.328125 29.640625 L 21.228516 43.140625 A 1.0001 1.0001 0 0 0 22.740234 42.941406 L 43.839844 10.242188 A 1.0001 1.0001 0 0 0 42.964844 8.6894531 z"></path>
                       </svg>
@@ -188,7 +305,7 @@
                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>
-                </a>
+                </a> -->
                 {% endif %}
                 </td>
               </tr>
@@ -212,6 +329,34 @@
     {% endif %}
   </div>
 </div>
+
+<!-- Hidden forms for referral code management -->
+{% if request.user.is_staff %}
+<form id="generate-code-form" action="{% url 'manage_referral_codes' %}" method="post" class="hidden">
+    {% csrf_token %}
+    <input type="hidden" name="action_type" value="generate_code">
+    <input type="hidden" name="agent_id" value="{{ user_profile.id }}">
+    <input type="hidden" name="discount" id="generate-discount">
+    <input type="hidden" name="expires_at" id="generate-expires">
+</form>
+
+<form id="edit-code-form" action="{% url 'manage_referral_codes' %}" method="post" class="hidden">
+    {% csrf_token %}
+    <input type="hidden" name="action_type" value="edit_code">
+    <input type="hidden" name="agent_id" value="{{ user_profile.id }}">
+    <input type="hidden" name="code_id" id="edit-code-id">
+    <input type="hidden" name="discount" id="edit-discount">
+    <input type="hidden" name="expires_at" id="edit-expires">
+    <input type="hidden" name="status" id="edit-status">
+</form>
+
+<form id="delete-code-form" action="{% url 'manage_referral_codes' %}" method="post" class="hidden">
+    {% csrf_token %}
+    <input type="hidden" name="action_type" value="delete_code">
+    <input type="hidden" name="agent_id" value="{{ user_profile.id }}">
+    <input type="hidden" name="code_id" id="delete-code-id">
+</form>
+{% endif %}
 
 <script>
 
@@ -304,6 +449,143 @@
         });
       });
     });
+
+    // Referral Codes Management
+    {% if user_profile.role == 'agent' and request.user.is_staff %}
+    // Generate Code Modal
+    const generateCodeBtn = document.getElementById('generate-code-btn');
+    if (generateCodeBtn) {
+        generateCodeBtn.addEventListener('click', function() {
+            Swal.fire({
+                title: 'Generate Referral Code',
+                html: `
+                    <div class="text-left">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Discount (%)</label>
+                        <input id="swal-discount" type="number" step="0.01" min="0" max="100" class="swal2-input" placeholder="Enter discount percentage">
+                        
+                        <label class="block text-sm font-medium text-gray-700 mb-2 mt-4">Expiration Date</label>
+                        <input id="swal-expires" type="date" class="swal2-input" min="${new Date().toISOString().split('T')[0]}">
+                    </div>
+                `,
+                focusConfirm: false,
+                showCancelButton: true,
+                confirmButtonText: 'Generate Code',
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#6c757d',
+                preConfirm: () => {
+                    const discount = document.getElementById('swal-discount').value;
+                    const expires = document.getElementById('swal-expires').value;
+
+                    if (!discount || !expires) {
+                        Swal.showValidationMessage('Please fill in all fields');
+                        return false;
+                    }
+
+                    if (parseFloat(discount) <= 0 || parseFloat(discount) > 100) {
+                        Swal.showValidationMessage('Discount must be between 0 and 100');
+                        return false;
+                    }
+                    
+                    return { discount, expires };
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const form = document.getElementById('generate-code-form');
+                    document.getElementById('generate-discount').value = result.value.discount;
+                    document.getElementById('generate-expires').value = result.value.expires;
+                    form.submit();
+                }
+            });
+        });
+    }
+
+    // Edit Code Buttons
+    const editCodeBtns = document.querySelectorAll('.edit-code-btn');
+    editCodeBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const codeId = this.dataset.codeId;
+            const code = this.dataset.code;
+            const discount = this.dataset.discount;
+            const expires = this.dataset.expires;
+            const status = this.dataset.status;
+
+            Swal.fire({
+                title: `Edit Code: ${code}`,
+                html: `
+                    <div class="text-left">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Discount (%)</label>
+                        <input id="swal-edit-discount" type="number" step="0.01" min="0" max="100" class="swal2-input" value="${discount}">
+                        
+                        <label class="block text-sm font-medium text-gray-700 mb-2 mt-4">Expiration Date</label>
+                        <input id="swal-edit-expires" type="date" class="swal2-input" value="${expires}">
+                        
+                        <label class="block text-sm font-medium text-gray-700 mb-2 mt-4">Status</label>
+                        <select id="swal-edit-status" class="swal2-input">
+                            <option value="active" ${status === 'active' ? 'selected' : ''}>Active</option>
+                            <option value="inactive" ${status === 'inactive' ? 'selected' : ''}>Inactive</option>
+                        </select>
+                    </div>
+                `,
+                focusConfirm: false,
+                showCancelButton: true,
+                confirmButtonText: 'Update Code',
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#6c757d',
+                preConfirm: () => {
+                    const discount = document.getElementById('swal-edit-discount').value;
+                    const expires = document.getElementById('swal-edit-expires').value;
+                    const status = document.getElementById('swal-edit-status').value;
+
+                    if (!discount || !expires || !status) {
+                        Swal.showValidationMessage('Please fill in all fields');
+                        return false;
+                    }
+
+                    if (parseFloat(discount) <= 0 || parseFloat(discount) > 100) {
+                        Swal.showValidationMessage('Discount must be between 0 and 100');
+                        return false;
+                    }
+                    
+                    return { discount, expires, status };
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const form = document.getElementById('edit-code-form');
+                    document.getElementById('edit-code-id').value = codeId;
+                    document.getElementById('edit-discount').value = result.value.discount;
+                    document.getElementById('edit-expires').value = result.value.expires;
+                    document.getElementById('edit-status').value = result.value.status;
+                    form.submit();
+                }
+            });
+        });
+    });
+
+    // Delete Code Buttons
+    const deleteCodeBtns = document.querySelectorAll('.delete-code-btn');
+    deleteCodeBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const codeId = this.dataset.codeId;
+            const code = this.dataset.code;
+
+            Swal.fire({
+                title: 'Are you sure?',
+                text: `Do you want to delete referral code "${code}"?`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Yes, delete it!'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const form = document.getElementById('delete-code-form');
+                    document.getElementById('delete-code-id').value = codeId;
+                    form.submit();
+                }
+            });
+        });
+    });
+    {% endif %}
 
 </script>
 {% endblock %}

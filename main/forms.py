@@ -6,30 +6,33 @@ import datetime
 from django.utils.html import format_html, mark_safe
 from django.utils.dateparse import parse_time
 from django.contrib.auth.forms import UserCreationForm
+from ckeditor.fields import RichTextFormField
 
 from .models import (
     Category, Tag, Excursion, ExcursionImage, Feedback,
     ExcursionAvailability, UserProfile, Group,
-    PaymentMethod, Booking, Transaction, DayOfWeek, PickupPoint, PickupGroup
+    PaymentMethod, Booking, Transaction, DayOfWeek, PickupPoint, PickupGroup, Region
 )
 
 User = get_user_model()
 
 # ----- Excursion Forms -----
 class ExcursionForm(forms.ModelForm):
+    description = RichTextFormField(config_name='default')
+    
     class Meta:
         model = Excursion
         fields = [
             'title', 'description', 'intro_image',
             'category', 'tags',
-            'full_day', 'on_request', 'status', 'provider', 'guide'
+            'full_day', 'on_request', 'status', 'provider'
         ]
         widgets = {
-            'description': forms.Textarea(attrs={
-                'rows': 4,
-                'class': 'editor',
-                'style': 'width: 100%;'
-            }),
+            # 'description': forms.Textarea(attrs={
+            #     'rows': 4,
+            #     'class': 'editor',
+            #     'style': 'width: 100%;'
+            # }),
             'category': forms.CheckboxSelectMultiple(attrs={'class': 'text-brown font-semibold bg-blue-light hover:opacity-80'}),
             'tags': forms.CheckboxSelectMultiple(attrs={'class': 'text-brown font-semibold bg-blue-light hover:opacity-80'}),
             'full_day': forms.Select(choices=[(True, 'Yes'), (False, 'No')], attrs={'class': 'text-brown font-semibold'}),
@@ -227,37 +230,83 @@ class PickupPointWidget(forms.CheckboxSelectMultiple):
             value = [value]
         final_attrs = self.build_attrs(attrs)
         output = []
-        pickup_points = list(PickupPoint.objects.all().select_related('pickup_group'))
-        points_per_col = 7
-        num_cols = (len(pickup_points) + points_per_col - 1) # points_per_col
-        output.append('<div class="pickuppoint-grid">')
-        for col in range(num_cols):
-            output.append('<div class="pickuppoint-col">')
-            for i in range(points_per_col):
-                idx = col * points_per_col + i
-                if idx >= len(pickup_points):
-                    break
-                point = pickup_points[idx]
+        
+        # Group pickup points by their pickup_group
+        pickup_groups = PickupGroup.objects.prefetch_related('pickup_points').order_by('priority', 'name')
+        
+        output.append('<div class="pickup-points-container">')
+        
+        for group in pickup_groups:
+            points = group.pickup_points.all().order_by('priority', 'name')
+            if not points:
+                continue
+                
+            # Group header
+            output.append(f'''
+                <div class="pickup-group-section mb-4">
+                    <h4 class="text-sm font-semibold text-gray-700 mb-2 px-2 py-1 bg-gray-100 rounded">{group.name}</h4>
+                    <div class="pickup-points-grid">
+            ''')
+            
+            # Render points in this group
+            for point in points:
                 checkbox_name = name
                 checkbox_id = f'id_{name}_{point.id}'
                 is_checked = str(point.id) in [str(v) for v in value]
                 point_html = f'''
-                    <div class="flex flex-col items-center mb-2">
-                        <div class="flex items-center gap-2 w-full">
+                    <div class="pickup-point-item">
                             <input type="checkbox" 
                                 name="{checkbox_name}" 
                                 id="{checkbox_id}" 
                                 value="{point.id}" 
                                 {'checked' if is_checked else ''} 
-                                class="w-4 h-4">
-                            <label for="{checkbox_id}" class="px-3 py-1 bg-blue-light rounded text-center font-normal flex-1">
+                            class="pickup-point-checkbox">
+                        <label for="{checkbox_id}" class="pickup-point-label">
                                 {point.name}
                             </label>
-                        </div>
                     </div>
                 '''
                 output.append(point_html)
-            output.append('</div>')
+            
+            output.append('</div></div>')  # Close pickup-points-grid and pickup-group-section
+        
+        output.append('</div>')  # Close pickup-points-container
+        return mark_safe(''.join(output))
+
+class RegionWidget(forms.CheckboxSelectMultiple):
+    def render(self, name, value, attrs=None, renderer=None):
+        if value is None:
+            value = []
+        if not isinstance(value, (list, tuple)):
+            value = [value]
+        final_attrs = self.build_attrs(attrs)
+        output = []
+        
+        regions = Region.objects.all().order_by('name')
+        
+        output.append('<div class="region-selection-grid">')
+        
+        for region in regions:
+            checkbox_name = name
+            checkbox_id = f'id_{name}_{region.id}'
+            is_checked = str(region.id) in [str(v) for v in value]
+            
+            region_html = f'''
+                <div class="region-item">
+                    <input type="checkbox" 
+                        name="{checkbox_name}" 
+                        id="{checkbox_id}" 
+                        value="{region.id}" 
+                        {'checked' if is_checked else ''} 
+                        class="region-checkbox"
+                        data-region-id="{region.id}">
+                    <label for="{checkbox_id}" class="region-label">
+                        {region.name}
+                    </label>
+                </div>
+            '''
+            output.append(region_html)
+        
         output.append('</div>')
         return mark_safe(''.join(output))
 
@@ -267,7 +316,7 @@ class ExcursionAvailabilityForm(forms.ModelForm):
         fields = [
             'excursion', 'start_date', 'end_date', 'start_time', 'end_time', 
             'max_guests', 'adult_price', 'child_price', 'infant_price', 
-            'weekdays', 'discount', 'status', 'pickup_groups', 'pickup_points'
+            'weekdays', 'discount', 'status', 'pickup_points', 'pickup_start_time', 'pickup_end_time', 'regions'
         ]
         widgets = {
             'excursion': forms.Select(attrs={'class': 'form-control'}),
@@ -283,7 +332,19 @@ class ExcursionAvailabilityForm(forms.ModelForm):
                 'inputmode': 'numeric',
                 'pattern': '[0-9]{2}:[0-9]{2}'
             }),
-            'pickup_groups': PickupGroupWidget,
+            'pickup_start_time': forms.TimeInput(attrs={
+                'type': 'time',
+                'class': 'form-control font-normal',
+                'inputmode': 'numeric',
+                'pattern': '[0-9]{2}:[0-9]{2}'
+            }),
+            'pickup_end_time': forms.TimeInput(attrs={
+                'type': 'time',
+                'class': 'form-control font-normal',
+                'inputmode': 'numeric',
+                'pattern': '[0-9]{2}:[0-9]{2}'
+            }),
+            'regions': RegionWidget,
             'pickup_points': PickupPointWidget,
             'weekdays': WeekdayCapacityWidget,
             'start_date': forms.DateInput(attrs={'type': 'date', 'class': 'font-normal'}),
@@ -302,26 +363,57 @@ class ExcursionAvailabilityForm(forms.ModelForm):
         )
         
     def clean(self):
+        """Form-level validation using service classes."""
         cleaned = super().clean()
-        start = cleaned.get('start_date')
-        end = cleaned.get('end_date')
-        if start and end and end < start:
-            raise ValidationError({'end_date': 'End date cannot be before start date.'})
         
-        # Handle weekday capacities
+        from .utils import AvailabilityValidationService
+        
+        # Get cleaned data
+        start_date = cleaned.get('start_date')
+        end_date = cleaned.get('end_date')
+        excursion = cleaned.get('excursion')
+        regions = cleaned.get('regions', [])
+        pickup_points = cleaned.get('pickup_points', [])
         weekdays = cleaned.get('weekdays', [])
-        for weekday_id in weekdays:
-            capacity_name = f'weekdays_capacity_{weekday_id}'
-            capacity = self.data.get(capacity_name)
-            if capacity:
-                try:
-                    capacity = int(capacity)
-                    if capacity < 0:
-                        raise ValidationError(f'Capacity for {DayOfWeek.objects.get(id=weekday_id).get_code_display()} cannot be negative')
-                    # Update the DayOfWeek instance
-                    DayOfWeek.objects.filter(id=weekday_id).update(capacity=capacity)
-                except ValueError:
-                    raise ValidationError(f'Invalid capacity value for {DayOfWeek.objects.get(id=weekday_id).get_code_display()}')
+        
+        # Validate date range using service
+        if start_date and end_date:
+            try:
+                AvailabilityValidationService.validate_date_range(start_date, end_date)
+            except ValidationError as e:
+                raise ValidationError({'end_date': str(e.message)})
+        
+        # Validate minimum requirements
+        try:
+            region_ids = [r.id if hasattr(r, 'id') else r for r in regions]
+            pickup_point_ids = [p.id if hasattr(p, 'id') else p for p in pickup_points]
+            weekday_ids = [w.id if hasattr(w, 'id') else w for w in weekdays]
+            
+            AvailabilityValidationService.validate_availability_requirements(
+                region_ids, pickup_point_ids, weekday_ids
+            )
+        except ValidationError as e:
+            raise ValidationError(str(e.message))
+        
+        # Check for overlaps if we have all required data
+        if excursion and start_date and end_date and regions and pickup_points:
+            region_ids = [r.id if hasattr(r, 'id') else r for r in regions]
+            pickup_point_ids = [p.id if hasattr(p, 'id') else p for p in pickup_points]
+            
+            current_id = self.instance.pk if self.instance else None
+            
+            has_conflict, error_details = AvailabilityValidationService.check_overlap(
+                excursion=excursion,
+                start_date=start_date,
+                end_date=end_date,
+                regions=region_ids,
+                pickup_points=pickup_point_ids,
+                current_availability_id=current_id
+            )
+            
+            if has_conflict:
+                error_message = 'Availability conflict detected: ' + ' '.join(error_details)
+                raise ValidationError(error_message)
         
         return cleaned
 
@@ -334,11 +426,12 @@ class BookingForm(forms.ModelForm):
             'total_price', 'partial_paid',
             'total_adults', 'total_kids', 'total_infants',
             'price', 'user', 'voucher_id', 'date', 'pickup_point',
-            'payment_status', 'partial_paid_method',
+            'payment_status', 'partial_paid_method', 'regions', 'referral_code', 'referral_discount_amount'
         ]
         widgets = {
             'pickup_point': forms.Select(attrs={'class': 'form-control'}),
             'partial_paid_method': forms.Select(choices=[('', 'Select a payment method')] + list(Booking.PAYMENT_METHOD_CHOICES)),
+            'regions': forms.Select(attrs={'class': 'form-control'}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -474,6 +567,32 @@ class UserProfileForm(forms.ModelForm):
         
         return cleaned_data
 
+class BookingIdForm(forms.Form):
+    """
+    Simple form for guest users to enter their booking/voucher ID.
+    Validation and authentication is handled by the retrive_voucher endpoint.
+    """
+    booking_id = forms.CharField(
+        max_length=255, 
+        required=True,
+        widget=forms.TextInput(attrs={
+            'class': 'w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-500',
+            'placeholder': 'Enter your booking ID',
+            'autofocus': True
+        }),
+        label='',
+        help_text=''
+    )
+
+    def clean_booking_id(self):
+        """Basic validation - just ensure it's not empty or whitespace"""
+        booking_id = self.cleaned_data.get('booking_id', '').strip()
+        
+        if not booking_id:
+            raise forms.ValidationError("Booking ID cannot be empty.")
+        
+        return booking_id
+
 # ----- Lookup Forms -----
 class CategoryForm(forms.ModelForm):
     class Meta:
@@ -493,7 +612,7 @@ class PaymentMethodForm(forms.ModelForm):
 class GroupForm(forms.ModelForm):
     class Meta:
         model = Group
-        fields = ['name', 'description', 'excursion', 'date', 'bus']
+        fields = ['name', 'description', 'excursion', 'date', 'bus', 'guide', 'provider']
         widgets = {
             'name': forms.TextInput(attrs={
                 'class': 'mt-1 block w-full',
@@ -516,6 +635,14 @@ class GroupForm(forms.ModelForm):
             'bus': forms.Select(attrs={
                 'class': 'mt-1 block w-full',
                 'id': 'id_bus'
+            }),
+            'guide': forms.Select(attrs={
+                'class': 'mt-1 block w-full',
+                'id': 'id_guide'
+            }),
+            'provider': forms.Select(attrs={
+                'class': 'mt-1 block w-full',
+                'id': 'id_provider'
             }),
         }
     

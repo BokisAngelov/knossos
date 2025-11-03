@@ -59,6 +59,7 @@
                         <tr>
                             <th class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">Name</th>
                             <th class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">Code</th>
+                            <th class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">Priority</th>
                             <th class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg"><a class="text-blue hover:opacity-80" href="{% url 'pickup_points_list' %}">Pickup Points</a></th>
                             <th class="px-4 py-3 text-right font-semibold text-header-grey tracking-wider text-lg">Actions</th>
                         </tr>
@@ -73,6 +74,10 @@
                             <td class="px-4 py-4 whitespace-nowrap">
                                 <span class="editable-code text-sm font-normal">{{ group.code }}</span>
                                 <input type="text" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ group.code }}">
+                            </td>
+                            <td class="px-4 py-4 whitespace-nowrap">
+                                <span class="editable-priority text-sm font-normal">{{ group.priority }}</span>
+                                <input type="number" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ group.priority }}">
                             </td>
                             <td class="px-4 py-4 whitespace-nowrap">
                                 {% for point in group.pickup_points.all %}
@@ -124,6 +129,7 @@
     <input type="hidden" name="action_type" value="add_group">
     <input type="hidden" name="name" id="add-group-name">
     <input type="hidden" name="code" id="add-group-code">
+    <input type="hidden" name="priority" id="add-group-priority">
 </form>
 
 <form id="edit-group-form" action="{% url 'manage_pickup_groups' %}" method="post" class="hidden">
@@ -132,6 +138,7 @@
     <input type="hidden" name="item_id" id="edit-group-id">
     <input type="hidden" name="name" id="edit-group-name">
     <input type="hidden" name="code" id="edit-group-code">
+    <input type="hidden" name="priority" id="edit-group-priority">
 </form>
 
 <form id="delete-group-form" action="{% url 'manage_pickup_groups' %}" method="post" class="hidden">
@@ -152,6 +159,7 @@
                 html: `
                     <input id="swal-name" class="swal2-input border-brown rounded-lg focus:border-brown focus:ring-brown" placeholder="Group Name" required>
                     <input id="swal-code" class="swal2-input border-brown rounded-lg focus:border-brown focus:ring-brown" placeholder="Group Code" required>
+                    <input id="swal-priority" class="swal2-input border-brown rounded-lg focus:border-brown focus:ring-brown" placeholder="Priority" required>
                 `,
                 focusConfirm: false,
                 showCancelButton: true,
@@ -160,20 +168,21 @@
                 preConfirm: () => {
                     const name = document.getElementById('swal-name').value;
                     const code = document.getElementById('swal-code').value;
-
+                    const priority = document.getElementById('swal-priority').value;
                     if (!name || !code) {
                         Swal.showValidationMessage('Please fill in all fields');
                         return false;
                     }
-                    return { name, code };
+                    return { name, code, priority };
                 }
             }).then((result) => {
                 if (result.isConfirmed) {
                     const form = document.getElementById('add-group-form');
                     document.getElementById('add-group-name').value = result.value.name;
                     document.getElementById('add-group-code').value = result.value.code;
+                    document.getElementById('add-group-priority').value = result.value.priority;
                     form.submit();
-                }
+                }   
             });
         }
         if (addGroupBtn) {
@@ -188,11 +197,11 @@
                 btn.addEventListener('click', function(e) {
                     e.preventDefault();
                     const row = this.closest('tr');
-                    const spans = row.querySelectorAll('.editable-name, .editable-code');
+                    const spans = row.querySelectorAll('.editable-name, .editable-code, .editable-priority');
                     const inputs = row.querySelectorAll('.edit-input');
                     spans.forEach(span => span.classList.add('hidden'));
                     inputs.forEach(input => input.classList.remove('hidden'));
-                    inputs[0].focus();
+                    inputs[2].focus();
                     row.querySelectorAll('.edit-btn, .delete-btn').forEach(el => el.classList.add('hidden'));
                     row.querySelectorAll('.save-btn, .cancel-btn').forEach(el => el.classList.remove('hidden'));
                 });
@@ -209,6 +218,7 @@
                     document.getElementById('edit-group-id').value = itemId;
                     document.getElementById('edit-group-name').value = inputs[0].value.trim();
                     document.getElementById('edit-group-code').value = inputs[1].value.trim();
+                    document.getElementById('edit-group-priority').value = inputs[2].value.trim();
                     document.getElementById('edit-group-form').submit();
                 });
             });
@@ -218,7 +228,7 @@
                 btn.addEventListener('click', function(e) {
                     e.preventDefault();
                     const row = this.closest('tr');
-                    const spans = row.querySelectorAll('.editable-name, .editable-code');
+                    const spans = row.querySelectorAll('.editable-name, .editable-code, .editable-priority');
                     const inputs = row.querySelectorAll('.edit-input');
                     inputs.forEach((input, index) => {
                         input.value = spans[index].textContent.trim();

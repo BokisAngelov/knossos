@@ -61,11 +61,11 @@
                     <thead class="text-base">
                         <tr>
                             <th class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">Name</th>
-                            <th class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">Address</th>
+                            <!-- <th class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">Address</th> -->
                             <!-- <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th> -->
                             <th class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">Pickup Group</th>
+                            <th class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">Priority</th>
                             <th class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">Map link</th>
-                            <!-- <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Priority</th> -->
                             <th class="px-4 py-3 text-right font-semibold text-header-grey tracking-wider text-lg">Actions</th>
                         </tr>
                     </thead>
@@ -76,17 +76,18 @@
                                 <span class="editable-name text-sm font-normal">{{ point.name }}</span>
                                 <input type="text" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ point.name }}">
                             </td>
+                            
                             <td class="px-4 py-4 whitespace-nowrap">
-                                <span class="editable-address text-sm font-normal">{{ point.address }}</span>
-                                <input type="text" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ point.address }}">
-                            </td>
-                            <td class="px-4 py-4 whitespace-nowrap">
-                                <span class="editable-group text-sm font-normal">{% if point.pickup_group %}{{ point.pickup_group.name }}{% endif %}</span>
+                                <span class="editable-group text-sm font-normal">{% if point.pickup_group %}{{ point.pickup_group.name }} ({{ point.pickup_group.priority }}){% endif %}</span>
                                 <select class="edit-input hidden w-full border rounded px-2 py-1 bg-white">
                                     {% for group in pickup_groups %}
-                                        <option value="{{ group.id }}" {% if point.pickup_group and point.pickup_group.id == group.id %}selected{% endif %}>{{ group.name }}</option>
+                                        <option value="{{ group.id }}" {% if point.pickup_group and point.pickup_group.id == group.id %}selected{% endif %}>{{ group.name }} ({{ group.priority }})</option>
                                     {% endfor %}
                                 </select>
+                            </td>
+                            <td class="px-4 py-4 whitespace-nowrap">
+                                <span class="editable-priority text-sm font-normal">{{ point.priority }}</span>
+                                <input type="number" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ point.priority }}">
                             </td>
                             <td class="px-4 py-4 whitespace-nowrap">
                                 <span class="editable-link text-sm font-normal">
@@ -203,10 +204,10 @@
     {% csrf_token %}
     <input type="hidden" name="action_type" value="add_point">
     <input type="hidden" name="name" id="add-point-name">
-    <input type="hidden" name="address" id="add-point-address">
+    <!-- <input type="hidden" name="address" id="add-point-address"> -->
     <!-- <input type="hidden" name="type" id="add-point-type"> -->
     <input type="hidden" name="pickup_group" id="add-point-group">
-    <!-- <input type="hidden" name="priority" id="add-point-priority"> -->      
+    <input type="hidden" name="priority" id="add-point-priority">      
     <input type="hidden" name="google_maps_link" id="add-point-google-maps-link">
 </form>
 
@@ -215,10 +216,10 @@
     <input type="hidden" name="action_type" value="edit_point">
     <input type="hidden" name="item_id" id="edit-point-id">
     <input type="hidden" name="name" id="edit-point-name">
-    <input type="hidden" name="address" id="edit-point-address">
+    <!-- <input type="hidden" name="address" id="edit-point-address"> -->
     <!-- <input type="hidden" name="type" id="edit-point-type"> -->
     <input type="hidden" name="pickup_group" id="edit-point-group">
-    <!-- <input type="hidden" name="priority" id="edit-point-priority"> -->
+    <input type="hidden" name="priority" id="edit-point-priority">
     <input type="hidden" name="google_maps_link" id="edit-point-google-maps-link">
 </form>
 
@@ -253,34 +254,34 @@
                 title: 'Add Pickup Point',
                 html: `
                     <input id="swal-name" class="swal2-input" placeholder="Name" required>
-                    <input id="swal-address" class="swal2-input" placeholder="Address" required>
+                    <!-- <input id="swal-address" class="swal2-input" placeholder="Address" required> -->
                     <select id="swal-group" class="swal2-input" style="margin: 10px auto; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 0.375rem; background-color: white;" required>${groupOptions}</select>
                     <input id="swal-google-maps-link" class="swal2-input" placeholder="Google Maps Link" type="url">
+                    <input id="swal-priority" class="swal2-input" placeholder="Priority" type="number" required>
                 `,
                 focusConfirm: false,
                 showCancelButton: true,
                 confirmButtonText: 'Add Pickup Point',
                 preConfirm: () => {
                     const name = document.getElementById('swal-name').value;
-                    const address = document.getElementById('swal-address').value;
                     // const type = document.getElementById('swal-type').value;
                     const group = document.getElementById('swal-group').value;
                     const google_maps_link = document.getElementById('swal-google-maps-link').value;
-                    // const priority = document.getElementById('swal-priority').value;
-                    if (!name || !address || !group) {
+                    const priority = document.getElementById('swal-priority').value;
+                    if (!name || !group || !priority) {
                         Swal.showValidationMessage('Please fill in all required fields');
                         return false;
                     }
-                    return { name, address, group, google_maps_link };
+                    return { name, group, google_maps_link, priority };
                 }
             }).then((result) => {
                 if (result.isConfirmed) {
                     const form = document.getElementById('add-point-form');
                     document.getElementById('add-point-name').value = result.value.name;
-                    document.getElementById('add-point-address').value = result.value.address;
                     document.getElementById('add-point-group').value = result.value.group;
+                    document.getElementById('add-point-priority').value = result.value.priority;
                     document.getElementById('add-point-google-maps-link').value = result.value.google_maps_link;
-                    form.submit();
+                    document.getElementById('add-point-form').submit();
                 }
             });
         }
@@ -295,11 +296,11 @@
                 btn.addEventListener('click', function(e) {
                     e.preventDefault();
                     const row = this.closest('tr');
-                    const spans = row.querySelectorAll('.editable-name, .editable-address, .editable-group, .editable-link');
+                    const spans = row.querySelectorAll('.editable-name, .editable-group, .editable-link, .editable-priority');
                     const inputs = row.querySelectorAll('.edit-input');
                     spans.forEach(span => span.classList.add('hidden'));
                     inputs.forEach(input => input.classList.remove('hidden'));
-                    inputs[0].focus();
+                    inputs[3].focus();
                     row.querySelectorAll('.edit-btn, .delete-btn').forEach(el => el.classList.add('hidden'));
                     row.querySelectorAll('.save-btn, .cancel-btn').forEach(el => el.classList.remove('hidden'));
                 });
@@ -313,8 +314,8 @@
                     const inputs = row.querySelectorAll('.edit-input');
                     document.getElementById('edit-point-id').value = itemId;
                     document.getElementById('edit-point-name').value = inputs[0].value.trim();
-                    document.getElementById('edit-point-address').value = inputs[1].value.trim();
-                    document.getElementById('edit-point-group').value = inputs[2].value;
+                    document.getElementById('edit-point-group').value = inputs[1].value.trim();
+                    document.getElementById('edit-point-priority').value = inputs[2].value.trim();
                     document.getElementById('edit-point-google-maps-link').value = inputs[3].value.trim();
                     document.getElementById('edit-point-form').submit();
                 });
@@ -324,7 +325,7 @@
                 btn.addEventListener('click', function(e) {
                     e.preventDefault();
                     const row = this.closest('tr');
-                    const spans = row.querySelectorAll('.editable-name, .editable-address, .editable-group, .editable-link');
+                    const spans = row.querySelectorAll('.editable-name, .editable-group, .editable-link, .editable-priority');
                     const inputs = row.querySelectorAll('.edit-input');
                     inputs.forEach((input, index) => {
                         if (input.tagName === 'SELECT') {

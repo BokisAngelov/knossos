@@ -34,9 +34,12 @@ urlpatterns = [
     path('signup/', views.signup, name='signup'),
     path('profile/<int:pk>/', views.profile, name='profile'),
     path('profile/<int:pk>/edit/', views.profile_edit, name='profile_edit'),
+    path('manage_referral_codes/', views.manage_referral_codes, name='manage_referral_codes'),
+    path('validate_referral_code/', views.validate_referral_code, name='validate_referral_code'),
     path('logout/', views.logout_view, name='logout'),
     path('password_reset/', views.password_reset_form, name='password_reset_form'),
     path('password_reset_token/<str:token>/', views.password_reset_token, name='password_reset_token'),
+    path('booking-id', views.booking_id_page, name='booking_id_page'),
 
     # Admin Dashboard
     path('profile/admin/<int:pk>/', views.admin_dashboard, name='admin_dashboard'),
@@ -54,8 +57,11 @@ urlpatterns = [
     path('guides_list/', views.guides_list, name='guides_list'),
     path('manage_guides/', views.manage_guides, name='manage_guides'),
     path('check_excursion_pickup_groups/', views.check_excursion_pickup_groups, name='check_excursion_pickup_groups'),
+    path('get_available_regions/', views.get_available_regions, name='get_available_regions'),
     path('admin_reservations/', views.admin_reservations, name='admin_reservations'),
     path('manage_reservations/', views.manage_reservations, name='manage_reservations'),
+    path('agents_list/', views.agents_list, name='agents_list'),
+    path('manage_agents/', views.manage_agents, name='manage_agents'),
     # location urls
     path('hotel_list/', views.hotel_list, name='hotel_list'),
     path('manage_hotels/', views.manage_hotels, name='manage_hotels'),
@@ -67,7 +73,7 @@ urlpatterns = [
     path('manage_pickup_points/', views.manage_pickup_points, name='manage_pickup_points'),
     # sync urls
     path('retrive_voucher/', views.retrive_voucher, name='retrive_voucher'),
-    # path('check_voucher/', views.check_voucher, name='check_voucher'),
+    path('check_voucher/', views.check_voucher, name='check_voucher'),
     path('manage_cookies/', views.manage_cookies, name='manage_cookies'),
     path('sync_pickup_groups/', views.sync_pickup_groups, name='sync_pickup_groups'),
     path('sync_pickup_points/', views.sync_pickup_points, name='sync_pickup_points'),
@@ -92,6 +98,8 @@ urlpatterns = [
     path('groups/<int:pk>/export-pdf/', views.group_export_pdf, name='group_export_pdf'),
     path('groups/<int:pk>/export-csv/', views.group_export_csv, name='group_export_csv'),
     path('groups/<int:pk>/send/', views.group_send, name='group_send'),
+    path('groups/<int:pk>/set-pickup-time/', views.set_pickup_time, name='set_pickup_time'),
+    path('debug/availability-days/<int:excursion_id>/<str:date>/', views.debug_availability_days, name='debug_availability_days'),
     path('get_bookings_for_group/', views.get_bookings_for_group, name='get_bookings_for_group'),
     path('test-pdf/', views.test_simple_pdf, name='test_simple_pdf'),  # Test PDF endpoint
     path('buses/', views.buses_list, name='buses_list'),

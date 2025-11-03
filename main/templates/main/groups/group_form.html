@@ -124,6 +124,33 @@
                             <div class="text-red-500 text-xs mt-1">{{ form.bus.errors.0 }}</div>
                         {% endif %}
                     </div>
+
+                    <!-- Guide -->
+                    <div class="space-y-1">
+                        <label for="{{ form.guide.id_for_label }}" class="block text-md font-semibold text-header-grey">
+                            Guide <span class="text-red-500">*</span>
+                        </label>
+                        <div class="w-full auth-input-field rounded-lg border form-fields-border">
+                            {{ form.guide }}
+                        </div>
+                        {% if form.guide.errors %}
+                            <div class="text-red-500 text-xs mt-1">{{ form.guide.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Provider -->
+                    <div class="space-y-1">
+                        <label for="{{ form.provider.id_for_label }}" class="block text-md font-semibold text-header-grey">
+                            Supplier <span class="text-red-500">*</span>
+                        </label>
+                        <div class="w-full auth-input-field rounded-lg border form-fields-border">
+                            {{ form.provider }}
+                        </div>
+                    
+                        {% if form.provider.errors %}
+                            <div class="text-red-500 text-xs mt-1">{{ form.provider.errors.0 }}</div>
+                        {% endif %}
+                    </div>
                 </div>
 
                 <!-- Description -->
