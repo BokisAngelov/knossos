@@ -18,6 +18,8 @@ def excursion_image_path(instance, filename):
     # For existing excursions, use their ID
     return f"excursions/ex-{instance.excursion.pk}/{filename}"
 
+# TODO: Add EmailModel for setting up email notifications
+
 class Category(models.Model):
     name = models.CharField(max_length=255)
 

@@ -62,7 +62,7 @@
                                 <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">Excursion</th>
                                 <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">Start Date</th>
                                 <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">End Date</th>
-                                <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">Pickup Group</th>
+                                <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">Regions</th>
                                 <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">Status</th>
                                 <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg text-right">Actions</th>
                             </tr>
@@ -80,7 +80,7 @@
                                         <div class="text-sm font-normal">{{ availability.end_date|date:"M d, Y" }}</div>
                                     </td>
                                     <td class="px-4 py-4 whitespace-nowrap">
-                                        <div class="text-sm font-normal">{{ availability.pickup_groups.all|join:", " }}</div>
+                                        <div class="text-sm font-normal">{{ availability.regions.all|join:", " }}</div>
                                     </td>
                                     <td class="px-4 py-4 whitespace-nowrap">
                                         <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full text-white
