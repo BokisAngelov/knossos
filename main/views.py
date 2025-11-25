@@ -29,10 +29,13 @@ from django.core.validators import validate_email, RegexValidator
 from django.core.exceptions import ValidationError
 import re
 import json
+import logging
 from django.db.models import Q, Sum, Count
+
+logger = logging.getLogger(__name__)
 from django.apps import apps
 from .cyber_api import get_groups, get_hotels, get_pickup_points, get_excursions, get_excursion_description, get_providers, get_excursion_availabilities, get_reservation
-from .utils import FeedbackService, BookingService, ExcursionService, VoucherService, create_reservation, ExcursionAnalyticsService, RevenueAnalyticsService
+from .utils import FeedbackService, BookingService, ExcursionService, VoucherService, create_reservation, ExcursionAnalyticsService, RevenueAnalyticsService, JCCPaymentService
 
 def is_staff(user):
     return user.is_staff
@@ -817,9 +820,14 @@ def _handle_ajax_booking_submission(request, excursion_availability):
         booking.partial_paid_method = partial_paid_method
         booking.save()
         
+        # Include token in redirect URL for non-logged-in users
+        redirect_url = reverse('checkout', kwargs={'booking_pk': booking.pk})
+        if not request.user.is_authenticated and booking.access_token:
+            redirect_url += f'?token={booking.access_token}'
+        
         return JsonResponse({
             'success': True,
-            'redirect_url': reverse('checkout', kwargs={'booking_pk': booking.pk})
+            'redirect_url': redirect_url
         })
 
     except ValidationError as e:
@@ -1177,6 +1185,25 @@ def booking_delete(request, pk):
 def booking_detail(request, pk):
     
     booking = get_object_or_404(Booking, pk=pk)
+    
+    # Access control: Check if user has permission to view this booking
+    has_access = False
+    token = request.GET.get('token') or request.POST.get('token')
+    
+    # Staff can always access
+    if request.user.is_authenticated and request.user.is_staff:
+        has_access = True
+    # Logged-in users can access their own bookings
+    elif request.user.is_authenticated and booking.user and booking.user == request.user:
+        has_access = True
+    # Non-logged-in users need a valid token
+    elif not request.user.is_authenticated and booking.access_token:
+        if token and token == booking.access_token:
+            has_access = True
+    
+    if not has_access:
+        from django.http import Http404
+        raise Http404("Booking not found or you don't have permission to view it.")
 
     payment_status = request.GET.get('payment_status')
 
@@ -1185,7 +1212,11 @@ def booking_detail(request, pk):
             booking.payment_status = 'completed'
             booking.save()
             messages.success(request, 'Booking completed.')
-            return redirect('booking_detail', pk)
+            # Preserve token in redirect if present
+            redirect_url = reverse('booking_detail', kwargs={'pk': pk})
+            if token:
+                redirect_url += f'?token={token}'
+            return redirect(redirect_url)
         except Exception as e:
             messages.error(request, f'Error updating booking: {str(e)}')
     if request.method == 'POST':
@@ -1194,6 +1225,8 @@ def booking_detail(request, pk):
             try:
                 data = json.loads(request.body)
                 action_type = data.get('action_type')
+                # Get token from JSON data if present
+                token = data.get('token') or token
             except json.JSONDecodeError:
                 return JsonResponse({
                     'status': 'error',
@@ -1201,6 +1234,8 @@ def booking_detail(request, pk):
                 })
         else:
             action_type = request.POST.get('action_type')
+            # Get token from POST data if present
+            token = request.POST.get('token') or token
         
         try:
             if action_type == 'complete_payment':
@@ -1208,10 +1243,14 @@ def booking_detail(request, pk):
                 booking.save()
                 messages.success(request, 'Booking completed.')
 
+                # Preserve token in redirect if present
+                redirect_url = reverse('booking_detail', kwargs={'pk': pk})
+                if token:
+                    redirect_url += f'?token={token}'
                 return JsonResponse({
                     'status': 'success',
                     'message': 'Booking completed successfully.',
-                    'redirect_url': reverse('booking_detail', kwargs={'pk': pk})
+                    'redirect_url': redirect_url
                 })
 
             elif action_type == 'cancel_payment':
@@ -1236,10 +1275,14 @@ def booking_detail(request, pk):
                 booking.payment_status = 'pending'
                 booking.save()
                 messages.success(request, 'Booking set to pending.')
+                # Preserve token in redirect if present
+                redirect_url = reverse('booking_detail', kwargs={'pk': pk})
+                if token:
+                    redirect_url += f'?token={token}'
                 return JsonResponse({
                     'status': 'success',
                     'message': 'Booking set to pending successfully.',
-                    'redirect_url': reverse('booking_detail', kwargs={'pk': pk})
+                    'redirect_url': redirect_url
                 })
         
         except Exception as e:
@@ -1250,17 +1293,32 @@ def booking_detail(request, pk):
                 'message': error_message
             })
 
+    # Check if excursion date is in the past
+    is_date_past = False
+    if booking.date:
+        is_date_past = booking.date < timezone.now().date()
+    
+    # Check if user is viewing their own booking (for logged in users)
+    is_own_booking = False
+    if request.user.is_authenticated and booking.user:
+        is_own_booking = booking.user == request.user
+    
     return render(request, 'main/bookings/booking_detail.html', {
         'booking': booking,
+        'is_date_past': is_date_past,
+        'is_own_booking': is_own_booking,
+        'access_token': token if not request.user.is_authenticated and booking.access_token else None,
     })
 
 # ----- Checkout View -----
 # Guests and clients go through checkout; reps/admins redirected to detail
 def checkout(request, booking_pk):
     booking = get_object_or_404(Booking, pk=booking_pk)
+    token = request.GET.get('token')
      
     if request.method == 'POST':
         action_type = request.POST.get('action_type')
+        token = request.POST.get('token') or token
         
         # Handle referral code application
         if action_type == 'apply_referral':
@@ -1280,19 +1338,292 @@ def checkout(request, booking_pk):
             else:
                 messages.error(request, 'Please enter a referral code.')
             
-            return redirect('checkout', booking_pk=booking_pk)
+            redirect_url = reverse('checkout', kwargs={'booking_pk': booking_pk})
+            if token:
+                redirect_url += f'?token={token}'
+            return redirect(redirect_url)
         
-        # Handle payment completion
-        # TODO: integrate Stripe payment here
-        # booking.payment_status = 'completed'
+        # Handle payment initiation
+        # Redirect to JCC payment gateway
+        if action_type == 'initiate_payment':
+            redirect_url = reverse('payment_initiate', kwargs={'booking_pk': booking_pk})
+            if token:
+                redirect_url += f'?token={token}'
+            return redirect(redirect_url)
+        
+        # Fallback: just save booking
         booking.save()
-        messages.success(request, 'Booking saved. Please proceed to payment.')
-        return redirect('booking_detail', booking_pk)
+        messages.info(request, 'Booking saved.')
+        redirect_url = reverse('checkout', kwargs={'booking_pk': booking_pk})
+        if token:
+            redirect_url += f'?token={token}'
+        return redirect(redirect_url)
     
 
     return render(request, 'main/bookings/checkout.html', {
         'booking': booking,
+        'access_token': token if not request.user.is_authenticated and booking.access_token else None,
     })
+
+# ----- JCC Payment Views -----
+def payment_initiate(request, booking_pk):
+    """
+    Initiate JCC payment by registering the order and redirecting to JCC payment page.
+    This view is called when user clicks 'Pay' button in checkout.
+    """
+    booking = get_object_or_404(Booking, pk=booking_pk)
+    
+    token = request.GET.get('token')
+    
+    # Check if booking is already paid
+    if booking.payment_status == 'completed':
+        messages.info(request, 'This booking has already been paid.')
+        redirect_url = reverse('booking_detail', kwargs={'pk': booking_pk})
+        if token:
+            redirect_url += f'?token={token}'
+        return redirect(redirect_url)
+    
+    # Check if booking has a valid final price
+    final_price = booking.get_final_price
+    if final_price <= 0:
+        messages.error(request, 'Invalid booking amount. Please contact support.')
+        redirect_url = reverse('checkout', kwargs={'booking_pk': booking_pk})
+        if token:
+            redirect_url += f'?token={token}'
+        return redirect(redirect_url)
+    
+    # Check if booking already has a JCC order ID
+    # If it does, check the status first before creating a new order
+    if booking.jcc_order_id:
+        try:
+            logger.info(f"Booking #{booking_pk} already has JCC order ID: {booking.jcc_order_id}. Checking status...")
+            order_status = JCCPaymentService.get_order_status(booking.jcc_order_id)
+            
+            # Check if payment was successful
+            if JCCPaymentService.is_payment_successful(order_status):
+                # Payment is already completed, update booking status
+                booking.payment_status = 'completed'
+                booking.save(update_fields=['payment_status'])
+                messages.success(request, 'Payment was already completed. Your booking is confirmed.')
+                redirect_url = reverse('booking_detail', kwargs={'pk': booking_pk})
+                if token:
+                    redirect_url += f'?token={token}'
+                return redirect(redirect_url)
+            
+            # If order is still pending, we need to create a new order with a different order number
+            # JCC doesn't allow duplicate order numbers, so we'll use a timestamp-based order number
+            logger.info(f"Previous JCC order for booking #{booking_pk} is still pending. Creating new order with unique order number.")
+        except Exception as e:
+            # If we can't check the status, proceed with creating a new order
+            logger.warning(f"Could not check status of existing JCC order for booking #{booking_pk}: {str(e)}. Creating new order.")
+    
+    try:
+        # Build return URLs (success and failure)
+        # Using request.build_absolute_uri to ensure full URLs
+        return_url = request.build_absolute_uri(
+            reverse('payment_success', kwargs={'booking_pk': booking_pk})
+        )
+        fail_url = request.build_absolute_uri(
+            reverse('payment_fail', kwargs={'booking_pk': booking_pk})
+        )
+        
+        # Log URLs for debugging
+        logger.info(f"Initiating payment for booking #{booking_pk}. Return URL: {return_url}, Fail URL: {fail_url}")
+        
+        # Register order with JCC
+        # If booking already has a jcc_order_id, use a unique order number to avoid duplicates
+        use_unique_order_number = bool(booking.jcc_order_id)
+        response_data = JCCPaymentService.register_order(
+            booking=booking,
+            return_url=return_url,
+            fail_url=fail_url,
+            description=f"Booking #{booking.id} - {booking.excursion_availability.excursion.title if booking.excursion_availability else 'Excursion'}",
+            language='en',  # You can make this dynamic based on user preference
+            use_unique_order_number=use_unique_order_number
+        )
+        
+        # Store JCC order ID in booking
+        booking.jcc_order_id = response_data['orderId']
+        booking.save(update_fields=['jcc_order_id'])
+        
+        # Redirect user to JCC payment page
+        form_url = response_data['formUrl']
+        return redirect(form_url)
+        
+    except ValidationError as e:
+        messages.error(request, f'Payment initialization failed: {str(e)}')
+        logger.error(f"JCC payment initiation error for booking #{booking_pk}: {str(e)}")
+        redirect_url = reverse('checkout', kwargs={'booking_pk': booking_pk})
+        if token:
+            redirect_url += f'?token={token}'
+        return redirect(redirect_url)
+    except Exception as e:
+        messages.error(request, 'An error occurred while initiating payment. Please try again.')
+        logger.error(f"Unexpected error during JCC payment initiation for booking #{booking_pk}: {str(e)}")
+        redirect_url = reverse('checkout', kwargs={'booking_pk': booking_pk})
+        if token:
+            redirect_url += f'?token={token}'
+        return redirect(redirect_url)
+
+
+def payment_success(request, booking_pk=None):
+    """
+    Handle successful payment return from JCC.
+    This is the returnUrl callback - user is redirected here after payment.
+    """
+    # Log all GET parameters for debugging
+    logger.info(f"Payment success callback. GET params: {dict(request.GET)}, booking_pk: {booking_pk}")
+    
+    # Get orderId from request parameters (JCC may send it as 'orderId' or 'mdOrder')
+    order_id = request.GET.get('orderId') or request.GET.get('mdOrder')
+    
+    # Try to get booking by booking_pk first, then by orderId if booking_pk is missing
+    booking = None
+    if booking_pk:
+        try:
+            booking = Booking.objects.get(pk=booking_pk)
+        except Booking.DoesNotExist:
+            logger.warning(f"Booking #{booking_pk} not found, trying to find by orderId")
+    
+    # If we have orderId but no booking, try to find booking by orderId
+    if not booking and order_id:
+        try:
+            booking = Booking.objects.get(jcc_order_id=order_id)
+            booking_pk = booking.pk
+            logger.info(f"Found booking #{booking_pk} by orderId: {order_id}")
+        except Booking.DoesNotExist:
+            logger.error(f"No booking found with orderId: {order_id}")
+        except Booking.MultipleObjectsReturned:
+            logger.error(f"Multiple bookings found with orderId: {order_id}")
+    
+    if not booking:
+        messages.error(request, 'Payment verification failed: Booking not found.')
+        logger.error(f"Payment success callback but no booking found. booking_pk: {booking_pk}, orderId: {order_id}")
+        return redirect('bookings_list')
+    
+    # Update jcc_order_id if we got it from the request and it's different
+    if order_id and order_id != booking.jcc_order_id:
+        booking.jcc_order_id = order_id
+        booking.save(update_fields=['jcc_order_id'])
+    
+    # Use the order_id from booking if we don't have it from request
+    if not order_id:
+        order_id = booking.jcc_order_id
+    
+    # Get token from booking if it exists (for non-logged-in users)
+    token = booking.access_token if booking.access_token and not request.user.is_authenticated else None
+    
+    if not order_id:
+        messages.error(request, 'Payment verification failed: Order ID not found.')
+        logger.error(f"Payment success callback for booking #{booking.pk} but no orderId found. Available params: {dict(request.GET)}")
+        redirect_url = reverse('booking_detail', kwargs={'pk': booking.pk})
+        if token:
+            redirect_url += f'?token={token}'
+        return redirect(redirect_url)
+    
+    # Verify payment status with JCC (server-side verification)
+    try:
+        order_status = JCCPaymentService.get_order_status(order_id)
+        
+        if JCCPaymentService.is_payment_successful(order_status):
+            # Payment is confirmed successful
+            booking.payment_status = 'completed'
+            booking.save(update_fields=['payment_status'])
+            
+            messages.success(request, 'Payment completed successfully! Your booking is confirmed.')
+            logger.info(f"Payment confirmed for booking #{booking_pk}, orderId: {order_id}")
+        else:
+            # Payment was not successful (user may have been redirected but payment failed)
+            order_status_code = order_status.get('orderStatus', 'unknown')
+            action_code = order_status.get('actionCode', 'unknown')
+            messages.warning(
+                request, 
+                f'Payment verification failed. Status: {order_status_code}, Action: {action_code}. '
+                'Please contact support if payment was deducted.'
+            )
+            logger.warning(
+                f"Payment verification failed for booking #{booking.pk}, "
+                f"orderId: {order_id}, status: {order_status_code}, action: {action_code}"
+            )
+        
+    except ValidationError as e:
+        messages.error(request, f'Payment verification failed: {str(e)}. Please contact support.')
+        logger.error(f"Payment verification error for booking #{booking.pk}: {str(e)}")
+    except Exception as e:
+        messages.error(request, 'An error occurred while verifying payment. Please contact support.')
+        logger.error(f"Unexpected error during payment verification for booking #{booking.pk}: {str(e)}")
+    
+    # Get token from booking if it exists (for non-logged-in users)
+    token = booking.access_token if booking.access_token and not request.user.is_authenticated else None
+    redirect_url = reverse('booking_detail', kwargs={'pk': booking.pk})
+    if token:
+        redirect_url += f'?token={token}'
+    return redirect(redirect_url)
+
+
+def payment_fail(request, booking_pk=None):
+    """
+    Handle failed payment return from JCC.
+    This is the failUrl callback - user is redirected here if payment fails or is cancelled.
+    """
+    # Log all GET parameters for debugging
+    logger.info(f"Payment fail callback. GET params: {dict(request.GET)}, booking_pk: {booking_pk}")
+    
+    # Get orderId from request parameters (JCC may send it as 'orderId' or 'mdOrder')
+    order_id = request.GET.get('orderId') or request.GET.get('mdOrder')
+    
+    # Try to get booking by booking_pk first, then by orderId if booking_pk is missing
+    booking = None
+    if booking_pk:
+        try:
+            booking = Booking.objects.get(pk=booking_pk)
+        except Booking.DoesNotExist:
+            logger.warning(f"Booking #{booking_pk} not found, trying to find by orderId")
+    
+    # If we have orderId but no booking, try to find booking by orderId
+    if not booking and order_id:
+        try:
+            booking = Booking.objects.get(jcc_order_id=order_id)
+            booking_pk = booking.pk
+            logger.info(f"Found booking #{booking_pk} by orderId: {order_id}")
+        except Booking.DoesNotExist:
+            logger.error(f"No booking found with orderId: {order_id}")
+        except Booking.MultipleObjectsReturned:
+            logger.error(f"Multiple bookings found with orderId: {order_id}")
+    
+    if not booking:
+        messages.warning(request, 'Payment was not completed. Could not find booking.')
+        logger.error(f"Payment fail callback but no booking found. booking_pk: {booking_pk}, orderId: {order_id}")
+        return redirect('bookings_list')
+    
+    # Use the order_id from booking if we don't have it from request
+    if not order_id:
+        order_id = booking.jcc_order_id
+    
+    # Optionally verify status to get more details
+    if order_id:
+        try:
+            order_status = JCCPaymentService.get_order_status(order_id)
+            order_status_code = order_status.get('orderStatus', 'unknown')
+            action_code = order_status.get('actionCode', 'unknown')
+            
+            logger.info(
+                f"Payment failed for booking #{booking_pk}, "
+                f"orderId: {order_id}, status: {order_status_code}, action: {action_code}"
+            )
+        except Exception as e:
+            logger.warning(f"Could not verify payment status for booking #{booking_pk}: {str(e)}")
+    
+    # Keep payment status as pending (don't mark as cancelled automatically)
+    # User can retry payment
+    messages.warning(request, 'Payment was not completed. You can try again from the checkout page.')
+    
+    # Get token from booking if it exists (for non-logged-in users)
+    token = booking.access_token if booking.access_token and not request.user.is_authenticated else None
+    redirect_url = reverse('checkout', kwargs={'booking_pk': booking.pk})
+    if token:
+        redirect_url += f'?token={token}'
+    return redirect(redirect_url)
 
 # ----- Auth Views -----
 def signup(request):

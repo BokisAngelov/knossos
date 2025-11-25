@@ -28,6 +28,13 @@ urlpatterns = [
 
     # Checkout URL
     path('checkout/<int:booking_pk>/', views.checkout, name='checkout'),
+    
+    # JCC Payment URLs
+    path('payment/<int:booking_pk>/initiate/', views.payment_initiate, name='payment_initiate'),
+    path('payment/<int:booking_pk>/success/', views.payment_success, name='payment_success'),
+    path('payment/success/', views.payment_success, name='payment_success_no_pk'),  # Fallback if booking_pk missing
+    path('payment/<int:booking_pk>/fail/', views.payment_fail, name='payment_fail'),
+    path('payment/fail/', views.payment_fail, name='payment_fail_no_pk'),  # Fallback if booking_pk missing
 
     # User URLs
     path('login/', views.login_view, name='login'),
