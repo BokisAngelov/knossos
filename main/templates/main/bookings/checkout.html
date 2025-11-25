@@ -6,47 +6,45 @@
     <!-- Header Section -->
     <div class="flex justify-between items-center mb-6">
         <div>
-            <a href="{% url 'excursion_detail' booking.excursion_availability.excursion.id %}" class="inline-flex items-center text-gray-600 hover:text-gray-900">
+            <a href="{% url 'excursion_detail' booking.excursion_availability.excursion.id %}" class="inline-flex items-center text-blue font-semibold text-sm hover:opacity-80">
                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                 </svg>
                 Back to Excursion
             </a>
-            <h1 class="text-2xl font-bold text-gray-900">Checkout</h1>
-            <p class="text-sm text-gray-500">Complete your payment to confirm your booking</p>
+            <h1 class="text-3xl font-bold page-header-color mb-1">Checkout</h1>
+            <p class="text-sm text-purple font-semibold">Complete your payment to confirm your booking</p>
         </div>
     </div>
 
     <!-- Main Content - Two Column Layout -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <!-- Left Column - Booking Details -->
-        <div class="space-y-6">
+        <div class="">
             <!-- Booking Information -->
-            <div class="bg-white shadow overflow-hidden sm:rounded-lg">
-                <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
-                    <h3 class="text-lg leading-6 font-medium text-gray-900">Booking Information</h3>
-                </div>
-                <div class="border-t border-gray-200">
+            <h3 class="text-lg leading-6 font-bold mb-2">Booking Information</h3>
+            <div class="bg-white p-5 mb-4">
+                <div class="">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 p-6">
-                        <div class="bg-gray-50 rounded-lg p-4">
-                            <h4 class="text-sm font-medium text-gray-500 mb-1">Booked on</h4>
+                        <div class="">
+                            <h4 class="text-sm font-medium mb-1">Booked on</h4>
                             <p class="text-lg font-semibold text-gray-900">{{ booking.created_at|date:"F d, Y" }}</p>
                         </div>
-                        <div class="bg-gray-50 rounded-lg p-4">
-                            <h4 class="text-sm font-medium text-gray-500 mb-1">Number of Guests</h4>
+                        <div class="">
+                            <h4 class="text-sm font-medium mb-1">Number of Guests</h4>
                             <p class="text-lg font-semibold text-gray-900">{{ booking.total_adults }} Adults | {{ booking.total_kids }} Children | {{ booking.total_infants }} Infants</p>
                         </div>
-                        <div class="bg-gray-50 rounded-lg p-4">
-                            <h4 class="text-sm font-medium text-gray-500 mb-1">Contact Name</h4>
+                        <div class="">
+                            <h4 class="text-sm font-medium mb-1">Contact Name</h4>
                             <p class="text-lg font-semibold text-gray-900">{{ booking.guest_name }}</p>
                         </div>
-                        <div class="bg-gray-50 rounded-lg p-4">
-                            <h4 class="text-sm font-medium text-gray-500 mb-1">Contact Email</h4>
+                        <div class="">
+                            <h4 class="text-sm font-medium mb-1">Contact Email</h4>
                             <p class="text-lg font-semibold text-gray-900">{{ booking.guest_email }}</p>
                         </div>
                         {% if booking.voucher_id %}
-                        <div class="bg-gray-50 rounded-lg p-4">
-                            <h4 class="text-sm font-medium text-gray-500 mb-1">Reservation</h4>
+                        <div class="">
+                            <h4 class="text-sm font-medium mb-1">Reservation</h4>
                             <p class="text-lg font-semibold text-gray-900">{{ booking.voucher_id }}</p>
                         </div>
                         {% endif %}
@@ -55,28 +53,26 @@
             </div>
 
             <!-- Excursion Information -->
-            <div class="bg-white shadow overflow-hidden sm:rounded-lg">
-                <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
-                    <h3 class="text-lg leading-6 font-medium text-gray-900">Excursion Information</h3>
-                </div>
-                <div class="border-t border-gray-200">
+            <h3 class="text-lg leading-6 font-bold mb-2">Excursion Information</h3>
+            <div class="bg-white overflow-hidden ">
+                <div class="">
                     <div class="grid grid-cols-2 gap-4 p-6">
-                        <div class="bg-gray-50 rounded-lg p-4">
-                            <h4 class="text-sm font-medium text-gray-500 mb-1">Excursion</h4>
+                        <div class="">
+                            <h4 class="text-sm font-medium mb-1">Excursion</h4>
                             <a href="{% url 'excursion_detail' booking.excursion_availability.excursion.id %}" class="text-lg font-semibold text-blue-600 hover:text-blue-800">
                                 {{ booking.excursion_availability.excursion.title }}
                             </a>
                         </div>
-                        <div class="bg-gray-50 rounded-lg p-4">
-                            <h4 class="text-sm font-medium text-gray-500 mb-1">Date</h4>
+                        <div class="">
+                            <h4 class="text-sm font-medium mb-1">Date</h4>
                             <p class="text-lg font-semibold text-gray-900">{{ booking.date|date:"F d, Y" }}</p>
                         </div>
-                        <div class="bg-gray-50 rounded-lg p-4">
-                            <h4 class="text-sm font-medium text-gray-500 mb-1">Time</h4>
+                        <div class="">
+                            <h4 class="text-sm font-medium mb-1">Time</h4>
                             <p class="text-lg font-semibold text-gray-900">{{ booking.excursion_availability.start_time|time:"H:i" }} - {{ booking.excursion_availability.end_time|time:"H:i" }}</p>
                         </div>
-                        <div class="bg-gray-50 rounded-lg p-4">
-                            <h4 class="text-sm font-medium text-gray-500 mb-1">Pickup Point</h4>
+                        <div class="">
+                            <h4 class="text-sm font-medium mb-1">Pickup Point</h4>
                             <p class="text-lg font-semibold text-gray-900">{% if booking.pickup_point %}{{ booking.pickup_point.name }}{% else %}N/A{% endif %}</p>
                         </div>
                     </div>
@@ -116,11 +112,9 @@
             {% endif %}
             
             <!-- Payment Summary -->
-            <div class="bg-white shadow overflow-hidden sm:rounded-lg">
-                <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
-                    <h3 class="text-lg leading-6 font-medium text-gray-900">Payment Summary</h3>
-                </div>
-                <div class="border-t border-gray-200">
+            <h3 class="text-lg leading-6 font-bold mb-2">Payment Summary</h3>
+            <div class="bg-white overflow-hidden">
+                <div class="">
                     <div class="p-6 space-y-4">
                         <!-- Base Price -->
                         <div class="flex justify-between items-center">
@@ -165,57 +159,13 @@
             </div>
 
             <!-- Payment Method -->
-            <div class="bg-white shadow overflow-hidden sm:rounded-lg">
-                <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+            <div class="bg-white overflow-hidden">
+                <!-- <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
                     <h3 class="text-lg leading-6 font-medium text-gray-900">Payment Method</h3>
-                </div>
+                </div> -->
                 {% if booking.payment_status != 'completed' %}
-                <div class="border-t border-gray-200">
-                    <div class="p-6">
-                        <!-- Stripe Integration Placeholder -->
-                        <div class="space-y-4">
-                            <div class="flex items-center space-x-3">
-                                <input type="radio" id="stripe" name="payment_method" value="stripe" checked class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300">
-                                <label for="stripe" class="flex items-center text-gray-700">
-                                    <svg class="w-6 h-6 mr-2" viewBox="0 0 24 24" fill="currentColor">
-                                        <path d="M13.976 9.15c-2.172-.806-3.356-1.426-3.356-2.409 0-.831.683-1.305 1.901-1.305 2.227 0 4.515.858 6.09 1.631l.89-5.494C18.252.975 15.697 0 12.165 0 9.667 0 7.589.654 6.104 1.872 4.56 3.147 3.757 4.992 3.757 7.218 0 4.039 2.467 5.76 6.476 7.219 2.585.831 3.47 1.426 3.47 2.338 0 .914-.796 1.431-2.127 1.431-1.72 0-4.516-.924-6.378-2.168l-.9 5.555C7.553 23.465 9.848 24 12.19 24c2.585 0 4.732-.624 6.199-1.776 1.664-1.305 2.525-3.236 2.525-5.732 0-4.246-2.967-6.023-7.938-7.342z"/>
-                                    </svg>
-                                    Credit Card
-                                </label>
-                            </div>
-                            
-                            <!-- Stripe Elements Placeholder -->
-                             {% if not user.is_staff %}
-                            <div class="border border-gray-300 rounded-md p-4 bg-gray-50">
-                                <div class="space-y-4">
-                                    <div>
-                                        <label for="card_number" class="block text-sm font-medium text-gray-700 mb-2">Card Number</label>
-                                        <div class="border border-gray-300 rounded-md px-3 py-2 bg-white">
-                                            <div class="h-6 bg-gray-200 rounded animate-pulse"></div>
-                                        </div>
-                                    </div>
-                                    <div class="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label for="expiry" class="block text-sm font-medium text-gray-700 mb-2">Expiry Date</label>
-                                            <div class="border border-gray-300 rounded-md px-3 py-2 bg-white">
-                                                <div class="h-6 bg-gray-200 rounded animate-pulse"></div>
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label for="cvc" class="block text-sm font-medium text-gray-700 mb-2">CVC</label>
-                                            <div class="border border-gray-300 rounded-md px-3 py-2 bg-white">
-                                                <div class="h-6 bg-gray-200 rounded animate-pulse"></div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            {% endif %}
-                        </div>
-                    </div>
-                </div>
-                {% if user.is_staff %}
-                <div class="border-t border-gray-200">
+                <!-- {% if user.is_staff %}
+                <div class="">
                     <div class="p-6">
                         <div class="flex items-center space-x-3">
                             <input type="radio" id="cash" name="payment_method" value="cash" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300">
@@ -228,37 +178,39 @@
                         </div>
                     </div>             
                 </div>
-                {% endif %}
-
+                {% endif %} -->
                 <!-- Payment Button -->
-                <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+                <div class="bg-white overflow-hidden">
                     <div class="p-6">
-                        {% if not user.is_staff %}
-                        <button type="submit" onclick="completeBooking()" class="w-full bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 text-white font-bold py-3 px-4 rounded-md transition duration-150 ease-in-out">
-                            <div class="flex items-center justify-center">
-                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                                </svg>
-                                Pay €{% if booking.total_price %}{{ booking.total_price }}{% else %}{{ booking.price }}{% endif %}
-                            </div>
-                        </button>
-                        <p class="text-xs text-gray-500 mt-2 text-center">
-                            Your payment is secured by Stripe. We never store your card details.
-                        </p>
-                        {% else %}
-                        <button type="submit" onclick="completeBooking()" class="w-full bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 text-white font-bold py-3 px-4 rounded-md transition duration-150 ease-in-out">
-                            Complete the Booking
-                        </button>
-                        {% endif %}
-                        <button type="submit" onclick="cancelBooking()" class="mt-4 w-full bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 text-white font-bold py-3 px-4 rounded-md transition duration-150 ease-in-out">
-                            Cancel Booking
-                        </button>
-                        
+                        <form id="payment-form" method="post" action="{% url 'checkout' booking_pk=booking.pk %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="action_type" id="action_type" value="">
+                            {% if not user.is_staff %}
+                            <button type="submit" onclick="initiatePayment(event)" class="w-full bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 text-white font-bold py-3 px-4 rounded-md transition duration-150 ease-in-out">
+                                <div class="flex items-center justify-center">
+                                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                    </svg>
+                                    Pay €{% if booking.total_price %}{{ booking.total_price }}{% else %}{{ booking.price }}{% endif %}
+                                </div>
+                            </button>
+                            <p class="text-xs text-gray-500 mt-2 text-center">
+                                Your payment is secured by JCC Payment Gateway. We never store your card details.
+                            </p>
+                            {% else %}
+                            <button type="submit" onclick="completeBooking(event)" class="w-full bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 text-white font-bold py-3 px-4 rounded-md transition duration-150 ease-in-out">
+                                Complete the Booking
+                            </button>
+                            {% endif %}
+                            <button type="button" onclick="cancelBooking()" class="mt-4 w-full bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 text-white font-bold py-3 px-4 rounded-md transition duration-150 ease-in-out">
+                                Cancel Booking
+                            </button>
+                        </form>
                     </div>
                 </div>
                 {% else %}
-                <div class="border-t border-gray-200">
-                    <div class="p-6">
+                <div class="">
+                    <div class="p-6 bg-white">
                         <p class="text-gray-600 ">Booking is completed.</p>
                     </div>
                 </div>
@@ -285,8 +237,17 @@
     }
     const csrftoken = getCookie('csrftoken');
     
-    function completeBooking() {
-        console.log('completeBooking');
+    function initiatePayment(event) {
+        event.preventDefault();
+        const form = document.getElementById('payment-form');
+        const actionInput = document.getElementById('action_type');
+        actionInput.value = 'initiate_payment';
+        form.submit();
+    }
+
+    function completeBooking(event) {
+        // For staff users - direct completion without payment
+        event.preventDefault();
         booking_pk = "{{ booking.pk }}";
         completionURL = "/bookings/" + booking_pk + "?payment_status=completed";
         window.location.href = completionURL;
