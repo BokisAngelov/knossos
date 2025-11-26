@@ -7,6 +7,7 @@ from .models import Feedback, Excursion, ExcursionImage, ExcursionAvailability, 
 import os
 import shutil
 import logging
+from main.utils import EmailService
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -298,7 +299,13 @@ def detect_departure_time_change(sender, instance, **kwargs):
         if old_instance.departure_time != instance.departure_time:
             logger.info(f"Departure time changed for reservation {instance.voucher_id}: {old_instance.departure_time} -> {instance.departure_time}")
             instance.departure_time_updated = True
-            # TODO: send email notification and maybe sms
+            # Send email notification
+            EmailService.send_email(
+                subject=f'[iTrip Knossos] Departure Time Changed',
+                message=f"The departure time for your reservation {instance.voucher_id} has been changed to {instance.departure_time}. Please check your reservation details.",
+                recipient_list=[instance.client_email],
+                fail_silently=True
+            )
         
     except Reservation.DoesNotExist:
         # New reservation

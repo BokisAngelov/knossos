@@ -1627,32 +1627,107 @@ def payment_fail(request, booking_pk=None):
 
 # ----- Auth Views -----
 def signup(request):
+    """
+    Improved signup view with email verification.
+    Creates user account and sends verification email.
+    """
+    from django.contrib.auth.tokens import default_token_generator
+    from django.utils.http import urlsafe_base64_encode
+    from django.utils.encoding import force_bytes
+    from .utils import EmailService
+    
     if request.method == 'POST':
         form = SignupForm(request.POST)
         if form.is_valid():
             try:
+                # Check if email already exists
+                email = form.cleaned_data['username']  # username is actually email
+                if User.objects.filter(email=email).exists() or User.objects.filter(username=email).exists():
+                    messages.error(request, 'An account with this email already exists. Please use a different email or try logging in.')
+                    return render(request, 'main/accounts/signup.html', {'form': form})
+                
+                # Create user
                 user = form.save()
-                if user:
-                    user_profile = UserProfile.objects.create(
-                        user=user,
-                        role='client',
-                        name=form.cleaned_data['name'],
-                        email=form.cleaned_data['username'],
-                        phone=form.cleaned_data.get('phone', '')
+                if not user:
+                    messages.error(request, 'Failed to create account. Please try again.')
+                    return render(request, 'main/accounts/signup.html', {'form': form})
+                
+                # Create user profile
+                user_profile = UserProfile.objects.create(
+                    user=user,
+                    role='client',
+                    name=form.cleaned_data['name'],
+                    email=email,
+                    phone=form.cleaned_data.get('phone', ''),
+                    email_verified=False  # Email not verified yet
+                )
+                
+                # Generate email verification token
+                token = default_token_generator.make_token(user)
+                user_profile.email_verification_token = token
+                user_profile.save()
+                
+                # Create verification URL
+                uid = urlsafe_base64_encode(force_bytes(user.pk))
+                verification_url = f"{request.scheme}://{request.get_host()}/verify_email/{uid}/{token}/"
+                
+                # Send verification email with better formatting
+                email_message = f"""
+                Hello {form.cleaned_data['name']},
+
+                Thank you for signing up for iTrip Knossos!
+
+                Please verify your email address by clicking the link below:
+                {verification_url}
+
+                This link will expire in 24 hours.
+
+                If you did not create an account, please ignore this email.
+
+                Best regards,
+                iTrip Knossos Team
+                """
+                
+                try:
+                    EmailService.send_email(
+                        subject='[iTrip Knossos] Verify Your Email Address',
+                        message=email_message,
+                        recipient_list=[email],
+                        fail_silently=False
                     )
-                    print(f'this is the user_profile: {user_profile}')
-                    login(request, user)
-                    # TODO: Send email verification and remove login
-                    messages.success(request, 'Account created successfully. Please verify your email to continue.')
-                    return redirect('excursion_list')
-                else:
-                    messages.error(request, 'Failed to create account.')
-                    return redirect('signup')
+                    messages.success(
+                        request, 
+                        'Account created successfully! Please check your email to verify your account. '
+                        'You can log in after verification.'
+                    )
+                except Exception as email_error:
+                    # If email fails, still create account but warn user
+                    logger.error(f"Failed to send verification email: {str(email_error)}")
+                    messages.warning(
+                        request,
+                        'Account created, but we could not send the verification email. '
+                        'Please contact support for assistance.'
+                    )
+                
+                # Don't log in automatically - require email verification first
+                return redirect('login')
+                
             except Exception as e:
-                messages.error(request, f'Error creating account: {str(e)}')
-                return redirect('signup')
+                logger.error(f"Error during signup: {str(e)}", exc_info=True)
+                messages.error(request, f'An error occurred while creating your account. Please try again.')
+                return render(request, 'main/accounts/signup.html', {'form': form})
         else:
-            messages.error(request, 'Please correct the errors below. ')
+            # Form validation errors
+            error_messages = []
+            for field, errors in form.errors.items():
+                for error in errors:
+                    error_messages.append(f"{form.fields[field].label if field in form.fields else field}: {error}")
+            
+            if error_messages:
+                messages.error(request, 'Please correct the following errors: ' + ' '.join(error_messages))
+            else:
+                messages.error(request, 'Please correct the errors below.')
+            
             return render(request, 'main/accounts/signup.html', {'form': form})
     else:
         form = SignupForm()
@@ -1696,6 +1771,8 @@ def logout_view(request):
 
 def password_reset_form(request):
 
+    from .utils import EmailService
+
     if request.method == 'POST':
         email = request.POST.get('email')
         
@@ -1719,17 +1796,16 @@ def password_reset_form(request):
                 messages.error(request, 'User profile not found.')
                 return render(request, 'main/accounts/password_reset_form.html')
             
-            # TODO: Send password reset email
-            # email_subject = 'Password Reset'
-            # email_body = f'Click the link to reset your password: {request.scheme}://{request.get_host()}/password_reset_token/{token}/'
-            # email_from = settings.EMAIL_HOST_USER
-            # recipient_list = [email]
-            # send_mail(email_subject, email_body, email_from, recipient_list)
-
+            # Send password reset email
+            EmailService.send_email(
+                subject=f'[iTrip Knossos] Password Reset',
+                message=f"Click the link to reset your password: {request.scheme}://{request.get_host()}/password_reset_token/{token}/",
+                recipient_list=[email],
+                fail_silently=True
+            )
+            
             messages.success(request, 'Password reset email sent. Please check your email.')
-            # TO BE UPDATED
-            # return redirect('excursion_list')
-            return redirect('password_reset_token', token=token)
+            return redirect('login')
         else:
             messages.error(request, 'Email not found.')
             
@@ -1772,8 +1848,74 @@ def password_reset_token(request, token):
             else:
                 messages.error(request, 'Invalid token.')
                 return redirect('password_reset_form')
-    
+            
     return render(request, 'main/accounts/password_reset_token.html', {'token': token})
+
+def verify_email(request, uidb64, token):
+    """
+    Verify user email address using secure token.
+    """
+    from django.contrib.auth.tokens import default_token_generator
+    from django.utils.http import urlsafe_base64_decode
+    from django.utils.encoding import force_str
+    from django.contrib.auth import login
+    
+    try:
+        # Decode user ID from base64
+        uid = force_str(urlsafe_base64_decode(uidb64))
+        user = User.objects.get(pk=uid)
+    except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+        user = None
+        logger.warning(f"Invalid uidb64 in email verification: {uidb64}")
+    
+    if user is None:
+        messages.error(request, 'Invalid verification link. Please request a new verification email.')
+        return redirect('signup')
+    
+    # Check if user profile exists
+    try:
+        user_profile = user.profile
+    except UserProfile.DoesNotExist:
+        messages.error(request, 'User profile not found. Please contact support.')
+        return redirect('signup')
+    
+    # Check if email is already verified
+    if user_profile.email_verified:
+        messages.info(request, 'Your email is already verified. You can log in now.')
+        if not request.user.is_authenticated:
+            login(request, user)
+        return redirect('excursion_list')
+    
+    # Verify token
+    if not default_token_generator.check_token(user, token):
+        messages.error(request, 'Invalid or expired verification link. Please request a new verification email.')
+        return redirect('signup')
+    
+    # Check if token matches stored token (additional security check)
+    if user_profile.email_verification_token != token:
+        messages.error(request, 'Invalid verification token. Please request a new verification email.')
+        return redirect('signup')
+    
+    # Mark email as verified
+    user_profile.email_verified = True
+    user_profile.email_verification_token = None  # Clear token after verification
+    user_profile.save()
+    
+    # Automatically log in the user after verification
+    login(request, user)
+    
+    messages.success(
+        request, 
+        'Email verified successfully! Your account is now active. Welcome to iTrip Knossos!'
+    )
+    
+    # Redirect based on user role
+    if user_profile.role == 'client':
+        return redirect('excursion_list')
+    elif user_profile.role == 'admin':
+        return redirect('admin_dashboard', user_profile.id)
+    else:
+        return redirect('profile', user_profile.id)
 
 @login_required
 def profile(request, pk):

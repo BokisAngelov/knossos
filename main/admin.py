@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib import messages
-from .models import UserProfile, Excursion, ExcursionAvailability, Booking, Transaction, Feedback, Category, Tag, Group, GroupPickupPoint, PaymentMethod, Reservation, Bus, JCCGatewayConfig
+from .models import UserProfile, Excursion, ExcursionAvailability, Booking, Transaction, Feedback, Category, Tag, Group, GroupPickupPoint, PaymentMethod, Reservation, Bus, JCCGatewayConfig, EmailSettings
 
 # Register your models here.
 admin.site.register(UserProfile)
@@ -16,6 +16,32 @@ admin.site.register(GroupPickupPoint)
 admin.site.register(PaymentMethod)
 admin.site.register(Reservation)
 admin.site.register(Bus)
+admin.site.register(EmailSettings)
+
+
+class EmailSettingsAdmin(admin.ModelAdmin):
+    list_display = ('email', 'name_from', 'created_at')
+    list_filter = ('created_at')
+    search_fields = ('email', 'name_from')
+    fields = ('email', 'name_from', 'password', 'host', 'port', 'use_tls', 'use_ssl')
+    readonly_fields = ('created_at')
+    ordering = ['-created_at']
+
+    def save_model(self, request, obj, form, change):
+        """
+        Override save to show warning if multiple active configs exist.
+        """
+        super().save_model(request, obj, form, change)
+        
+        if obj.is_active:
+            active_count = EmailSettings.objects.filter(is_active=True).count()
+            if active_count > 1:
+                messages.warning(
+                    request,
+                    f'Warning: {active_count} active configurations found. '
+                    'Only one should be active at a time. Others have been set to inactive.'
+                )
+        
 
 
 @admin.register(JCCGatewayConfig)
