@@ -881,6 +881,7 @@ class TransportGroupService:
         from collections import defaultdict
         
         grouped = defaultdict(lambda: defaultdict(list))
+        group_objects = {}  # Store pickup_group objects for sorting
         
         for booking in bookings:
             pickup_group = booking.pickup_point.pickup_group if booking.pickup_point else None
@@ -890,8 +891,38 @@ class TransportGroupService:
             point_key = pickup_point.name if pickup_point else 'No Pickup Point'
             
             grouped[group_key][point_key].append(booking)
+            # Store the pickup_group object for this group key
+            if group_key not in group_objects:
+                group_objects[group_key] = pickup_group
         
-        return dict(grouped)
+        # Sort pickup groups by priority (lowest first), then by name
+        def group_sort_key(item):
+            group_key, points = item
+            pickup_group = group_objects.get(group_key)
+            if pickup_group:
+                priority = pickup_group.priority
+            else:
+                priority = float('inf')  # No pickup group goes to the end
+            return (priority, group_key)
+        
+        sorted_groups = sorted(grouped.items(), key=group_sort_key)
+        
+        # Sort pickup points within each group by priority (lowest first), then by name
+        sorted_grouped = {}
+        for group_key, points in sorted_groups:
+            # Sort pickup point keys by priority, then by name
+            def point_sort_key(item):
+                point_name, bookings = item
+                if bookings and bookings[0].pickup_point:
+                    priority = bookings[0].pickup_point.priority
+                else:
+                    priority = float('inf')  # No pickup point goes to the end
+                return (priority, point_name)
+            
+            sorted_points = sorted(points.items(), key=point_sort_key)
+            sorted_grouped[group_key] = dict(sorted_points)
+        
+        return sorted_grouped
     
     @staticmethod
     def calculate_booking_guests(booking):
