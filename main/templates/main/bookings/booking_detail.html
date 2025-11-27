@@ -18,7 +18,7 @@
                 {% if booking.payment_status == 'pending' %}bg-yellow
                 {% elif booking.payment_status == 'completed' %}bg-green
                 {% elif booking.payment_status == 'cancelled' %}bg-red
-                {% else %}bg-gray{% endif %}">
+                {% else %}bg-red{% endif %}">
                 {{ booking.payment_status.capitalize }}
                 
             </span>

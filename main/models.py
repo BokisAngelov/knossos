@@ -18,8 +18,6 @@ def excursion_image_path(instance, filename):
     # For existing excursions, use their ID
     return f"excursions/ex-{instance.excursion.pk}/{filename}"
 
-# TODO: Add EmailModel for setting up email notifications
-
 class Category(models.Model):
     name = models.CharField(max_length=255)
 
@@ -78,7 +76,9 @@ class UserProfile(models.Model):
     # region = models.ForeignKey(Region, on_delete=models.SET_NULL, blank=True, null=True, related_name='user_profiles')
     pickup_group = models.ForeignKey(PickupGroup, on_delete=models.SET_NULL, blank=True, null=True, related_name='user_profiles')
     password_reset_token = models.CharField(max_length=255, null=True, blank=True)
+    email_verification_token = models.CharField(max_length=255, null=True, blank=True)
     is_superadmin = models.BooleanField(default=False)
+    email_verified = models.BooleanField(default=False)
 
     def __str__(self):
         return self.name
@@ -114,7 +114,7 @@ class UserProfile(models.Model):
     @property
     def needs_email_update(self):
         """Check if client needs to update their email"""
-        return self.role == 'client' and not self.email
+        return self.role == 'client' and not self.email_verified
     
     def get_latest_active_referral_code(self):
         """Get the latest active referral code for this agent"""
@@ -787,4 +787,21 @@ class GroupPickupPoint(models.Model):
     def __str__(self):
         return f"{self.group.name} - {self.pickup_point.name} @ {self.pickup_time or 'Not Set'}"
 
+class EmailSettings(models.Model):
+    email = models.EmailField(max_length=255)
+    name_from = models.CharField(max_length=255, default='iTrip Knossos')
+    password = models.CharField(max_length=255)
+    host = models.CharField(max_length=255, default='smtp.gmail.com')
+    port = models.IntegerField(default=587)
+    use_tls = models.BooleanField(default=True)
+    use_ssl = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.email
+    
+    class Meta:
+        verbose_name = 'Email Settings'
+        verbose_name_plural = 'Email Settings'
+        ordering = ['created_at']
 

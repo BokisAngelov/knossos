@@ -4,7 +4,7 @@ from django.utils import timezone
 from django.core.exceptions import ValidationError
 from .models import (
     Excursion, Feedback, Booking, Reservation, 
-    AvailabilityDays, ExcursionAvailability, PickupPoint, Hotel, Region, JCCGatewayConfig
+    AvailabilityDays, ExcursionAvailability, PickupPoint, Hotel, Region, JCCGatewayConfig, EmailSettings
 )
 from .cyber_api import get_reservation
 from datetime import datetime
@@ -1562,3 +1562,169 @@ class JCCPaymentService:
         )
         
         return is_success
+
+
+class EmailService:
+    """
+    Service class for sending emails using EmailSettings configuration.
+    Provides a centralized way to send emails across the application.
+    """
+    
+    @staticmethod
+    def get_email_config():
+        """
+        Get the active email configuration from EmailSettings model.
+        
+        Returns:
+            EmailSettings instance or None if no configuration exists.
+        """
+        try:
+            # Try to get active config (if is_active field exists)
+            if hasattr(EmailSettings, 'is_active'):
+                config = EmailSettings.objects.filter(is_active=True).first()
+                if config:
+                    return config
+            
+            # Fallback: get the most recent configuration
+            config = EmailSettings.objects.order_by('-created_at').first()
+            return config
+        except Exception as e:
+            logger.error(f"Error getting email configuration: {str(e)}")
+            return None
+    
+    @staticmethod
+    def get_connection():
+        """
+        Get email connection using EmailSettings configuration.
+        
+        Returns:
+            Email backend connection instance.
+        
+        Raises:
+            ValidationError: If no email configuration is found.
+        """
+        from django.core.mail import get_connection as django_get_connection
+        from django.core.exceptions import ValidationError
+        
+        config = EmailService.get_email_config()
+        if not config:
+            raise ValidationError(
+                "No email configuration found. "
+                "Please configure email settings in the admin panel."
+            )
+        
+        return django_get_connection(
+            host=config.host,
+            port=config.port,
+            use_tls=config.use_tls,
+            use_ssl=config.use_ssl,
+            username=config.email,
+            password=config.password,
+            fail_silently=False,
+        )
+    
+    @staticmethod
+    def send_email(subject, message, recipient_list, from_email=None, html_message=None, fail_silently=False):
+        """
+        Send an email using the configured EmailSettings.
+        
+        Args:
+            subject: Email subject
+            message: Plain text email message
+            recipient_list: List of recipient email addresses
+            from_email: From email address (uses EmailSettings.email if not provided)
+            html_message: Optional HTML version of the message
+            fail_silently: If True, suppress exceptions (default: False)
+        
+        Returns:
+            int: Number of emails sent (1 if successful, 0 if failed)
+        
+        Raises:
+            ValidationError: If email configuration is missing
+            Exception: If email sending fails (unless fail_silently=True)
+        """
+        from django.core.mail import send_mail
+        from django.core.exceptions import ValidationError
+        
+        config = EmailService.get_email_config()
+        if not config:
+            if fail_silently:
+                logger.warning("No email configuration found. Email not sent.")
+                return 0
+            raise ValidationError(
+                "No email configuration found. "
+                "Please configure email settings in the admin panel."
+            )
+        
+        # Use config email as from_email if not provided
+        if not from_email:
+            from_email = config.email
+        
+        # Use name_from if available
+        if hasattr(config, 'name_from') and config.name_from:
+            from_email = f"{config.name_from} <{config.email}>"
+        
+        try:
+            connection = EmailService.get_connection()
+            return send_mail(
+                subject=subject,
+                message=message,
+                from_email=from_email,
+                recipient_list=recipient_list,
+                fail_silently=fail_silently,
+                connection=connection,
+                html_message=html_message,
+            )
+        except Exception as e:
+            logger.error(f"Error sending email: {str(e)}", exc_info=True)
+            if not fail_silently:
+                raise
+            return 0
+    
+    @staticmethod
+    def send_to_admins(subject, message, html_message=None, fail_silently=False):
+        """
+        Send an email to all admin users.
+        
+        Args:
+            subject: Email subject
+            message: Plain text email message
+            html_message: Optional HTML version of the message
+            fail_silently: If True, suppress exceptions (default: False)
+        
+        Returns:
+            int: Number of emails sent
+        """
+        from .models import UserProfile
+        
+        try:
+            # Get admin email addresses
+            admin_profiles = UserProfile.objects.filter(
+                role='admin',
+                user__is_staff=True,
+                status='active'
+            ).select_related('user')
+            
+            admin_emails = []
+            for profile in admin_profiles:
+                # Use profile email if available, otherwise use user email
+                email = profile.email or (profile.user.email if profile.user else None)
+                if email:
+                    admin_emails.append(email)
+            
+            if not admin_emails:
+                logger.warning('No admin email addresses found.')
+                return 0
+            
+            return EmailService.send_email(
+                subject=subject,
+                message=message,
+                recipient_list=admin_emails,
+                html_message=html_message,
+                fail_silently=fail_silently,
+            )
+        except Exception as e:
+            logger.error(f"Error sending email to admins: {str(e)}", exc_info=True)
+            if not fail_silently:
+                raise
+            return 0
