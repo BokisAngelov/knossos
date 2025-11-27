@@ -18,8 +18,6 @@ def excursion_image_path(instance, filename):
     # For existing excursions, use their ID
     return f"excursions/ex-{instance.excursion.pk}/{filename}"
 
-# TODO: Add EmailModel for setting up email notifications
-
 class Category(models.Model):
     name = models.CharField(max_length=255)
 
@@ -78,7 +76,9 @@ class UserProfile(models.Model):
     # region = models.ForeignKey(Region, on_delete=models.SET_NULL, blank=True, null=True, related_name='user_profiles')
     pickup_group = models.ForeignKey(PickupGroup, on_delete=models.SET_NULL, blank=True, null=True, related_name='user_profiles')
     password_reset_token = models.CharField(max_length=255, null=True, blank=True)
+    email_verification_token = models.CharField(max_length=255, null=True, blank=True)
     is_superadmin = models.BooleanField(default=False)
+    email_verified = models.BooleanField(default=False)
 
     def __str__(self):
         return self.name
@@ -114,7 +114,7 @@ class UserProfile(models.Model):
     @property
     def needs_email_update(self):
         """Check if client needs to update their email"""
-        return self.role == 'client' and not self.email
+        return self.role == 'client' and not self.email_verified
     
     def get_latest_active_referral_code(self):
         """Get the latest active referral code for this agent"""
@@ -429,6 +429,93 @@ class PaymentMethod(models.Model):
     def __str__(self):
         return self.name
 
+class JCCGatewayConfig(models.Model):
+    """
+    Configuration model for JCC Payment Gateway.
+    Stores credentials and URLs for JCC integration.
+    Only one active configuration should exist at a time.
+    """
+    ENVIRONMENT_CHOICES = [
+        ('sandbox', 'Sandbox/Test'),
+        ('production', 'Production'),
+    ]
+    
+    name = models.CharField(
+        max_length=255,
+        help_text="Configuration name (e.g., 'JCC Sandbox Config' or 'JCC Production Config')"
+    )
+    environment = models.CharField(
+        max_length=20,
+        choices=ENVIRONMENT_CHOICES,
+        default='sandbox',
+        help_text="Environment type"
+    )
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Only one active configuration should exist. Set others to inactive."
+    )
+    
+    # API Credentials
+    username = models.CharField(
+        max_length=255,
+        help_text="JCC API username"
+    )
+    password = models.CharField(
+        max_length=255,
+        help_text="JCC API password"
+    )
+    
+    # API Endpoints
+    register_url = models.URLField(
+        max_length=500,
+        help_text="URL for register.do endpoint (e.g., https://gateway-test.jcc.com.cy/payment/rest/register.do)"
+    )
+    status_url = models.URLField(
+        max_length=500,
+        help_text="URL for getOrderStatusExtended.do endpoint (e.g., https://gateway-test.jcc.com.cy/payment/rest/getOrderStatusExtended.do)"
+    )
+    
+    # Default settings
+    default_currency = models.CharField(
+        max_length=3,
+        default='978',
+        help_text="Currency code (ISO 4217 numeric, e.g., 978 for EUR, 840 for USD)"
+    )
+    default_language = models.CharField(
+        max_length=10,
+        default='en',
+        help_text="Default language code (e.g., 'en', 'el')"
+    )
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = "JCC Gateway Configuration"
+        verbose_name_plural = "JCC Gateway Configurations"
+        ordering = ['-is_active', '-created_at']
+    
+    def __str__(self):
+        return f"{self.name} ({self.environment})"
+    
+    def save(self, *args, **kwargs):
+        """
+        Ensure only one active configuration exists at a time.
+        """
+        if self.is_active:
+            # Set all other configs to inactive
+            JCCGatewayConfig.objects.filter(is_active=True).exclude(pk=self.pk).update(is_active=False)
+        super().save(*args, **kwargs)
+    
+    @classmethod
+    def get_active_config(cls):
+        """
+        Get the currently active JCC configuration.
+        Returns None if no active configuration exists.
+        """
+        return cls.objects.filter(is_active=True).first()
+
 class Hotel(models.Model):
     name = models.CharField(max_length=255)
     address = models.CharField(max_length=255, null=True, blank=True)
@@ -549,9 +636,34 @@ class Booking(models.Model):
     deleteByUser = models.BooleanField(default=False)
     referral_code = models.ForeignKey(ReferralCode, on_delete=models.SET_NULL, null=True, blank=True, related_name='bookings')
     referral_discount_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, default=0)
+    jcc_order_id = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True,
+        unique=True,
+        help_text="JCC Payment Gateway order ID (orderId from register.do response)"
+    )
+    access_token = models.CharField(
+        max_length=64,
+        null=True,
+        blank=True,
+        unique=True,
+        db_index=True,
+        help_text="Secure token for non-logged-in users to access their booking"
+    )
 
     def __str__(self):
         return f"Booking #{self.id} by {self.user.username if self.user else 'Guest'}"
+    
+    def generate_access_token(self):
+        """Generate a secure access token for non-logged-in users."""
+        import secrets
+        import hashlib
+        # Generate a secure random token
+        token = secrets.token_urlsafe(32)
+        # Hash it for storage (optional, but we'll store the raw token for simplicity)
+        # In production, you might want to hash it
+        return token
     
     @property
     def get_base_price(self):
@@ -675,4 +787,21 @@ class GroupPickupPoint(models.Model):
     def __str__(self):
         return f"{self.group.name} - {self.pickup_point.name} @ {self.pickup_time or 'Not Set'}"
 
+class EmailSettings(models.Model):
+    email = models.EmailField(max_length=255)
+    name_from = models.CharField(max_length=255, default='iTrip Knossos')
+    password = models.CharField(max_length=255)
+    host = models.CharField(max_length=255, default='smtp.gmail.com')
+    port = models.IntegerField(default=587)
+    use_tls = models.BooleanField(default=True)
+    use_ssl = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.email
+    
+    class Meta:
+        verbose_name = 'Email Settings'
+        verbose_name_plural = 'Email Settings'
+        ordering = ['created_at']
 

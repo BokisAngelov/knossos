@@ -12,62 +12,83 @@
                 </svg>
                 Back to Excursion
             </a>
-            <h1 class="text-2xl font-bold text-brown font-bold">Booking Details</h1>
-            <p class="text-sm text-brown">View and manage booking information</p>
+            <h1 class="text-3xl font-bold page-header-color mb-1">Booking Details</h1>
+            <p class="text-sm text-purple font-semibold">View and manage booking information</p>
             <span class="inline-flex items-center px-2  mt-2 rounded-full text-sm font-semibold text-white
                 {% if booking.payment_status == 'pending' %}bg-yellow
                 {% elif booking.payment_status == 'completed' %}bg-green
                 {% elif booking.payment_status == 'cancelled' %}bg-red
-                {% else %}bg-gray{% endif %}">
+                {% else %}bg-red{% endif %}">
                 {{ booking.payment_status.capitalize }}
+                
             </span>
-            {% if user.is_staff %}
-            <div class="float-right absolute right-0 bottom-0">
-                <input type="hidden" id="booking-id" value="{{ booking.id }}">
-                <!-- <a id="edit-booking" class="relative px-4 py-1 text-white bg-turquaz rounded-md font-semibold hover:opacity-80" href="{% url 'booking_edit' booking.id %}">
-                    Edit</a> -->
-                {% if booking.payment_status == 'pending' or booking.payment_status == 'cancelled' %}
-                <a id="complete-payment" class="h-8 px-4 py-1 text-white bg-green rounded-md font-semibold hover:opacity-80" href="#">Complete</a>
-                {% endif %}
-                {% if booking.payment_status == 'completed' or booking.payment_status == 'pending' %}
-                <a id="cancel-payment" class="h-8 px-4 py-1 text-white bg-brown rounded-md font-semibold hover:opacity-80" href="#">Cancel</a>
-                {% endif %}
-                {% if booking.payment_status == 'cancelled' or booking.payment_status == 'completed' %}
-                <a id="pending-payment" class="h-8 px-4 py-1 text-white bg-yellow rounded-md font-semibold hover:opacity-80" href="#">Pending</a>
-                {% endif %}
-
-                <a id="delete-booking" class="h-8 px-4 py-1 text-white bg-orange rounded-md font-semibold hover:opacity-80" href="#">Delete</a>
-            </div>
+            {% if booking.jcc_order_id %}
+                 <span class="text-sm font-semibold rounded-full bg-blue text-white px-2 ">Order ID: {{ booking.jcc_order_id }}</span>
             {% endif %}
+        
         </div>  
         
     </div>
 
     
     <!-- Main Content -->
-    <div class="bg-white p-5 shadow overflow-hidden mt-5 sm:rounded-lg">
-        <!-- Booking Information -->
-        <div class="mb-4">
-            <h3 class="text-xl font-bold text-brown">Booking Information</h3>
+    <div class="mt-8 mb-2 relative flex justify-between items-center">
+        <h3 class="text-2xl font-bold page-header-color">Booking Information</h3>
+        {% comment %}Proceed to Checkout button - Show when: pending payment, date not past, and (user viewing own booking OR not logged in){% endcomment %}
+        {% if booking.payment_status == 'pending' and not is_date_past %}
+            {% if not user.is_staff %}
+                {% if is_own_booking or access_token %}
+                <div class="mt-4">
+                    <a href="{% url 'checkout' booking_pk=booking.pk %}{% if access_token %}?token={{ access_token }}{% endif %}" class="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-md transition duration-150 ease-in-out shadow-md hover:shadow-lg">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                        </svg>
+                        Proceed to Checkout
+                    </a>
+                </div>
+                {% endif %}
+            {% endif %}
+        {% endif %}
+        
+        {% if user.is_staff %}
+        <div class="float-right absolute right-0 bottom-0">
+            <input type="hidden" id="booking-id" value="{{ booking.id }}">
+            <!-- <a id="edit-booking" class="relative px-4 py-1 text-white bg-turquaz rounded-md font-semibold hover:opacity-80" href="{% url 'booking_edit' booking.id %}">
+                Edit</a> -->
+            {% if booking.payment_status == 'pending' or booking.payment_status == 'cancelled' %}
+            <a id="complete-payment" class="h-8 px-4 py-1 text-white bg-green rounded-md font-semibold hover:opacity-80" href="#">Complete</a>
+            {% endif %}
+            {% if booking.payment_status == 'completed' or booking.payment_status == 'pending' %}
+            <a id="cancel-payment" class="h-8 px-4 py-1 text-white bg-brown rounded-md font-semibold hover:opacity-80" href="#">Cancel</a>
+            {% endif %}
+            {% if booking.payment_status == 'cancelled' or booking.payment_status == 'completed' %}
+            <a id="pending-payment" class="h-8 px-4 py-1 text-white bg-yellow rounded-md font-semibold hover:opacity-80" href="#">Pending</a>
+            {% endif %}
+
+            <a id="delete-booking" class="h-8 px-4 py-1 text-white bg-orange rounded-md font-semibold hover:opacity-80" href="#">Delete</a>
         </div>
+        {% endif %}
+    </div>
+    <div class="bg-white p-5 overflow-hidden">
+        <!-- Booking Information -->
         <div class="">
             <div class="grid grid-cols-4 gap-4">
-                <div class="bg-white rounded-lg shadow-sm p-4 border-brown">
-                    <h4 class="text-md font-semibold text-brown-light mb-1">Booked on</h4>
-                    <p class="text-lg font-bold text-brown-light">{{ booking.created_at|date:"F d, Y" }}</p>
+                <div class="">
+                    <h4 class="text-lg font-bold  mb-1">Booked on</h4>
+                    <p class="text-md font-semibold ">{{ booking.created_at|date:"F d, Y" }}</p>
                 </div>
-                <div class="bg-white rounded-lg shadow-sm p-4 border-brown">
-                    <h4 class="text-md font-semibold text-brown-light mb-1">Base Price</h4>
-                    <p class="text-lg font-bold text-brown-light">€{{ booking.price }}</p>
+                <div class="">
+                    <h4 class="text-lg font-bold  mb-1">Base Price</h4>
+                    <p class="text-md font-semibold ">€{{ booking.price }}</p>
                 </div>
-                <div class="bg-white rounded-lg shadow-sm p-4 border-brown">
-                    <h4 class="text-md font-semibold text-brown-light mb-1">Partial Payment</h4>
-                    <p class="text-lg font-bold text-brown-light">€{% if booking.partial_paid %}{{ booking.partial_paid }}{% else %}0.00{% endif %}</p>
+                <div class="">
+                    <h4 class="text-lg font-bold  mb-1">Partial Payment</h4>
+                    <p class="text-md font-semibold ">€{% if booking.partial_paid %}{{ booking.partial_paid }}{% else %}0.00{% endif %}</p>
                 </div>
                 
-                <div class="bg-blue-50 rounded-lg shadow-sm p-4 border-2 border-blue-200">
-                    <h4 class="text-md font-semibold text-blue-700 mb-1">Final Amount</h4>
-                    <p class="text-xl font-bold text-blue-900">€{{ booking.total_price }}</p>
+                <div class="">
+                    <h4 class="text-lg font-bold  mb-1">Final Amount</h4>
+                    <p class="text-md font-semibold ">€{{ booking.total_price }}</p>
                     {% if booking.referral_code and booking.referral_discount_amount %}
                     <p class="text-xs mt-1">Referral Discount: {{ booking.get_referral_discount_percentage }}% (-€{{ booking.referral_discount_amount }})</p>
                     <p class="text-xs">Code: {{ booking.referral_code.code }}</p>
@@ -76,60 +97,55 @@
                 
                 
             </div>
-        </div>
+        </div>        
+    </div>
 
-        <!-- Excursion Information -->
-        <div class="mt-8 mb-4">
-            <h3 class="text-xl font-bold text-orange">Excursion Information</h3>
-        </div>
-        <div class="">
-            <div class="grid grid-cols-4 gap-4">
-                <div class="bg-orange-light rounded-lg shadow-sm p-4 border-orange">
-                    <h4 class="text-md font-semibold text-orange mb-1">Excursion</h4>
-                    <a href="{% url 'excursion_detail' booking.excursion_availability.excursion.id %}" class="text-lg font-bold text-blue hover:opacity-80">
-                        {{ booking.excursion_availability.excursion.title }}
-                    </a>
-                </div>
-                <div class="bg-orange-light rounded-lg shadow-sm p-4 border-orange">
-                    <h4 class="text-md font-semibold text-orange mb-1">Date</h4>
-                    <p class="text-lg font-bold text-orange">{{ booking.date|date:"F d, Y" }}</p>
-                </div>
-                <div class="bg-orange-light rounded-lg shadow-sm p-4 border-orange">
-                    <h4 class="text-md font-semibold text-orange mb-1">Time</h4>
-                    <p class="text-lg font-bold text-orange">{{ booking.excursion_availability.start_time|time:"H:i" }} - {{ booking.excursion_availability.end_time|time:"H:i" }}</p>
-                </div>
-                
-                <div class="bg-orange-light rounded-lg shadow-sm p-4 border-orange">
-                    <h4 class="text-md font-semibold text-orange mb-1">Pickup Point</h4>
-                    <p class="text-lg font-bold text-orange">{% if booking.pickup_point %}{{ booking.pickup_point.name }}{% else %}N/A{% endif %}</p>
-                </div>
+    <div class="mt-8 mb-2">
+        <h3 class="text-xl font-bold text-yellow ">Excursion Information</h3>
+    </div>
+    <div class="bg-white p-5">
+        <div class="grid grid-cols-4 gap-4">
+            <div class="">
+                <h4 class="text-lg font-bold  mb-1">Excursion</h4>
+                <a href="{% url 'excursion_detail' booking.excursion_availability.excursion.id %}" class="text-md font-semibold text-blue hover:opacity-80">
+                    {{ booking.excursion_availability.excursion.title }}
+                </a>
+            </div>
+            <div class="">
+                <h4 class="text-lg font-bold  mb-1">Date & Time</h4>
+                <p class="text-md font-semibold ">{{ booking.date|date:"F d, Y" }}</p>
+                <p class="text-md font-semibold ">{{ booking.excursion_availability.start_time|time:"H:i" }} - {{ booking.excursion_availability.end_time|time:"H:i" }}</p>
+            </div>
+            <div class="">
+                <h4 class="text-lg font-bold  mb-1">Pickup Point</h4>
+                <p class="text-md font-semibold ">{% if booking.pickup_point %}{{ booking.pickup_point.name }}{% else %}N/A{% endif %}</p>
             </div>
         </div>
+    </div>
 
-        <!-- Guest Information -->
-        <div class="mt-8 mb-4">
-            <h3 class="text-xl font-bold text-turquaz">Guest Information</h3>
-        </div>
-        <div class="">
-            <div class="grid grid-cols-4 gap-4">
-                <div class="bg-turquaz-light rounded-lg shadow-sm p-4 border-turquaz">
-                    <h4 class="text-md font-semibold text-turquaz mb-1">Contact Name</h4>
-                    <p class="text-lg font-bold text-turquaz">{{ booking.guest_name }}</p>
-                </div>
-                <div class="bg-turquaz-light rounded-lg shadow-sm p-4 border-turquaz">
-                    <h4 class="text-md font-semibold text-turquaz mb-1">Contact Email</h4>
-                    <p class="text-lg font-bold text-turquaz">{{ booking.guest_email }}</p>
-                </div>
-                {% if booking.voucher_id %}
-                <div class="bg-turquaz-light rounded-lg shadow-sm p-4 border-turquaz">
-                    <h4 class="text-md font-semibold text-turquaz mb-1">Reservation</h4>
-                    <p class="text-lg font-bold text-turquaz"><a href="{% url 'admin_reservations' %}" class="text-blue hover:opacity-80">{{ booking.voucher_id }}</a></p>
-                </div>
-                {% endif %}
-                <div class="bg-white rounded-lg shadow-sm p-4 border-brown">
-                    <h4 class="text-md font-semibold text-brown-light mb-1">Number of Guests</h4>
-                    <p class="text-lg font-bold text-brown-light">{{ booking.total_adults }} Adults | {{ booking.total_kids }} Children | {{ booking.total_infants }} Infants</p>
-                </div>
+    <!-- Guest Information -->
+    <div class="mt-8 mb-2">
+        <h3 class="text-xl font-bold text-green">Guest Information</h3>
+    </div>
+    <div class="bg-white p-5">
+        <div class="grid grid-cols-4 gap-4">
+            <div class="">
+                <h4 class="text-lg font-bold  mb-1">Contact Name</h4>
+                <p class="text-md font-semibold ">{{ booking.guest_name }}</p>
+            </div>
+            <div class="">
+                <h4 class="text-lg font-bold  mb-1">Contact Email</h4>
+                <p class="text-md font-semibold ">{{ booking.guest_email }}</p>
+            </div>
+            {% if booking.voucher_id %}
+            <div class="">
+                <h4 class="text-lg font-bold  mb-1">Reservation</h4>
+                <p class="text-md font-semibold "><a href="{% url 'admin_reservations' %}" class="text-blue hover:opacity-80">{{ booking.voucher_id }}</a></p>
+            </div>
+            {% endif %}
+            <div class="">
+                <h4 class="text-lg font-bold  mb-1">Number of Guests</h4>
+                <p class="text-md font-semibold ">{{ booking.total_adults }} Adults | {{ booking.total_kids }} Children | {{ booking.total_infants }} Infants</p>
             </div>
         </div>
     </div>
@@ -160,6 +176,8 @@
         const cancelBtn = document.getElementById('cancel-payment');
         const pendingBtn = document.getElementById('pending-payment');
         const bookingId = document.getElementById('booking-id').value;
+        // const token = {% if access_token %}'{{ access_token }}'{% else %}null{% endif %};
+        const token = '{{ access_token }}';
         const ajaxUrl = `/bookings/${bookingId}/`;
 
         if (completeBtn) {
@@ -185,7 +203,8 @@
                             },
                             body: JSON.stringify({
                                 action_type: 'complete_payment',
-                                csrfmiddlewaretoken: csrftoken
+                                csrfmiddlewaretoken: csrftoken,
+                                token: token
                             })
                         })
                         .then(response => response.json())
@@ -243,7 +262,8 @@
                             },
                             body: JSON.stringify({
                                 action_type: 'cancel_payment',
-                                csrfmiddlewaretoken: csrftoken
+                                csrfmiddlewaretoken: csrftoken,
+                                token: token
                             })
                         })
                         .then(response => response.json())
@@ -294,7 +314,8 @@
                         },
                         body: JSON.stringify({
                             action_type: 'delete_booking',
-                            csrfmiddlewaretoken: csrftoken
+                            csrfmiddlewaretoken: csrftoken,
+                            token: token
                         })
                     })
                     .then(response => response.json())
@@ -352,7 +373,8 @@
                             },
                             body: JSON.stringify({
                                 action_type: 'pending_payment',
-                                csrfmiddlewaretoken: csrftoken
+                                csrfmiddlewaretoken: csrftoken,
+                                token: token
                             })
                         })
                         .then(response => response.json())

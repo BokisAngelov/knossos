@@ -4,10 +4,14 @@ from django.utils import timezone
 from django.core.exceptions import ValidationError
 from .models import (
     Excursion, Feedback, Booking, Reservation, 
-    AvailabilityDays, ExcursionAvailability, PickupPoint, Hotel, Region
+    AvailabilityDays, ExcursionAvailability, PickupPoint, Hotel, Region, JCCGatewayConfig, EmailSettings
 )
 from .cyber_api import get_reservation
 from datetime import datetime
+import requests
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class AvailabilityValidationService:
@@ -395,6 +399,18 @@ class BookingService:
             booking_data['partial_price']
         )
         
+        # Generate access token for non-logged-in users
+        access_token = None
+        if not user or not user.is_authenticated:
+            # Generate a unique token
+            import secrets
+            while True:
+                token = secrets.token_urlsafe(32)
+                # Check if token already exists (very unlikely, but be safe)
+                if not Booking.objects.filter(access_token=token).exists():
+                    access_token = token
+                    break
+        
         # Create booking
         booking = Booking.objects.create(
             user=user if user.is_authenticated else None,
@@ -408,6 +424,7 @@ class BookingService:
             date=selected_date,
             price=base_price,
             pickup_point=pickup_point,
+            access_token=access_token,
             **pricing_data
         )
         
@@ -1281,3 +1298,433 @@ def create_reservation(booking_data):
             'success': False,
             'message': 'Reservation not found.'
         }
+
+
+class JCCPaymentService:
+    """
+    Service class for handling JCC Payment Gateway API interactions.
+    Handles order registration and status verification.
+    """
+    
+    @staticmethod
+    def get_config():
+        """
+        Get the active JCC gateway configuration.
+        
+        Returns:
+            JCCGatewayConfig instance or None if no active config exists.
+        
+        Raises:
+            ValidationError: If no active configuration is found.
+        """
+        config = JCCGatewayConfig.get_active_config()
+        if not config:
+            raise ValidationError(
+                "No active JCC gateway configuration found. "
+                "Please configure JCC gateway settings in the admin panel."
+            )
+        return config
+    
+    @staticmethod
+    def register_order(booking, return_url, fail_url=None, description=None, language=None, use_unique_order_number=False):
+        """
+        Register an order with JCC Payment Gateway.
+        
+        Args:
+            booking: Booking instance
+            return_url: URL to redirect after successful payment
+            fail_url: URL to redirect after failed payment (optional)
+            description: Order description (optional)
+            language: Language code (optional, uses config default if not provided)
+            use_unique_order_number: If True, use a timestamp-based unique order number to avoid duplicates
+        
+        Returns:
+            dict: Response containing 'orderId' and 'formUrl' on success
+        
+        Raises:
+            ValidationError: If registration fails or config is missing
+            Exception: For network or other errors
+        """
+        config = JCCPaymentService.get_config()
+        
+        # Calculate amount in minor currency units (e.g., cents for EUR)
+        # JCC expects amount in minor units (e.g., 2000 for 20.00 EUR)
+        amount = booking.get_final_price
+        amount_minor = int(amount * 100)  # Convert to cents/minor units
+        
+        # Prepare order number
+        # If use_unique_order_number is True, append timestamp to avoid duplicate order numbers
+        if use_unique_order_number:
+            from datetime import datetime
+            timestamp = int(datetime.now().timestamp())
+            order_number = f"{booking.id}_{timestamp}"
+        else:
+            order_number = str(booking.id)
+        
+        # Prepare request data
+        data = {
+            'amount': amount_minor,
+            'currency': config.default_currency,
+            'userName': config.username,
+            'password': config.password,
+            'orderNumber': order_number,
+            'returnUrl': return_url,
+            'description': description or f"Booking #{booking.id}",
+            'language': language or config.default_language,
+        }
+        
+        # Add failUrl if provided
+        if fail_url:
+            data['failUrl'] = fail_url
+        
+        try:
+            logger.info(f"Registering JCC order for booking #{booking.id}, amount: {amount_minor}")
+            
+            response = requests.post(
+                config.register_url,
+                data=data,
+                headers={'Content-Type': 'application/x-www-form-urlencoded'},
+                timeout=30
+            )
+            response.raise_for_status()
+            
+            # Parse response
+            response_data = response.json()
+            
+            # Log full response for debugging
+            logger.info(f"JCC registration response: {response_data}")
+            
+            # Check for errors in response
+            # JCC returns errorCode: 0 (or missing) for success, non-zero for errors
+            # errorCode might be integer or string, so we need to handle both
+            error_code = response_data.get('errorCode')
+            
+            # Convert to int if it's a string
+            if isinstance(error_code, str):
+                try:
+                    error_code = int(error_code)
+                except (ValueError, TypeError):
+                    error_code = None
+            
+            # Only treat as error if errorCode exists and is non-zero
+            # errorCode: 0 or missing means success
+            if error_code is not None and error_code != 0:
+                error_message = response_data.get('errorMessage', 'Unknown error')
+                logger.error(f"JCC registration error: {error_message} (code: {error_code})")
+                raise ValidationError(f"JCC payment registration failed: {error_message}")
+            
+            # Validate required fields in response
+            if 'orderId' not in response_data or 'formUrl' not in response_data:
+                logger.error(f"Invalid JCC response: {response_data}")
+                raise ValidationError("Invalid response from JCC payment gateway")
+            
+            logger.info(f"JCC order registered successfully: orderId={response_data['orderId']}")
+            
+            return response_data
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Network error during JCC registration: {str(e)}")
+            raise Exception(f"Failed to connect to JCC payment gateway: {str(e)}")
+        except ValueError as e:
+            logger.error(f"Invalid JSON response from JCC: {str(e)}")
+            raise ValidationError("Invalid response format from JCC payment gateway")
+    
+    @staticmethod
+    def get_order_status(order_id):
+        """
+        Get the status of an order from JCC Payment Gateway.
+        
+        Args:
+            order_id: JCC order ID (orderId from register.do response)
+        
+        Returns:
+            dict: Order status information including 'orderStatus' and 'actionCode'
+        
+        Raises:
+            ValidationError: If status check fails or config is missing
+            Exception: For network or other errors
+        """
+        config = JCCPaymentService.get_config()
+        
+        data = {
+            'userName': config.username,
+            'password': config.password,
+            'orderId': order_id,
+        }
+        
+        try:
+            logger.info(f"Checking JCC order status for orderId: {order_id}")
+            
+            response = requests.post(
+                config.status_url,
+                data=data,
+                headers={'Content-Type': 'application/x-www-form-urlencoded'},
+                timeout=30
+            )
+            response.raise_for_status()
+            
+            # Parse response
+            response_data = response.json()
+            
+            # Log full response for debugging
+            logger.info(f"JCC status check response: {response_data}")
+            
+            # Check for errors in response
+            # JCC returns errorCode: 0 (or missing) for success, non-zero for errors
+            # errorCode might be integer or string, so we need to handle both
+            error_code = response_data.get('errorCode')
+            error_message = response_data.get('errorMessage', '')
+            
+            # Convert to int if it's a string
+            if isinstance(error_code, str):
+                try:
+                    error_code = int(error_code)
+                except (ValueError, TypeError):
+                    error_code = None
+            
+            # Only treat as error if errorCode exists and is non-zero
+            # errorCode: 0 or missing means success
+            # IMPORTANT: errorMessage: "Success" with errorCode: 0 is a SUCCESS response, not an error!
+            # We should NOT raise an error if errorCode is 0, regardless of errorMessage content
+            if error_code is not None:
+                if error_code == 0:
+                    # errorCode: 0 means success, even if errorMessage exists
+                    logger.info(f"JCC response indicates success (errorCode: 0, errorMessage: {error_message})")
+                elif error_code != 0:
+                    # Only raise error if errorCode is non-zero
+                    logger.error(f"JCC status check error: {error_message} (code: {error_code})")
+                    raise ValidationError(f"JCC payment status check failed: {error_message}")
+            
+            # If we get here, errorCode is 0 or missing, which means success
+            # Check if we have orderStatus in the response (required for status check)
+            if 'orderStatus' not in response_data:
+                logger.warning(f"JCC status response missing orderStatus field: {response_data}")
+                # Don't fail here - maybe the response structure is different
+                # Let is_payment_successful handle it
+            
+            # If errorCode is 0 or missing, it's a successful response
+            # Even if errorMessage says "Success", that's fine - it's not an error
+            logger.info(
+                f"JCC order status retrieved successfully: "
+                f"orderStatus={response_data.get('orderStatus')}, "
+                f"actionCode={response_data.get('actionCode')}, "
+                f"errorCode={error_code}, "
+                f"errorMessage={response_data.get('errorMessage', 'N/A')}"
+            )
+            
+            return response_data
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Network error during JCC status check: {str(e)}")
+            raise Exception(f"Failed to connect to JCC payment gateway: {str(e)}")
+        except ValueError as e:
+            logger.error(f"Invalid JSON response from JCC: {str(e)}")
+            raise ValidationError("Invalid response format from JCC payment gateway")
+    
+    @staticmethod
+    def is_payment_successful(order_status):
+        """
+        Check if payment was successful based on order status.
+        
+        According to JCC documentation:
+        - orderStatus = 2 means successful payment
+        - actionCode = 0 means successful transaction
+        
+        Args:
+            order_status: Order status dict from get_order_status()
+        
+        Returns:
+            bool: True if payment was successful
+        """
+        status = order_status.get('orderStatus')
+        action_code = order_status.get('actionCode', -1)
+        
+        # Handle string or integer status/actionCode
+        if isinstance(status, str):
+            try:
+                status = int(status)
+            except (ValueError, TypeError):
+                status = None
+        
+        if isinstance(action_code, str):
+            try:
+                action_code = int(action_code)
+            except (ValueError, TypeError):
+                action_code = -1
+        
+        # Status 2 = successful payment
+        # Action code 0 = successful transaction
+        is_success = status == 2 and action_code == 0
+        
+        logger.info(
+            f"Payment success check: orderStatus={status}, actionCode={action_code}, "
+            f"result={is_success}"
+        )
+        
+        return is_success
+
+
+class EmailService:
+    """
+    Service class for sending emails using EmailSettings configuration.
+    Provides a centralized way to send emails across the application.
+    """
+    
+    @staticmethod
+    def get_email_config():
+        """
+        Get the active email configuration from EmailSettings model.
+        
+        Returns:
+            EmailSettings instance or None if no configuration exists.
+        """
+        try:
+            # Try to get active config (if is_active field exists)
+            if hasattr(EmailSettings, 'is_active'):
+                config = EmailSettings.objects.filter(is_active=True).first()
+                if config:
+                    return config
+            
+            # Fallback: get the most recent configuration
+            config = EmailSettings.objects.order_by('-created_at').first()
+            return config
+        except Exception as e:
+            logger.error(f"Error getting email configuration: {str(e)}")
+            return None
+    
+    @staticmethod
+    def get_connection():
+        """
+        Get email connection using EmailSettings configuration.
+        
+        Returns:
+            Email backend connection instance.
+        
+        Raises:
+            ValidationError: If no email configuration is found.
+        """
+        from django.core.mail import get_connection as django_get_connection
+        from django.core.exceptions import ValidationError
+        
+        config = EmailService.get_email_config()
+        if not config:
+            raise ValidationError(
+                "No email configuration found. "
+                "Please configure email settings in the admin panel."
+            )
+        
+        return django_get_connection(
+            host=config.host,
+            port=config.port,
+            use_tls=config.use_tls,
+            use_ssl=config.use_ssl,
+            username=config.email,
+            password=config.password,
+            fail_silently=False,
+        )
+    
+    @staticmethod
+    def send_email(subject, message, recipient_list, from_email=None, html_message=None, fail_silently=False):
+        """
+        Send an email using the configured EmailSettings.
+        
+        Args:
+            subject: Email subject
+            message: Plain text email message
+            recipient_list: List of recipient email addresses
+            from_email: From email address (uses EmailSettings.email if not provided)
+            html_message: Optional HTML version of the message
+            fail_silently: If True, suppress exceptions (default: False)
+        
+        Returns:
+            int: Number of emails sent (1 if successful, 0 if failed)
+        
+        Raises:
+            ValidationError: If email configuration is missing
+            Exception: If email sending fails (unless fail_silently=True)
+        """
+        from django.core.mail import send_mail
+        from django.core.exceptions import ValidationError
+        
+        config = EmailService.get_email_config()
+        if not config:
+            if fail_silently:
+                logger.warning("No email configuration found. Email not sent.")
+                return 0
+            raise ValidationError(
+                "No email configuration found. "
+                "Please configure email settings in the admin panel."
+            )
+        
+        # Use config email as from_email if not provided
+        if not from_email:
+            from_email = config.email
+        
+        # Use name_from if available
+        if hasattr(config, 'name_from') and config.name_from:
+            from_email = f"{config.name_from} <{config.email}>"
+        
+        try:
+            connection = EmailService.get_connection()
+            return send_mail(
+                subject=subject,
+                message=message,
+                from_email=from_email,
+                recipient_list=recipient_list,
+                fail_silently=fail_silently,
+                connection=connection,
+                html_message=html_message,
+            )
+        except Exception as e:
+            logger.error(f"Error sending email: {str(e)}", exc_info=True)
+            if not fail_silently:
+                raise
+            return 0
+    
+    @staticmethod
+    def send_to_admins(subject, message, html_message=None, fail_silently=False):
+        """
+        Send an email to all admin users.
+        
+        Args:
+            subject: Email subject
+            message: Plain text email message
+            html_message: Optional HTML version of the message
+            fail_silently: If True, suppress exceptions (default: False)
+        
+        Returns:
+            int: Number of emails sent
+        """
+        from .models import UserProfile
+        
+        try:
+            # Get admin email addresses
+            admin_profiles = UserProfile.objects.filter(
+                role='admin',
+                user__is_staff=True,
+                status='active'
+            ).select_related('user')
+            
+            admin_emails = []
+            for profile in admin_profiles:
+                # Use profile email if available, otherwise use user email
+                email = profile.email or (profile.user.email if profile.user else None)
+                if email:
+                    admin_emails.append(email)
+            
+            if not admin_emails:
+                logger.warning('No admin email addresses found.')
+                return 0
+            
+            return EmailService.send_email(
+                subject=subject,
+                message=message,
+                recipient_list=admin_emails,
+                html_message=html_message,
+                fail_silently=fail_silently,
+            )
+        except Exception as e:
+            logger.error(f"Error sending email to admins: {str(e)}", exc_info=True)
+            if not fail_silently:
+                raise
+            return 0

@@ -28,6 +28,13 @@ urlpatterns = [
 
     # Checkout URL
     path('checkout/<int:booking_pk>/', views.checkout, name='checkout'),
+    
+    # JCC Payment URLs
+    path('payment/<int:booking_pk>/initiate/', views.payment_initiate, name='payment_initiate'),
+    path('payment/<int:booking_pk>/success/', views.payment_success, name='payment_success'),
+    path('payment/success/', views.payment_success, name='payment_success_no_pk'),  # Fallback if booking_pk missing
+    path('payment/<int:booking_pk>/fail/', views.payment_fail, name='payment_fail'),
+    path('payment/fail/', views.payment_fail, name='payment_fail_no_pk'),  # Fallback if booking_pk missing
 
     # User URLs
     path('login/', views.login_view, name='login'),
@@ -40,6 +47,7 @@ urlpatterns = [
     path('password_reset/', views.password_reset_form, name='password_reset_form'),
     path('password_reset_token/<str:token>/', views.password_reset_token, name='password_reset_token'),
     path('booking-id', views.booking_id_page, name='booking_id_page'),
+    path('verify_email/<str:uidb64>/<str:token>/', views.verify_email, name='verify_email'),
 
     # Admin Dashboard
     path('profile/admin/<int:pk>/', views.admin_dashboard, name='admin_dashboard'),

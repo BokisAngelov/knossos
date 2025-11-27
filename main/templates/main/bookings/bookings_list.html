@@ -71,7 +71,7 @@
                 <table class="min-w-full text-sm">
                     <thead class="text-base">
                         <tr>
-                            <th class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">ID</th>
+                            <th class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">Order ID</th>
                             <th class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">                                    Date
                             </th>
                             <th class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">
@@ -92,7 +92,7 @@
                         {% for booking in page_obj %}
                         <tr data-id="{{ booking.id }}">
                             <td class="px-4 py-4 whitespace-nowrap">
-                                <span class="editable-id text-sm font-normal">#{{ booking.id }}</span>
+                                <span class="editable-id text-sm font-normal">{% if booking.jcc_order_id %}{{ booking.jcc_order_id }}{% else %}#{{ booking.id }}{% endif %}</span>
                             </td>
                             <td class="px-4 py-4 whitespace-nowrap">
                                 <span class="editable-date text-sm font-normal">{{ booking.created_at|date:"d/m/Y" }}</span>
