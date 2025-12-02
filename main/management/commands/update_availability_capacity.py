@@ -1,7 +1,7 @@
 from django.core.management.base import BaseCommand
 from main.models import AvailabilityDays, Booking
 import logging
-from main.utils import EmailService
+from main.utils import EmailService, EmailBuilder
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +26,7 @@ class Command(BaseCommand):
         updated_count = 0
         discrepancy_count = 0
         over_capacity_count = 0
+        over_capacity_list = []
         
         for availability_day in availability_days:
             # Skip if no excursion_availability or date_day
@@ -65,6 +66,13 @@ class Command(BaseCommand):
             if validate_capacity and availability_day.capacity > 0:
                 if total_guests > availability_day.capacity:
                     over_capacity_count += 1
+                    over_capacity_list.append({
+                        'availability_day': availability_day,
+                        'total_guests': total_guests,
+                        'capacity': availability_day.capacity,
+                        'excursion': availability_day.excursion_availability.excursion.title if availability_day.excursion_availability else 'N/A',
+                        'date': availability_day.date_day
+                    })
                     self.stdout.write(
                         self.style.WARNING(
                             f'⚠️  Over capacity: {availability_day} - '
@@ -74,14 +82,6 @@ class Command(BaseCommand):
                     logger.warning(
                         f'Over capacity detected: {availability_day} - '
                         f'{total_guests} guests booked, capacity: {availability_day.capacity}'
-                    )
-
-                    # TODO: Send email to admin
-                    emails_sent = EmailService.send_email(
-                        subject=f'[iTrip Knossos] Over Capacity',
-                        message=f"Over capacity detected: {availability_day} - {total_guests} guests booked, capacity: {availability_day.capacity}",
-                        recipient_list=['bokis.angelov@innovade.eu'],
-                        fail_silently=True
                     )
         
         # Summary output
@@ -104,6 +104,9 @@ class Command(BaseCommand):
                     f'❌ Found {over_capacity_count} availability day(s) over capacity'
                 )
             )
+            
+            # Send admin notification about over capacity
+            self.send_over_capacity_notification(over_capacity_list)
 
         elif validate_capacity:
             self.stdout.write(
@@ -115,4 +118,52 @@ class Command(BaseCommand):
             f'{discrepancy_count} discrepancies found, '
             f'{over_capacity_count} over capacity'
         )
+    
+    def send_over_capacity_notification(self, over_capacity_list):
+        """Send email notification to admins about over capacity issues."""
+        try:
+            builder = EmailBuilder()
+            builder.h2("⚠️ Over Capacity Alert")
+            builder.error(f"{len(over_capacity_list)} availability day(s) exceed capacity!")
+            builder.p(
+                "The following availability days have more confirmed bookings than their capacity allows. "
+                "This may require additional transportation or splitting into multiple groups."
+            )
+            
+            # Add each over-capacity day
+            for item in over_capacity_list[:15]:  # Limit to 15
+                excess = item['total_guests'] - item['capacity']
+                builder.card(item['excursion'], {
+                    'Date': item['date'].strftime('%B %d, %Y'),
+                    'Capacity': item['capacity'],
+                    'Booked Guests': item['total_guests'],
+                    'Over by': f"{excess} guest(s)"
+                }, border_color="#e53935")
+            
+            if len(over_capacity_list) > 15:
+                builder.p(f"... and {len(over_capacity_list) - 15} more over-capacity day(s)")
+            
+            builder.list_box("🚨 Action Required", [
+                "Review transport groups for these dates",
+                "Consider adding additional buses/groups",
+                "Contact providers to confirm capacity",
+                "Monitor booking numbers closely"
+            ], bg_color="#fff4f0", title_color="#e53935")
+            
+            builder.p("Please review and take appropriate action.")
+            builder.p("Best regards,<br>Automated System")
+            
+            EmailService.send_dynamic_email(
+                subject=f'[iTrip Knossos] 🚨 {len(over_capacity_list)} Availability Day(s) Over Capacity',
+                recipient_list=['bokis.angelov@innovade.eu'],
+                email_body=builder.build(),
+                preview_text=f'{len(over_capacity_list)} days exceed capacity - action required',
+                fail_silently=True
+            )
+            logger.info('Sent over-capacity notification to admin')
+            self.stdout.write(self.style.SUCCESS('Email notification sent to admin'))
+            
+        except Exception as e:
+            logger.error(f'Failed to send over-capacity notification: {str(e)}')
+            self.stdout.write(self.style.WARNING(f'Failed to send email: {str(e)}'))
 

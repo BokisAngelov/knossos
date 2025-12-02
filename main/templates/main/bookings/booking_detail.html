@@ -38,13 +38,17 @@
         {% if booking.payment_status == 'pending' and not is_date_past %}
             {% if not user.is_staff %}
                 {% if is_own_booking or access_token %}
-                <div class="mt-4">
-                    <a href="{% url 'checkout' booking_pk=booking.pk %}{% if access_token %}?token={{ access_token }}{% endif %}" class="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-md transition duration-150 ease-in-out shadow-md hover:shadow-lg">
+                <input type="hidden" id="booking-id" value="{{ booking.id }}">
+                <div class="mt-4 flex gap-2">
+                    <a href="{% url 'checkout' booking_pk=booking.pk %}{% if access_token %}?token={{ access_token }}{% endif %}" class="inline-flex items-center h-8 px-4 py-1 bg-blue hover:opacity-80 text-white font-semibold rounded-md">
                         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                         </svg>
                         Proceed to Checkout
                     </a>
+                    {% if booking.payment_status == 'pending' %}
+                        <a id="cancel-payment" class="inline-flex items-center h-8 px-4 py-1 text-white bg-brown rounded-md font-semibold hover:opacity-80" href="#">Cancel</a>
+                    {% endif %}
                 </div>
                 {% endif %}
             {% endif %}

@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="x-apple-disable-message-reformatting">
+    <title>{% block email_title %}iTrip Knossos{% endblock %}</title>
+    
+    <style type="text/css">
+        /* Reset styles */
+        body {
+            margin: 0;
+            padding: 0;
+            min-width: 100%;
+            -webkit-text-size-adjust: 100%;
+            -ms-text-size-adjust: 100%;
+        }
+        
+        table {
+            border-spacing: 0;
+            border-collapse: collapse;
+        }
+        
+        td {
+            padding: 0;
+        }
+        
+        img {
+            border: 0;
+            line-height: 100%;
+            outline: none;
+            text-decoration: none;
+            -ms-interpolation-mode: bicubic;
+        }
+        
+        /* Typography */
+        body, td, th {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+        
+        h1, h2, h3, h4, h5, h6 {
+            color: #463229;
+            margin-top: 0;
+            margin-bottom: 10px;
+            font-weight: 600;
+            line-height: 1.3;
+        }
+        
+        h1 { font-size: 28px; }
+        h2 { font-size: 24px; }
+        h3 { font-size: 20px; }
+        
+        p {
+            margin: 0 0 16px;
+            line-height: 1.6;
+            color: #4d4d4d;
+        }
+        
+        a {
+            color: #2196f3;
+            text-decoration: none;
+        }
+        
+        /* Utility classes */
+        .text-center { text-align: center; }
+        .text-left { text-align: left; }
+        .text-right { text-align: right; }
+        
+        /* Button styles */
+        .btn {
+            display: inline-block;
+            padding: 14px 28px;
+            background-color: #2196f3;
+            color: #ffffff !important;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 16px;
+            line-height: 1;
+            text-align: center;
+        }
+        
+        .btn:hover {
+            background-color: #1976d2;
+        }
+        
+        .btn-secondary {
+            background-color: #463229;
+        }
+        
+        .btn-secondary:hover {
+            background-color: #5a3f31;
+        }
+        
+        /* Responsive */
+        @media only screen and (max-width: 600px) {
+            .email-container {
+                width: 100% !important;
+                margin: auto !important;
+            }
+            
+            .stack-column,
+            .stack-column-center {
+                display: block !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                direction: ltr !important;
+            }
+            
+            .stack-column-center {
+                text-align: center !important;
+            }
+            
+            h1 { font-size: 24px !important; }
+            h2 { font-size: 20px !important; }
+            h3 { font-size: 18px !important; }
+            
+            .mobile-padding {
+                padding: 20px !important;
+            }
+        }
+        
+        /* Dark mode support */
+        @media (prefers-color-scheme: dark) {
+            .email-bg { background-color: #1a1a1a !important; }
+            .email-container { background-color: #2d2d2d !important; }
+            p, td { color: #e0e0e0 !important; }
+        }
+    </style>
+</head>
+<body style="margin: 0; padding: 0; background-color: #fcfcfc;">
+    <!-- Preview text (hidden in email, shown in inbox preview) -->
+    <div style="display: none; font-size: 1px; color: #fefefe; line-height: 1px; max-height: 0px; max-width: 0px; opacity: 0; overflow: hidden;">
+        {% block preview_text %}Your booking update from iTrip Knossos{% endblock %}
+    </div>
+    
+    <!-- Full width container -->
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #fcfcfc;" class="email-bg">
+        <tr>
+            <td style="padding: 20px 0;">
+                
+                <!-- Email container (600px width) -->
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="600" style="margin: auto; background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" class="email-container">
+                    
+                    <!-- HEADER -->
+                    <tr>
+                        <td style="background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%); padding: 30px 40px; text-align: center; border-radius: 8px 8px 0 0;">
+                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                                <tr>
+                                    <td style="text-align: center;">
+                                        <!-- Logo placeholder - replace with actual logo URL -->
+                                        <div style="width: 50px; height: 50px; margin: 0 auto 12px; background-color: rgba(255,255,255,0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                                            <span style="font-size: 24px; font-weight: bold; color: #ffffff;">K</span>
+                                        </div>
+                                        <h1 style="color: #ffffff; font-size: 26px; margin: 0; font-weight: 700; letter-spacing: 0.5px;">
+                                            KNOSSOS travel
+                                        </h1>
+                                        <p style="color: rgba(255,255,255,0.9); font-size: 14px; margin: 8px 0 0;">
+                                            Discover Cyprus with Us
+                                        </p>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    
+                    <!-- CONTENT -->
+                    <tr>
+                        <td style="padding: 40px;" class="mobile-padding">
+                            {% block email_content %}
+                            <!-- Default content (should be overridden in child templates) -->
+                            <h2 style="color: #463229; margin-top: 0;">Hello!</h2>
+                            <p style="color: #4d4d4d; font-size: 16px; line-height: 1.6;">
+                                This is a notification from iTrip Knossos.
+                            </p>
+                            {% endblock %}
+                        </td>
+                    </tr>
+                    
+                    <!-- DIVIDER -->
+                    <tr>
+                        <td style="padding: 0 40px;">
+                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                                <tr>
+                                    <td style="border-top: 1px solid #e0e0e0;"></td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    
+                    <!-- FOOTER -->
+                    <tr>
+                        <td style="padding: 30px 40px; background-color: #f9f9f9; border-radius: 0 0 8px 8px;">
+                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                                <!-- Contact Information -->
+                                <tr>
+                                    <td style="text-align: center; padding-bottom: 20px;">
+                                        <p style="color: #463229; font-size: 14px; font-weight: 600; margin: 0 0 12px;">
+                                            Need Help?
+                                        </p>
+                                        <p style="color: #666666; font-size: 13px; margin: 0 0 8px;">
+                                            📧 <a href="mailto:support@itripknossos.com" style="color: #2196f3; text-decoration: none;">support@itripknossos.com</a>
+                                        </p>
+                                        <p style="color: #666666; font-size: 13px; margin: 0 0 8px;">
+                                            📞 <a href="tel:+35799123456" style="color: #2196f3; text-decoration: none;">+357 99 123 456</a>
+                                        </p>
+                                        <p style="color: #666666; font-size: 13px; margin: 0;">
+                                            🌐 <a href="https://www.itripknossos.com" style="color: #2196f3; text-decoration: none;">www.itripknossos.com</a>
+                                        </p>
+                                    </td>
+                                </tr>
+                                
+                                <!-- Social Links (Optional) -->
+                                <tr>
+                                    <td style="text-align: center; padding: 15px 0;">
+                                        <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center">
+                                            <tr>
+                                                <td style="padding: 0 8px;">
+                                                    <a href="#" style="display: inline-block; width: 32px; height: 32px; background-color: #2196f3; border-radius: 50%; text-align: center; line-height: 32px; color: #ffffff; text-decoration: none; font-size: 14px;">f</a>
+                                                </td>
+                                                <td style="padding: 0 8px;">
+                                                    <a href="#" style="display: inline-block; width: 32px; height: 32px; background-color: #2196f3; border-radius: 50%; text-align: center; line-height: 32px; color: #ffffff; text-decoration: none; font-size: 14px;">in</a>
+                                                </td>
+                                                <td style="padding: 0 8px;">
+                                                    <a href="#" style="display: inline-block; width: 32px; height: 32px; background-color: #2196f3; border-radius: 50%; text-align: center; line-height: 32px; color: #ffffff; text-decoration: none; font-size: 14px;">📷</a>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                                
+                                <!-- Address & Legal -->
+                                <tr>
+                                    <td style="text-align: center; padding-top: 15px; border-top: 1px solid #e0e0e0;">
+                                        <p style="color: #999999; font-size: 12px; margin: 12px 0 0; line-height: 1.5;">
+                                            <strong>iTrip Knossos</strong><br>
+                                            123 Travel Street, Limassol, Cyprus<br>
+                                            License No: CY-12345678
+                                        </p>
+                                        <p style="color: #999999; font-size: 11px; margin: 12px 0 0; line-height: 1.5;">
+                                            &copy; {% now "Y" %} iTrip Knossos. All rights reserved.<br>
+                                            You received this email because you have a booking or account with us.
+                                        </p>
+                                        {% block unsubscribe_link %}
+                                        <!-- Unsubscribe link for marketing emails -->
+                                        {% endblock %}
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    
+                </table>
+                <!-- End email container -->
+                
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
+
