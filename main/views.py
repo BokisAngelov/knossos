@@ -3629,6 +3629,18 @@ def clients_list(request):
 
 @user_passes_test(is_staff)
 def manage_clients(request):
+    # Get all clients
+    clients = UserProfile.objects.filter(role='client').order_by('name')
+    
+    # Handle search
+    search_query = request.GET.get('search', '').strip()
+    if search_query:
+        clients = clients.filter(
+            Q(name__icontains=search_query) |
+            Q(email__icontains=search_query) |
+            Q(phone__icontains=search_query)
+        )
+    
     if request.method == 'POST':
         action_type = request.POST.get('action_type')
         item_id = request.POST.get('item_id')
