@@ -7,7 +7,7 @@ from .models import Feedback, Excursion, ExcursionImage, ExcursionAvailability, 
 import os
 import shutil
 import logging
-from main.utils import EmailService
+from main.utils import EmailService, EmailBuilder
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -299,13 +299,28 @@ def detect_departure_time_change(sender, instance, **kwargs):
         if old_instance.departure_time != instance.departure_time:
             logger.info(f"Departure time changed for reservation {instance.voucher_id}: {old_instance.departure_time} -> {instance.departure_time}")
             instance.departure_time_updated = True
+            
             # Send email notification
-            EmailService.send_email(
-                subject=f'[iTrip Knossos] Departure Time Changed',
-                message=f"The departure time for your reservation {instance.voucher_id} has been changed to {instance.departure_time}. Please check your reservation details.",
-                recipient_list=[instance.client_email],
-                fail_silently=True
-            )
+            if instance.client_email:
+                builder = EmailBuilder()
+                builder.h2(f"Hello {instance.client_name or 'Guest'}!")
+                builder.warning("Departure Time Changed")
+                builder.p(f"The departure time for your reservation has been updated.")
+                builder.card("Reservation Details", {
+                    'Voucher ID': instance.voucher_id,
+                    'Previous Time': str(old_instance.departure_time) if old_instance.departure_time else 'Not set',
+                    'New Time': str(instance.departure_time) if instance.departure_time else 'Not set'
+                })
+                builder.p("Please make note of this change and plan accordingly.")
+                builder.p("Best regards,<br>The iTrip Knossos Team")
+                
+                EmailService.send_dynamic_email(
+                    subject='[iTrip Knossos] Departure Time Changed',
+                    recipient_list=[instance.client_email],
+                    email_body=builder.build(),
+                    preview_text='Your departure time has been updated',
+                    fail_silently=True
+                )
         
     except Reservation.DoesNotExist:
         # New reservation

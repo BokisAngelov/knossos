@@ -57,45 +57,43 @@ class Command(BaseCommand):
         """
         Send email notification to admin users about expired bookings.
         """
-        try:            
-            # Prepare email content
-            subject = f'[iTrip Knossos] {count} Booking(s) Expired'
+        try:
+            from main.utils import EmailBuilder
             
-            # Build email message with booking details
-            message_lines = [
-                f'{count} booking(s) have been automatically expired due to past excursion dates.',
-                '',
-                'Expired Bookings:',
-                '-' * 80,
-            ]
+            # Build email content
+            builder = EmailBuilder()
+            builder.h2("Booking Expiration Report")
+            builder.warning(f"{count} booking(s) have been automatically expired")
+            builder.p("The following bookings were expired due to past excursion dates.")
             
-            for booking in expired_bookings:
+            # Add each booking as a card
+            for booking in expired_bookings[:10]:  # Limit to first 10 for email size
                 excursion_name = booking.excursion_availability.excursion.title if booking.excursion_availability and booking.excursion_availability.excursion else 'N/A'
                 guest_name = booking.guest_name or 'N/A'
                 guest_email = booking.guest_email or 'N/A'
-                booking_date = booking.date.strftime('%Y-%m-%d') if booking.date else 'N/A'
-                booking_id = booking.id
+                booking_date = booking.date.strftime('%B %d, %Y') if booking.date else 'N/A'
                 
-                message_lines.extend([
-                    f'Booking ID: {booking_id}',
-                    f'Excursion: {excursion_name}',
-                    f'Date: {booking_date}',
-                    f'Guest: {guest_name} ({guest_email})',
-                    f'Price: €{booking.price or 0}',
-                    '-' * 80,
-                ])
+                builder.card(f"Booking #{booking.id}", {
+                    'Excursion': excursion_name,
+                    'Date': booking_date,
+                    'Guest': guest_name,
+                    'Email': guest_email,
+                    'Price': f"€{booking.price or 0}"
+                }, border_color="#e53935")
             
-            message_lines.append('')
-            message_lines.append('Please review these bookings in the admin panel.')
+            if count > 10:
+                builder.p(f"... and {count - 10} more booking(s)")
             
-            message = '\n'.join(message_lines)
+            builder.p("Please review these bookings in the admin panel.")
+            builder.p("Best regards,<br>Automated System")
             
-            # Send email using EmailService
-            emails_sent = EmailService.send_email(
-                subject=subject,
-                message=message,
+            # Send email
+            emails_sent = EmailService.send_dynamic_email(
+                subject=f'[iTrip Knossos] {count} Booking(s) Expired',
                 recipient_list=['bokis.angelov@innovade.eu'],
-                fail_silently=True  # Don't fail the command if email fails
+                email_body=builder.build(),
+                preview_text=f'{count} bookings expired due to past dates',
+                fail_silently=True
             )
             
             if emails_sent > 0:

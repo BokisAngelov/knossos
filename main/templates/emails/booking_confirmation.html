@@ -1,0 +1,129 @@
+{% extends 'emails/base_email.html' %}
+
+{% block email_title %}Booking Confirmed - iTrip Knossos{% endblock %}
+
+{% block preview_text %}Your booking for {{ excursion_name }} has been confirmed!{% endblock %}
+
+{% block email_content %}
+<!-- Greeting -->
+<h2 style="color: #463229; margin-top: 0; margin-bottom: 8px;">
+    Hello {{ customer_name }}!
+</h2>
+
+<p style="color: #4caf50; font-size: 18px; font-weight: 600; margin: 0 0 24px;">
+    ✓ Your booking has been confirmed!
+</p>
+
+<!-- Main Message -->
+<p style="color: #4d4d4d; font-size: 16px; line-height: 1.6; margin-bottom: 24px;">
+    Thank you for choosing iTrip Knossos. We're excited to have you join us for an unforgettable experience!
+</p>
+
+<!-- Booking Details Card -->
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f9f9f9; border-radius: 8px; border-left: 4px solid #2196f3; margin-bottom: 24px;">
+    <tr>
+        <td style="padding: 20px;">
+            <h3 style="color: #463229; margin-top: 0; margin-bottom: 16px; font-size: 18px;">
+                Booking Details
+            </h3>
+            
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                <tr>
+                    <td style="padding: 8px 0; color: #666666; font-size: 14px; font-weight: 600;">
+                        Confirmation #:
+                    </td>
+                    <td style="padding: 8px 0; color: #463229; font-size: 14px; text-align: right; font-weight: 700;">
+                        {{ booking_id }}
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding: 8px 0; color: #666666; font-size: 14px;">
+                        Excursion:
+                    </td>
+                    <td style="padding: 8px 0; color: #463229; font-size: 14px; text-align: right; font-weight: 600;">
+                        {{ excursion_name }}
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding: 8px 0; color: #666666; font-size: 14px;">
+                        Date:
+                    </td>
+                    <td style="padding: 8px 0; color: #463229; font-size: 14px; text-align: right; font-weight: 600;">
+                        {{ excursion_date }}
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding: 8px 0; color: #666666; font-size: 14px;">
+                        Pickup Point:
+                    </td>
+                    <td style="padding: 8px 0; color: #463229; font-size: 14px; text-align: right; font-weight: 600;">
+                        {{ pickup_point }}
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding: 8px 0; color: #666666; font-size: 14px;">
+                        Guests:
+                    </td>
+                    <td style="padding: 8px 0; color: #463229; font-size: 14px; text-align: right; font-weight: 600;">
+                        {{ total_guests }} ({{ adults }} Adults, {{ children }} Children)
+                    </td>
+                </tr>
+                <tr>
+                    <td colspan="2" style="padding-top: 12px; border-top: 1px solid #e0e0e0;"></td>
+                </tr>
+                <tr>
+                    <td style="padding: 12px 0 0; color: #463229; font-size: 16px; font-weight: 700;">
+                        Total Paid:
+                    </td>
+                    <td style="padding: 12px 0 0; color: #2196f3; font-size: 18px; text-align: right; font-weight: 700;">
+                        €{{ total_price }}
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
+
+<!-- Call to Action -->
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom: 24px;">
+    <tr>
+        <td style="text-align: center; padding: 20px 0;">
+            <a href="{{ booking_url }}" class="btn" style="display: inline-block; padding: 14px 28px; background-color: #2196f3; color: #ffffff !important; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px;">
+                View Full Booking Details
+            </a>
+        </td>
+    </tr>
+</table>
+
+<!-- Important Information -->
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #fff4f0; border-radius: 8px; margin-bottom: 24px;">
+    <tr>
+        <td style="padding: 20px;">
+            <h3 style="color: #ff6b35; margin-top: 0; margin-bottom: 12px; font-size: 16px;">
+                📋 Important Information
+            </h3>
+            <ul style="color: #4d4d4d; font-size: 14px; line-height: 1.6; margin: 0; padding-left: 20px;">
+                <li style="margin-bottom: 8px;">Please arrive at the pickup point 10 minutes before the scheduled time</li>
+                <li style="margin-bottom: 8px;">Bring comfortable shoes, sunscreen, and water</li>
+                <li style="margin-bottom: 8px;">Pickup time will be confirmed 24-48 hours before the excursion</li>
+                <li style="margin-bottom: 0;">For cancellations, contact us at least 24 hours in advance</li>
+            </ul>
+        </td>
+    </tr>
+</table>
+
+<!-- Closing Message -->
+<p style="color: #4d4d4d; font-size: 15px; line-height: 1.6; margin-bottom: 8px;">
+    If you have any questions or need to make changes to your booking, please don't hesitate to contact us.
+</p>
+
+<p style="color: #4d4d4d; font-size: 15px; line-height: 1.6; margin-bottom: 0;">
+    We look forward to seeing you soon!
+</p>
+
+<p style="color: #463229; font-size: 15px; line-height: 1.6; margin-top: 20px; font-weight: 600;">
+    Best regards,<br>
+    The iTrip Knossos Team
+</p>
+{% endblock %}
+

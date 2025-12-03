@@ -2,7 +2,7 @@ from django.core.management.base import BaseCommand
 from main.models import Booking
 from django.utils import timezone
 from django.urls import reverse
-from main.utils import EmailService
+from main.utils import EmailService, EmailBuilder
 from datetime import timedelta
 import logging
 
@@ -78,37 +78,41 @@ class Command(BaseCommand):
                 # Send email to customer if email available
                 if customer_email:
                     try:
-                        # Build checkout URL path (relative - will be made absolute by email client or site URL)
+                        # Build checkout URL
                         checkout_path = reverse('checkout', kwargs={'booking_pk': booking.id})
-                        # Note: In production, you may want to prepend your site URL here
-                        # checkout_url = f"https://yourdomain.com{checkout_path}"
-                        checkout_url = checkout_path  # Using relative path for now
+                        # Add token if exists
+                        if booking.access_token:
+                            checkout_path += f'?token={booking.access_token}'
+                        # Note: In production, prepend your site URL
+                        checkout_url = f"http://localhost:8000{checkout_path}"  # Update with your domain
                         
-                        email_message = f"""
-Hello {guest_name},
-
-This is a reminder that you have a pending booking for an excursion tomorrow.
-
-Booking Details:
-- Excursion: {excursion_name}
-- Date: {booking_date}
-- Amount Due: €{total_price}
-
-Please complete your payment to confirm your booking. You can do so by visiting:
-{checkout_url}
-
-If you have already made the payment, please ignore this email.
-
-If you have any questions, please contact our support team.
-
-Best regards,
-iTrip Knossos Team
-"""
+                        # Build email content
+                        builder = EmailBuilder()
+                        builder.h2(f"Hello {guest_name}!")
+                        builder.warning("Payment Reminder - Excursion Tomorrow!")
+                        builder.p(
+                            "This is a friendly reminder that you have a pending booking for an excursion tomorrow. "
+                            "Please complete your payment to confirm your spot."
+                        )
+                        builder.card("Booking Details", {
+                            'Booking #': f'{booking.id}',
+                            'Excursion': excursion_name,
+                            'Date': booking_date,
+                            'Amount Due': f'€{total_price}'
+                        })
+                        builder.button("Complete Payment Now", checkout_url, color="#ff6b35")
+                        builder.p(
+                            "If you have already made the payment, please ignore this email. "
+                            "If you need to cancel, please contact us as soon as possible."
+                        )
+                        builder.p("Best regards,<br>The iTrip Knossos Team")
                         
-                        EmailService.send_email(
-                            subject='[iTrip Knossos] Reminder: Complete Your Booking Payment',
-                            message=email_message,
+                        # Send email
+                        EmailService.send_dynamic_email(
+                            subject='[iTrip Knossos] ⚠️ Payment Reminder - Excursion Tomorrow',
                             recipient_list=[customer_email],
+                            email_body=builder.build(),
+                            preview_text='Please complete your payment for tomorrow\'s excursion',
                             fail_silently=True
                         )
                         warned_customers += 1

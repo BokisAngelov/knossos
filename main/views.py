@@ -35,7 +35,7 @@ from django.db.models import Q, Sum, Count
 logger = logging.getLogger(__name__)
 from django.apps import apps
 from .cyber_api import get_groups, get_hotels, get_pickup_points, get_excursions, get_excursion_description, get_providers, get_excursion_availabilities, get_reservation
-from .utils import FeedbackService, BookingService, ExcursionService, VoucherService, create_reservation, ExcursionAnalyticsService, RevenueAnalyticsService, JCCPaymentService
+from .utils import FeedbackService, BookingService, ExcursionService, VoucherService, create_reservation, ExcursionAnalyticsService, RevenueAnalyticsService, JCCPaymentService, EmailService, EmailBuilder
 
 def is_staff(user):
     return user.is_staff
@@ -1151,7 +1151,107 @@ def booking_delete(request, pk):
     try:
         if request.method == 'POST':
             if booking:
+                # Store booking details before deletion/cancellation
+                customer_email = booking.guest_email or (booking.user.email if booking.user else None)
+                customer_name = booking.guest_name or (booking.user.get_full_name() if booking.user else 'Guest')
+                excursion_title = booking.excursion_availability.excursion.title
+                booking_date = booking.date.strftime('%B %d, %Y') if booking.date else 'N/A'
+                total_price = booking.total_price
+                booking_id = booking.id
 
+                # Send cancellation email to customer (both admin and user cancellations)
+                try:
+                    if customer_email:
+                        builder = EmailBuilder()
+                        builder.h2(f"Hello {customer_name}!")
+                        
+                        if request.user.is_staff:
+                            # Admin cancelled
+                            builder.warning("Your Booking Has Been Cancelled")
+                            builder.p(
+                                "We're writing to inform you that your booking has been cancelled by our team. "
+                                "This may be due to excursion unavailability, weather conditions, or other operational reasons."
+                            )
+                        else:
+                            # Customer cancelled
+                            builder.p("Your booking has been cancelled as requested.")
+                        
+                        builder.card("Cancelled Booking", {
+                            'Booking #': f'{booking_id}',
+                            'Excursion': excursion_title,
+                            'Date': booking_date,
+                            'Amount': f"€{total_price:.2f}"
+                        }, border_color="#e53935")
+                        
+                        if request.user.is_staff:
+                            # Admin cancellation - offer more support
+                            builder.p(
+                                "We sincerely apologize for any inconvenience. If you've already made payment, "
+                                "a full refund will be processed within 5-7 business days."
+                            )
+                            builder.list_box("💬 Need Assistance?", [
+                                "Contact us for alternative excursion dates",
+                                "Browse similar excursions on our website",
+                                "Questions about refunds? Reach out to support",
+                                "We're here to help make your trip memorable!"
+                            ])
+                        else:
+                            # Customer cancellation
+                            builder.p(
+                                "If this was a mistake or you'd like to rebook, "
+                                "you can browse our available excursions below."
+                            )
+                        
+                        builder.button("Browse Excursions", request.build_absolute_uri(reverse('excursion_list')))
+                        
+                        if not request.user.is_staff:
+                            builder.p("We hope to see you on another adventure soon!")
+                        
+                        builder.p("Best regards,<br>The iTrip Knossos Team")
+                        
+                        EmailService.send_dynamic_email(
+                            subject='[iTrip Knossos] Booking Cancelled',
+                            recipient_list=[customer_email],
+                            email_body=builder.build(),
+                            preview_text='Your booking has been cancelled',
+                            fail_silently=True
+                        )
+                        logger.info(f'Booking cancellation email sent to {customer_email} for booking #{booking_id} (by {"admin" if request.user.is_staff else "customer"})')
+                        
+                except Exception as e:
+                    logger.error(f'Failed to send cancellation email for booking #{booking_id}: {str(e)}')
+                
+                # Send admin notification for customer cancellations
+                if not request.user.is_staff:
+                    try:
+                        builder = EmailBuilder()
+                        builder.h2("Customer Booking Cancellation")
+                        builder.warning("A customer has cancelled their booking")
+                        
+                        builder.card("Cancelled Booking Details", {
+                            'Booking #': f'{booking_id}',
+                            'Customer': f'{customer_name} ({customer_email or "No email"})',
+                            'Excursion': excursion_title,
+                            'Date': booking_date,
+                            'Amount': f"€{total_price:.2f}",
+                            'Cancelled By': 'Customer'
+                        }, border_color="#ff6b35")
+                        
+                        builder.p("The customer cancelled this booking. Review if refund is needed.")
+                        builder.p("Best regards,<br>Automated System")
+                        
+                        EmailService.send_dynamic_email(
+                            subject=f'[iTrip Knossos] Customer Cancelled Booking #{booking_id}',
+                            recipient_list=['bokis.angelov@innovade.eu'],
+                            email_body=builder.build(),
+                            preview_text=f'Customer cancelled booking for {excursion_title}',
+                            fail_silently=True
+                        )
+                        logger.info(f'Admin notification sent for customer booking cancellation #{booking_id}')
+                        
+                    except Exception as e:
+                        logger.error(f'Failed to send admin notification for cancellation #{booking_id}: {str(e)}')
+                
                 if request.user.is_staff:
                     booking.deleteByUser = False
                     booking.delete()
@@ -1254,8 +1354,81 @@ def booking_detail(request, pk):
                 })
 
             elif action_type == 'cancel_payment':
+                # Store info before cancellation
+                customer_email = booking.guest_email or (booking.user.email if booking.user else None)
+                customer_name = booking.guest_name or (booking.user.get_full_name() if booking.user else 'Guest')
+                excursion_title = booking.excursion_availability.excursion.title
+                booking_date = booking.date.strftime('%B %d, %Y') if booking.date else 'N/A'
+                total_price = booking.total_price
+                booking_id = booking.id
+                
                 booking.payment_status = 'cancelled'
                 booking.save()
+                
+                # Send cancellation email to customer
+                try:
+                    if customer_email:
+                        builder = EmailBuilder()
+                        builder.h2(f"Hello {customer_name}!")
+                        builder.p("Your booking has been cancelled as requested.")
+                        
+                        builder.card("Cancelled Booking", {
+                            'Booking #': f'{booking_id}',
+                            'Excursion': excursion_title,
+                            'Date': booking_date,
+                            'Cancelled Amount': f"€{total_price:.2f}"
+                        }, border_color="#e53935")
+                        
+                        builder.p(
+                            "If this was a mistake or you'd like to rebook, "
+                            "you can browse our available excursions below."
+                        )
+                        builder.button("Browse Excursions", request.build_absolute_uri(reverse('excursion_list')))
+                        builder.p("We hope to see you on another adventure soon!")
+                        builder.p("Best regards,<br>The iTrip Knossos Team")
+                        
+                        EmailService.send_dynamic_email(
+                            subject='[iTrip Knossos] Booking Cancelled',
+                            recipient_list=[customer_email],
+                            email_body=builder.build(),
+                            preview_text='Your booking has been cancelled',
+                            fail_silently=True
+                        )
+                        logger.info(f'Booking cancellation email sent to {customer_email} for booking #{booking_id}')
+                        
+                except Exception as e:
+                    logger.error(f'Failed to send cancellation email for booking #{booking_id}: {str(e)}')
+                
+                # Send notification to admin
+                try:
+                    builder = EmailBuilder()
+                    builder.h2("Customer Booking Cancellation")
+                    builder.warning("A customer has cancelled their booking")
+                    
+                    builder.card("Cancelled Booking Details", {
+                        'Booking #': f'{booking_id}',
+                        'Customer': f'{customer_name} ({customer_email or "No email"})',
+                        'Excursion': excursion_title,
+                        'Date': booking_date,
+                        'Amount': f"€{total_price:.2f}",
+                        'Cancelled By': 'Customer'
+                    }, border_color="#ff6b35")
+                    
+                    builder.p("The customer cancelled this booking. No further action required unless refund is needed.")
+                    builder.p("Best regards,<br>Automated System")
+                    
+                    EmailService.send_dynamic_email(
+                        subject=f'[iTrip Knossos] Customer Cancelled Booking #{booking_id}',
+                        recipient_list=['bokis.angelov@innovade.eu'],
+                        email_body=builder.build(),
+                        preview_text=f'Customer cancelled booking for {excursion_title}',
+                        fail_silently=True
+                    )
+                    logger.info(f'Admin notification sent for booking cancellation #{booking_id}')
+                    
+                except Exception as e:
+                    logger.error(f'Failed to send admin notification for cancellation #{booking_id}: {str(e)}')
+                
                 messages.success(request, 'Booking cancelled.')
                 return JsonResponse({
                     'status': 'success',
@@ -1530,6 +1703,60 @@ def payment_success(request, booking_pk=None):
             booking.payment_status = 'completed'
             booking.save(update_fields=['payment_status'])
             
+            # Send booking confirmation email
+            try:
+                customer_email = booking.guest_email or (booking.user.email if booking.user else None)
+                customer_name = booking.guest_name or (booking.user.get_full_name() if booking.user else 'Guest')
+                
+                if customer_email:
+                    # Build booking URL
+                    booking_url = request.build_absolute_uri(
+                        reverse('booking_detail', kwargs={'pk': booking.pk})
+                    )
+                    if booking.access_token:
+                        booking_url += f'?token={booking.access_token}'
+                    
+                    # Build email
+                    builder = EmailBuilder()
+                    builder.h2(f"Hello {customer_name}!")
+                    builder.success("Your booking has been confirmed!")
+                    builder.p("Thank you for choosing iTrip Knossos. We're excited to have you join us for an unforgettable experience!")
+                    
+                    # Booking details
+                    builder.card("Booking Details", {
+                        'Confirmation #': f'{booking.id}',
+                        'Excursion': booking.excursion_availability.excursion.title,
+                        'Date': booking.date.strftime('%B %d, %Y'),
+                        'Pickup Point': booking.pickup_point.name if booking.pickup_point else 'To be confirmed',
+                        'Guests': f"{booking.total_adults or 0} Adults, {booking.total_kids or 0} Children, {booking.total_infants or 0} Infants",
+                        'Total Paid': f"€{booking.total_price:.2f}"
+                    })
+                    
+                    builder.button("View Full Booking Details", booking_url)
+                    
+                    # Important information
+                    builder.list_box("📋 Important Information", [
+                        "Please arrive at the pickup point 10 minutes before the scheduled time",
+                        "Bring comfortable shoes, sunscreen, and water",
+                        "Pickup time will be confirmed 24-48 hours before the excursion",
+                        "For cancellations, contact us at least 24 hours in advance"
+                    ])
+                    
+                    builder.p("If you have any questions, please don't hesitate to contact us.")
+                    builder.p("Best regards,<br>The iTrip Knossos Team")
+                    
+                    EmailService.send_dynamic_email(
+                        subject=f'[iTrip Knossos] Booking Confirmed - {booking.excursion_availability.excursion.title}',
+                        recipient_list=[customer_email],
+                        email_body=builder.build(),
+                        preview_text=f'Your booking for {booking.excursion_availability.excursion.title} is confirmed!',
+                        fail_silently=True
+                    )
+                    logger.info(f'Booking confirmation email sent to {customer_email} for booking #{booking.pk}')
+                    
+            except Exception as e:
+                logger.error(f'Failed to send booking confirmation email for booking #{booking.pk}: {str(e)}')
+            
             messages.success(request, 'Payment completed successfully! Your booking is confirmed.')
             logger.info(f"Payment confirmed for booking #{booking_pk}, orderId: {order_id}")
         else:
@@ -1614,6 +1841,57 @@ def payment_fail(request, booking_pk=None):
         except Exception as e:
             logger.warning(f"Could not verify payment status for booking #{booking_pk}: {str(e)}")
     
+    # Send payment failed email
+    try:
+        customer_email = booking.guest_email or (booking.user.email if booking.user else None)
+        customer_name = booking.guest_name or (booking.user.get_full_name() if booking.user else 'Guest')
+        
+        if customer_email:
+            # Build checkout URL
+            checkout_url = request.build_absolute_uri(
+                reverse('checkout', kwargs={'booking_pk': booking.pk})
+            )
+            if booking.access_token:
+                checkout_url += f'?token={booking.access_token}'
+            
+            # Build email
+            builder = EmailBuilder()
+            builder.h2(f"Hello {customer_name}!")
+            builder.error("Payment was not successful")
+            builder.p(
+                f"We were unable to process your payment for booking #{booking.id}. "
+                "This may happen due to insufficient funds, incorrect card details, "
+                "or a temporary issue with your payment provider."
+            )
+            
+            # Booking info
+            builder.card("Booking Information", {
+                'Booking #': f'{booking.id}',
+                'Excursion': booking.excursion_availability.excursion.title,
+                'Date': booking.date.strftime('%B %d, %Y'),
+                'Amount Due': f"€{booking.total_price:.2f}"
+            })
+            
+            builder.button("Retry Payment", checkout_url, color="#ff6b35")
+            
+            builder.p(
+                "If you continue to experience issues, please check with your bank or "
+                "reach out to our support team for assistance."
+            )
+            builder.p("Best regards,<br>The iTrip Knossos Team")
+            
+            EmailService.send_dynamic_email(
+                subject='[iTrip Knossos] Payment Failed - Action Required',
+                recipient_list=[customer_email],
+                email_body=builder.build(),
+                preview_text='Payment failed for your booking. Please retry.',
+                fail_silently=True
+            )
+            logger.info(f'Payment failed email sent to {customer_email} for booking #{booking.pk}')
+            
+    except Exception as e:
+        logger.error(f'Failed to send payment failed email for booking #{booking.pk}: {str(e)}')
+    
     # Keep payment status as pending (don't mark as cancelled automatically)
     # User can retry payment
     messages.warning(request, 'Payment was not completed. You can try again from the checkout page.')
@@ -1671,28 +1949,29 @@ def signup(request):
                 uid = urlsafe_base64_encode(force_bytes(user.pk))
                 verification_url = f"{request.scheme}://{request.get_host()}/verify_email/{uid}/{token}/"
                 
-                # Send verification email with better formatting
-                email_message = f"""
-                Hello {form.cleaned_data['name']},
-
-                Thank you for signing up for iTrip Knossos!
-
-                Please verify your email address by clicking the link below:
-                {verification_url}
-
-                This link will expire in 24 hours.
-
-                If you did not create an account, please ignore this email.
-
-                Best regards,
-                iTrip Knossos Team
-                """
+                # Build verification email
+                builder = EmailBuilder()
+                builder.h2(f"Hello {form.cleaned_data['name']}!")
+                builder.p("Thank you for signing up for iTrip Knossos!")
+                builder.p("Please verify your email address to activate your account.")
+                builder.button("Verify Email Address", verification_url)
+                builder.p(
+                    f'Or copy and paste this link into your browser:<br>'
+                    f'<a href="{verification_url}" style="color: #2196f3; word-break: break-all;">{verification_url}</a>',
+                    size="14px"
+                )
+                builder.list_box("⏱️ Important", [
+                    "This link will expire in 24 hours",
+                    "If you did not create an account, please ignore this email"
+                ])
+                builder.p("Best regards,<br>The iTrip Knossos Team")
                 
                 try:
-                    EmailService.send_email(
+                    EmailService.send_dynamic_email(
                         subject='[iTrip Knossos] Verify Your Email Address',
-                        message=email_message,
                         recipient_list=[email],
+                        email_body=builder.build(),
+                        preview_text='Verify your email to activate your account',
                         fail_silently=False
                     )
                     messages.success(
@@ -1770,9 +2049,6 @@ def logout_view(request):
     return response
 
 def password_reset_form(request):
-
-    from .utils import EmailService
-
     if request.method == 'POST':
         email = request.POST.get('email')
         
@@ -1796,11 +2072,31 @@ def password_reset_form(request):
                 messages.error(request, 'User profile not found.')
                 return render(request, 'main/accounts/password_reset_form.html')
             
-            # Send password reset email
-            EmailService.send_email(
-                subject=f'[iTrip Knossos] Password Reset',
-                message=f"Click the link to reset your password: {request.scheme}://{request.get_host()}/password_reset_token/{token}/",
+            # Build reset URL
+            reset_url = f"{request.scheme}://{request.get_host()}/password_reset_token/{token}/"
+            user_name = user_profile.name or user.username
+            
+            # Build email content
+            builder = EmailBuilder()
+            builder.h2(f"Hello {user_name}!")
+            builder.p(
+                "We received a request to reset your password for your iTrip Knossos account. "
+                "If you didn't make this request, you can safely ignore this email."
+            )
+            builder.button("Reset Password", reset_url)
+            builder.p(
+                f'Or copy and paste this link into your browser:<br>'
+                f'<a href="{reset_url}" style="color: #2196f3; word-break: break-all;">{reset_url}</a>',
+                size="14px"
+            )
+            builder.p("Best regards,<br>The iTrip Knossos Team")
+            
+            # Send email
+            EmailService.send_dynamic_email(
+                subject='[iTrip Knossos] Password Reset Request',
                 recipient_list=[email],
+                email_body=builder.build(),
+                preview_text='Reset your password for iTrip Knossos',
                 fail_silently=True
             )
             
@@ -2398,26 +2694,143 @@ def group_send(request, pk):
         # The signal will automatically mark dates as inactive when group.status = 'sent'
         # and reactivate them when a sent group is deleted
         
-        # TODO: Send email to transportation company
-        # You'll need to configure this with the transportation company email
-        # Example:
-        # subject = f'Transport Group List - {group.name}'
-        # message = f'Transport group details for {group.excursion.title} on {group.date}'
-        # send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, ['transport@company.com'])
-        
         # Mark group as sent
         group.status = 'sent'
         group.save()
         
+        # Send email notifications
+        notifications_sent = send_group_notifications(request, group)
+        
         messages.success(
             request, 
-            f'Group list sent successfully! {updated_count if group.excursion and group.date else 0} availability slot(s) for {group.date} have been disabled.'
+            f'Group sent successfully! Notifications sent to provider and {notifications_sent} customer(s).'
         )
         return redirect('group_detail', pk=pk)
         
     except Exception as e:
         messages.error(request, f'Error sending group list: {str(e)}')
         return redirect('group_detail', pk=pk)
+
+def send_group_notifications(request, group):
+    """Send email notifications to provider and customers when group is sent."""
+    from .models import GroupPickupPoint
+    
+    customers_notified = 0
+    
+    # 1. Send email to provider
+    if group.provider and group.provider.email:
+        try:
+            builder = EmailBuilder()
+            builder.h2(f"Hello {group.provider.name}!")
+            builder.success(f"New Transport Group: {group.name}")
+            builder.p(
+                f"A new transport group has been assigned to you for {group.excursion.title}. "
+                "Please review the details below."
+            )
+            
+            # Group details
+            builder.card("Group Information", {
+                'Group Name': group.name,
+                'Excursion': group.excursion.title,
+                'Date': group.date.strftime('%B %d, %Y'),
+                'Total Guests': group.total_guests,
+                'Bus': group.bus.name if group.bus else 'Not assigned',
+                'Guide': group.guide.name if group.guide else 'Not assigned'
+            })
+            
+            # Pickup schedule
+            pickup_points = GroupPickupPoint.objects.filter(group=group).select_related('pickup_point').order_by('pickup_time')
+            if pickup_points.exists():
+                pickup_data = []
+                for gpp in pickup_points:
+                    pickup_data.append((
+                        gpp.pickup_point.name,
+                        gpp.pickup_time.strftime('%I:%M %p') if gpp.pickup_time else 'Not set'
+                    ))
+                builder.card("Pickup Schedule", pickup_data, border_color="#4caf50")
+            
+            builder.button("View Group Details", request.build_absolute_uri(reverse('group_detail', kwargs={'pk': group.pk})))
+            builder.p("Please confirm receipt and prepare accordingly.")
+            builder.p("Best regards,<br>The iTrip Knossos Team")
+            
+            EmailService.send_dynamic_email(
+                subject=f'[iTrip Knossos] New Transport Group - {group.name}',
+                recipient_list=[group.provider.email],
+                email_body=builder.build(),
+                preview_text=f'New transport group for {group.excursion.title}',
+                fail_silently=True
+            )
+            logger.info(f'Group notification sent to provider {group.provider.email}')
+            
+        except Exception as e:
+            logger.error(f'Failed to send notification to provider for group #{group.pk}: {str(e)}')
+    
+    # 2. Send email to each customer with their specific pickup time
+    bookings = group.bookings.all()
+    for booking in bookings:
+        try:
+            customer_email = booking.guest_email or (booking.user.email if booking.user else None)
+            customer_name = booking.guest_name or (booking.user.get_full_name() if booking.user else 'Guest')
+            
+            if not customer_email or not booking.pickup_point:
+                continue
+            
+            # Get pickup time for this booking's pickup point
+            pickup_time_str = 'To be confirmed'
+            try:
+                gpp = GroupPickupPoint.objects.get(group=group, pickup_point=booking.pickup_point)
+                if gpp.pickup_time:
+                    pickup_time_str = gpp.pickup_time.strftime('%I:%M %p')
+            except GroupPickupPoint.DoesNotExist:
+                pass
+            
+            # Build email
+            builder = EmailBuilder()
+            builder.h2(f"Hello {customer_name}!")
+            builder.success("Your Pickup Time Has Been Confirmed!")
+            builder.p("We're excited for your upcoming excursion! Your pickup details are ready.")
+            
+            # Pickup information - highlighted
+            builder.card("Pickup Information", {
+                'Excursion': group.excursion.title,
+                'Date': group.date.strftime('%B %d, %Y'),
+                'Pickup Time': f'⏰ {pickup_time_str}',
+                'Pickup Location': booking.pickup_point.name,
+                'Booking #': f'{booking.id}'
+            }, border_color="#4caf50")
+            
+            # Important reminders
+            builder.list_box("⚠️ Please Remember", [
+                f"Be at {booking.pickup_point.name} by {pickup_time_str}",
+                "Arrive 10 minutes early to ensure you don't miss the departure",
+                "Bring your booking confirmation",
+                "Wear comfortable clothing and shoes",
+                "Don't forget water, sunscreen, and a camera!"
+            ])
+            
+            # Booking URL
+            booking_url = request.build_absolute_uri(reverse('booking_detail', kwargs={'pk': booking.pk}))
+            if booking.access_token:
+                booking_url += f'?token={booking.access_token}'
+            
+            builder.button("View Your Booking", booking_url)
+            builder.p("If you have any questions, please don't hesitate to contact us.")
+            builder.p("Best regards,<br>The iTrip Knossos Team")
+            
+            EmailService.send_dynamic_email(
+                subject=f'[iTrip Knossos] Your Pickup Time - {group.excursion.title}',
+                recipient_list=[customer_email],
+                email_body=builder.build(),
+                preview_text=f'Your pickup time is {pickup_time_str} at {booking.pickup_point.name}',
+                fail_silently=True
+            )
+            customers_notified += 1
+            logger.info(f'Pickup time notification sent to {customer_email} for booking #{booking.id}')
+            
+        except Exception as e:
+            logger.error(f'Failed to send pickup notification to booking #{booking.id}: {str(e)}')
+    
+    return customers_notified
 
 @user_passes_test(is_staff)
 def debug_availability_days(request, excursion_id, date):
@@ -2942,20 +3355,6 @@ def manage_buses(request):
         'search_query': search_query,
         'page_obj': page_obj,
     })
-
-@user_passes_test(is_staff)
-def group_send(request, pk):
-    if request.method == 'POST':
-        group = get_object_or_404(Group, pk=pk)
-        group_name = group.name
-        group.status = 'sent'
-        group.save()
-        messages.success(request, f'Group "{group_name}" sent successfully.')
-        return redirect('group_list')
-    else:
-        messages.error(request, 'Invalid request method.')
-        return redirect('group_list')
-
 
 # ----- Category and Tag Management -----
 @user_passes_test(is_staff)
