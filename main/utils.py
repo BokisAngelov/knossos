@@ -881,7 +881,6 @@ class TransportGroupService:
         from collections import defaultdict
         
         grouped = defaultdict(lambda: defaultdict(list))
-        group_objects = {}  # Store pickup_group objects for sorting
         
         for booking in bookings:
             pickup_group = booking.pickup_point.pickup_group if booking.pickup_point else None
@@ -891,38 +890,8 @@ class TransportGroupService:
             point_key = pickup_point.name if pickup_point else 'No Pickup Point'
             
             grouped[group_key][point_key].append(booking)
-            # Store the pickup_group object for this group key
-            if group_key not in group_objects:
-                group_objects[group_key] = pickup_group
         
-        # Sort pickup groups by priority (lowest first), then by name
-        def group_sort_key(item):
-            group_key, points = item
-            pickup_group = group_objects.get(group_key)
-            if pickup_group:
-                priority = pickup_group.priority
-            else:
-                priority = float('inf')  # No pickup group goes to the end
-            return (priority, group_key)
-        
-        sorted_groups = sorted(grouped.items(), key=group_sort_key)
-        
-        # Sort pickup points within each group by priority (lowest first), then by name
-        sorted_grouped = {}
-        for group_key, points in sorted_groups:
-            # Sort pickup point keys by priority, then by name
-            def point_sort_key(item):
-                point_name, bookings = item
-                if bookings and bookings[0].pickup_point:
-                    priority = bookings[0].pickup_point.priority
-                else:
-                    priority = float('inf')  # No pickup point goes to the end
-                return (priority, point_name)
-            
-            sorted_points = sorted(points.items(), key=point_sort_key)
-            sorted_grouped[group_key] = dict(sorted_points)
-        
-        return sorted_grouped
+        return dict(grouped)
     
     @staticmethod
     def calculate_booking_guests(booking):
@@ -1759,3 +1728,270 @@ class EmailService:
             if not fail_silently:
                 raise
             return 0
+    
+    @staticmethod
+    def send_templated_email(template_name, context, subject, recipient_list, fail_silently=False):
+        """
+        Send an email using Django HTML template.
+        
+        Args:
+            template_name: Path to the email template (e.g., 'emails/booking_confirmation.html')
+            context: Dictionary of context variables for the template
+            subject: Email subject line
+            recipient_list: List of recipient email addresses
+            fail_silently: If True, suppress exceptions (default: False)
+        
+        Returns:
+            int: Number of emails sent (1 if successful, 0 if failed)
+        
+        Example:
+            EmailService.send_templated_email(
+                template_name='emails/booking_confirmation.html',
+                context={
+                    'customer_name': 'John Doe',
+                    'booking_id': '12345',
+                    'excursion_name': 'Troodos Mountains Tour',
+                    'excursion_date': '2024-12-15',
+                    'total_price': '45.00',
+                },
+                subject='Booking Confirmed - Troodos Mountains Tour',
+                recipient_list=['customer@example.com']
+            )
+        """
+        from django.template.loader import render_to_string
+        from django.utils.html import strip_tags
+        
+        try:
+            # Render the HTML email template
+            html_message = render_to_string(template_name, context)
+            
+            # Create plain text version by stripping HTML tags
+            plain_message = strip_tags(html_message)
+            
+            # Send the email
+            return EmailService.send_email(
+                subject=subject,
+                message=plain_message,
+                recipient_list=recipient_list,
+                html_message=html_message,
+                fail_silently=fail_silently
+            )
+        except Exception as e:
+            logger.error(f"Error sending templated email '{template_name}': {str(e)}", exc_info=True)
+            if not fail_silently:
+                raise
+            return 0
+    
+    @staticmethod
+    def send_dynamic_email(subject, recipient_list, email_body, email_title=None, preview_text=None, 
+                          unsubscribe_url=None, fail_silently=False):
+        """
+        Send an email with dynamically built HTML content using the base template.
+        Use EmailBuilder class to easily construct the email_body HTML.
+        
+        Args:
+            subject: Email subject line
+            recipient_list: List of recipient email addresses
+            email_body: HTML content for the email body (use EmailBuilder to create)
+            email_title: Page title (optional, defaults to "iTrip Knossos")
+            preview_text: Preview text for inbox (optional)
+            unsubscribe_url: URL for unsubscribe link (optional, for marketing emails)
+            fail_silently: If True, suppress exceptions (default: False)
+        
+        Returns:
+            int: Number of emails sent (1 if successful, 0 if failed)
+        
+        Example:
+            from main.utils import EmailService, EmailBuilder
+            
+            builder = EmailBuilder()
+            builder.add_greeting("John Doe")
+            builder.add_success_message("Your booking is confirmed!")
+            builder.add_info_card("Booking Details", {
+                'Booking #': 'BK-12345',
+                'Excursion': 'Troodos Tour',
+                'Total': '€90.00'
+            })
+            builder.add_button("View Booking", "https://example.com/booking/123")
+            builder.add_closing()
+            
+            EmailService.send_dynamic_email(
+                subject='Booking Confirmed',
+                recipient_list=['customer@example.com'],
+                email_body=builder.build(),
+                preview_text='Your booking has been confirmed!'
+            )
+        """
+        from django.template.loader import render_to_string
+        from django.utils.html import strip_tags
+        
+        try:
+            context = {
+                'email_title': email_title,
+                'preview_text': preview_text,
+                'email_body': email_body,
+                'unsubscribe_url': unsubscribe_url,
+            }
+            
+            # Render using dynamic template
+            html_message = render_to_string('emails/dynamic_email.html', context)
+            
+            # Create plain text version
+            plain_message = strip_tags(html_message)
+            
+            # Send the email
+            return EmailService.send_email(
+                subject=subject,
+                message=plain_message,
+                recipient_list=recipient_list,
+                html_message=html_message,
+                fail_silently=fail_silently
+            )
+        except Exception as e:
+            logger.error(f"Error sending dynamic email: {str(e)}", exc_info=True)
+            if not fail_silently:
+                raise
+            return 0
+
+
+class EmailBuilder:
+    """
+    Simple HTML email builder with flexible methods.
+    
+    Example:
+        builder = EmailBuilder()
+        builder.h2("Hello John!")
+        builder.p("Thank you for your booking!")
+        builder.card("Details", {'Booking #': 'BK-123', 'Total': '€90'})
+        builder.button("View Booking", "https://...")
+        builder.p("Best regards,<br>The Team")
+        
+        EmailService.send_dynamic_email(
+            subject='Booking Confirmed',
+            recipient_list=['customer@example.com'],
+            email_body=builder.build()
+        )
+    """
+    
+    def __init__(self):
+        self.parts = []
+    
+    def h2(self, text, color="#463229"):
+        """Add h2 heading."""
+        html = f'<h2 style="color: {color}; margin-top: 0; margin-bottom: 12px; font-size: 24px;">{text}</h2>'
+        self.parts.append(html)
+        return self
+    
+    def h3(self, text, color="#463229"):
+        """Add h3 heading."""
+        html = f'<h3 style="color: {color}; margin-top: 0; margin-bottom: 12px; font-size: 20px;">{text}</h3>'
+        self.parts.append(html)
+        return self
+    
+    def p(self, text, color="#4d4d4d", size="16px", bold=False):
+        """Add paragraph with customizable style."""
+        weight = "600" if bold else "normal"
+        html = f'<p style="color: {color}; font-size: {size}; font-weight: {weight}; line-height: 1.6; margin-bottom: 16px;">{text}</p>'
+        self.parts.append(html)
+        return self
+    
+    def success(self, text):
+        """Add success message (green with ✓)."""
+        return self.p(f"✓ {text}", color="#4caf50", size="18px", bold=True)
+    
+    def warning(self, text):
+        """Add warning message (orange with ⚠️)."""
+        return self.p(f"⚠️ {text}", color="#ff6b35", size="18px", bold=True)
+    
+    def error(self, text):
+        """Add error message (red with ✗)."""
+        return self.p(f"✗ {text}", color="#e53935", size="18px", bold=True)
+    
+    def card(self, title, data, border_color="#2196f3", bg_color="#f9f9f9"):
+        """
+        Add card with key-value pairs.
+        
+        Args:
+            title: Card heading
+            data: Dict of {label: value} or list of (label, value) tuples
+            border_color: Left border color
+            bg_color: Background color
+        """
+        html = f'''
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" 
+       style="background-color: {bg_color}; border-radius: 8px; border-left: 4px solid {border_color}; margin-bottom: 24px;">
+    <tr>
+        <td style="padding: 20px;">
+            <h3 style="color: #463229; margin-top: 0; margin-bottom: 16px; font-size: 18px;">{title}</h3>
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">'''
+        
+        items = data.items() if isinstance(data, dict) else data
+        for label, value in items:
+            html += f'''
+                <tr>
+                    <td style="padding: 8px 0; color: #666666; font-size: 14px;">{label}:</td>
+                    <td style="padding: 8px 0; color: #463229; font-size: 14px; text-align: right; font-weight: 600;">{value}</td>
+                </tr>'''
+        
+        html += '''
+            </table>
+        </td>
+    </tr>
+</table>'''
+        self.parts.append(html)
+        return self
+    
+    def button(self, text, url, color="#2196f3"):
+        """Add call-to-action button."""
+        html = f'''
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom: 24px;">
+    <tr>
+        <td style="text-align: center; padding: 20px 0;">
+            <a href="{url}" 
+               style="display: inline-block; padding: 14px 28px; background-color: {color}; 
+                      color: #ffffff !important; text-decoration: none; border-radius: 6px; 
+                      font-weight: 600; font-size: 16px;">
+                {text}
+            </a>
+        </td>
+    </tr>
+</table>'''
+        self.parts.append(html)
+        return self
+    
+    def list_box(self, title, items, bg_color="#fff4f0", title_color="#ff6b35"):
+        """Add box with bullet list."""
+        html = f'''
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" 
+       style="background-color: {bg_color}; border-radius: 8px; margin-bottom: 24px;">
+    <tr>
+        <td style="padding: 20px;">
+            <h3 style="color: {title_color}; margin-top: 0; margin-bottom: 12px; font-size: 16px;">{title}</h3>
+            <ul style="color: #4d4d4d; font-size: 14px; line-height: 1.6; margin: 0; padding-left: 20px;">'''
+        
+        for i, item in enumerate(items):
+            margin = "0" if i == len(items) - 1 else "8px"
+            html += f'<li style="margin-bottom: {margin};">{item}</li>'
+        
+        html += '''
+            </ul>
+        </td>
+    </tr>
+</table>'''
+        self.parts.append(html)
+        return self
+    
+    def spacer(self, height="24px"):
+        """Add vertical spacing."""
+        html = f'<div style="height: {height};"></div>'
+        self.parts.append(html)
+        return self
+    
+    def html(self, content):
+        """Add custom HTML directly."""
+        self.parts.append(content)
+        return self
+    
+    def build(self):
+        """Build and return the complete HTML."""
+        return '\n'.join(self.parts)
