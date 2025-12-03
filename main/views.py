@@ -1281,6 +1281,78 @@ def booking_delete(request, pk):
             'message': f'Error deleting booking: {str(e)}'
         })
 
+
+def send_booking_confirmation_email(booking, request):
+    """
+    Send booking confirmation email to customer.
+    This is called when payment is completed (either via JCC or by admin).
+    
+    Args:
+        booking: Booking instance
+        request: HttpRequest object (needed for building absolute URLs)
+    
+    Returns:
+        bool: True if email was sent successfully, False otherwise
+    """
+    try:
+        customer_email = booking.guest_email or (booking.user.email if booking.user else None)
+        customer_name = booking.guest_name or (booking.user.get_full_name() if booking.user else 'Guest')
+        
+        if not customer_email:
+            logger.warning(f'No email found for booking #{booking.pk} - cannot send confirmation')
+            return False
+        
+        # Build booking URL
+        booking_url = request.build_absolute_uri(
+            reverse('booking_detail', kwargs={'pk': booking.pk})
+        )
+        if booking.access_token:
+            booking_url += f'?token={booking.access_token}'
+        
+        # Build email
+        builder = EmailBuilder()
+        builder.h2(f"Hello {customer_name}!")
+        builder.success("Your booking has been confirmed!")
+        builder.p("Thank you for choosing iTrip Knossos. We're excited to have you join us for an unforgettable experience!")
+        
+        # Booking details
+        builder.card("Booking Details", {
+            'Confirmation #': f'{booking.id}',
+            'Excursion': booking.excursion_availability.excursion.title,
+            'Date': booking.date.strftime('%B %d, %Y'),
+            'Pickup Point': booking.pickup_point.name if booking.pickup_point else 'To be confirmed',
+            'Guests': f"{booking.total_adults or 0} Adults, {booking.total_kids or 0} Children, {booking.total_infants or 0} Infants",
+            'Total Paid': f"€{booking.total_price:.2f}"
+        })
+        
+        builder.button("View Full Booking Details", booking_url)
+        
+        # Important information
+        builder.list_box("📋 Important Information", [
+            "Please arrive at the pickup point 10 minutes before the scheduled time",
+            "Bring comfortable shoes, sunscreen, and water",
+            "Pickup time will be confirmed 24-48 hours before the excursion",
+            "For cancellations, contact us at least 24 hours in advance"
+        ])
+        
+        builder.p("If you have any questions, please don't hesitate to contact us.")
+        builder.p("Best regards,<br>The iTrip Knossos Team")
+        
+        EmailService.send_dynamic_email(
+            subject=f'[iTrip Knossos] Booking Confirmed - {booking.excursion_availability.excursion.title}',
+            recipient_list=[customer_email],
+            email_body=builder.build(),
+            preview_text=f'Your booking for {booking.excursion_availability.excursion.title} is confirmed!',
+            fail_silently=True
+        )
+        logger.info(f'Booking confirmation email sent to {customer_email} for booking #{booking.pk}')
+        return True
+        
+    except Exception as e:
+        logger.error(f'Failed to send booking confirmation email for booking #{booking.pk}: {str(e)}')
+        return False
+
+
 # @login_required
 def booking_detail(request, pk):
     
@@ -1311,6 +1383,10 @@ def booking_detail(request, pk):
         try:
             booking.payment_status = 'completed'
             booking.save()
+            
+            # Send booking confirmation email to customer
+            send_booking_confirmation_email(booking, request)
+            
             messages.success(request, 'Booking completed.')
             # Preserve token in redirect if present
             redirect_url = reverse('booking_detail', kwargs={'pk': pk})
@@ -1703,59 +1779,8 @@ def payment_success(request, booking_pk=None):
             booking.payment_status = 'completed'
             booking.save(update_fields=['payment_status'])
             
-            # Send booking confirmation email
-            try:
-                customer_email = booking.guest_email or (booking.user.email if booking.user else None)
-                customer_name = booking.guest_name or (booking.user.get_full_name() if booking.user else 'Guest')
-                
-                if customer_email:
-                    # Build booking URL
-                    booking_url = request.build_absolute_uri(
-                        reverse('booking_detail', kwargs={'pk': booking.pk})
-                    )
-                    if booking.access_token:
-                        booking_url += f'?token={booking.access_token}'
-                    
-                    # Build email
-                    builder = EmailBuilder()
-                    builder.h2(f"Hello {customer_name}!")
-                    builder.success("Your booking has been confirmed!")
-                    builder.p("Thank you for choosing iTrip Knossos. We're excited to have you join us for an unforgettable experience!")
-                    
-                    # Booking details
-                    builder.card("Booking Details", {
-                        'Confirmation #': f'{booking.id}',
-                        'Excursion': booking.excursion_availability.excursion.title,
-                        'Date': booking.date.strftime('%B %d, %Y'),
-                        'Pickup Point': booking.pickup_point.name if booking.pickup_point else 'To be confirmed',
-                        'Guests': f"{booking.total_adults or 0} Adults, {booking.total_kids or 0} Children, {booking.total_infants or 0} Infants",
-                        'Total Paid': f"€{booking.total_price:.2f}"
-                    })
-                    
-                    builder.button("View Full Booking Details", booking_url)
-                    
-                    # Important information
-                    builder.list_box("📋 Important Information", [
-                        "Please arrive at the pickup point 10 minutes before the scheduled time",
-                        "Bring comfortable shoes, sunscreen, and water",
-                        "Pickup time will be confirmed 24-48 hours before the excursion",
-                        "For cancellations, contact us at least 24 hours in advance"
-                    ])
-                    
-                    builder.p("If you have any questions, please don't hesitate to contact us.")
-                    builder.p("Best regards,<br>The iTrip Knossos Team")
-                    
-                    EmailService.send_dynamic_email(
-                        subject=f'[iTrip Knossos] Booking Confirmed - {booking.excursion_availability.excursion.title}',
-                        recipient_list=[customer_email],
-                        email_body=builder.build(),
-                        preview_text=f'Your booking for {booking.excursion_availability.excursion.title} is confirmed!',
-                        fail_silently=True
-                    )
-                    logger.info(f'Booking confirmation email sent to {customer_email} for booking #{booking.pk}')
-                    
-            except Exception as e:
-                logger.error(f'Failed to send booking confirmation email for booking #{booking.pk}: {str(e)}')
+            # Send booking confirmation email to customer
+            send_booking_confirmation_email(booking, request)
             
             messages.success(request, 'Payment completed successfully! Your booking is confirmed.')
             logger.info(f"Payment confirmed for booking #{booking_pk}, orderId: {order_id}")
