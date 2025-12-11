@@ -18,7 +18,7 @@ from django.utils.text import slugify
 from .models import (
     Excursion, ExcursionImage, ExcursionAvailability,
     Booking, Feedback, UserProfile, Region, 
-        Group, Category, Tag, PickupPoint, AvailabilityDays, DayOfWeek, Hotel, PickupGroup, PickupGroupAvailability, Reservation, Bus
+        Group, Category, Tag, PickupPoint, AvailabilityDays, DayOfWeek, Hotel, PickupGroup, PickupGroupAvailability, Reservation, Bus, JCCGatewayConfig
     )
 from .forms import (
     ExcursionForm, ExcursionImageFormSet,
@@ -1564,7 +1564,11 @@ def booking_detail(request, pk):
 def checkout(request, booking_pk):
     booking = get_object_or_404(Booking, pk=booking_pk)
     token = request.GET.get('token')
-     
+    jcc_config = JCCPaymentService.get_config()
+    is_jcc_sandbox = bool(jcc_config and jcc_config.environment == 'sandbox')
+
+    print(is_jcc_sandbox)
+    
     if request.method == 'POST':
         action_type = request.POST.get('action_type')
         token = request.POST.get('token') or token
@@ -1612,6 +1616,7 @@ def checkout(request, booking_pk):
     return render(request, 'main/bookings/checkout.html', {
         'booking': booking,
         'access_token': token if not request.user.is_authenticated and booking.access_token else None,
+        'is_jcc_sandbox': is_jcc_sandbox,
     })
 
 # ----- JCC Payment Views -----
