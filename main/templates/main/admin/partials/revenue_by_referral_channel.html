@@ -1,0 +1,31 @@
+{% load analytics_filters %}
+<!-- Revenue by Referral Channel -->
+<div class="bg-white p-6 rounded-lg shadow-sm">
+  <h3 class="text-lg font-semibold text-gray-900 mb-4">Revenue by Referral Channel</h3>
+  
+  <div class="space-y-4">
+    {% for item in data.revenue_by_referral_channel %}
+      <div>
+        <div class="flex items-center justify-between mb-2">
+          <div class="flex items-center gap-2">
+            <div class="w-3 h-3 bg-green rounded-full"></div>
+            <span class="text-sm font-medium text-gray-700">{{ item.channel }}</span>
+          </div>
+          <span class="text-sm font-bold text-gray-900">€{{ item.revenue|floatformat:2 }}</span>
+        </div>
+        <div class="w-full bg-gray-200 rounded-full h-2">
+          {% if data.total_revenue > 0 %}
+            {% with percentage=item.revenue|mul:100|div:data.total_revenue %}
+              <div class="bg-green h-2 rounded-full" style="width: {{ percentage|floatformat:0 }}%"></div>
+            {% endwith %}
+          {% else %}
+            <div class="bg-green h-2 rounded-full" style="width: 0%"></div>
+          {% endif %}
+        </div>
+        <p class="text-xs text-gray-500 mt-1">{{ item.bookings }} booking(s)</p>
+      </div>
+    {% empty %}
+      <div class="text-sm text-gray-500">No referral channel data available</div>
+    {% endfor %}
+  </div>
+</div>

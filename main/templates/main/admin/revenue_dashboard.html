@@ -62,6 +62,11 @@
             <div>
               <p class="text-sm font-semibold text-gray-500 uppercase">Total Revenue</p>
               <p class="text-3xl font-bold text-green mt-2">€{{ revenue_data.total_revenue|floatformat:2 }}</p>
+              {% if revenue_data.total_discounts > 0 %}
+                <p class="text-xs text-gray-500 mt-1">
+                  Discounts: €{{ revenue_data.total_discounts|floatformat:2 }} ({{ revenue_data.discounted_bookings_count }} booking(s))
+                </p>
+              {% endif %}
             </div>
             <div class="p-3 bg-green-100 rounded-full">
               <svg class="h-8 w-8 text-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -118,17 +123,17 @@
         </div>
       </div>
 
-      <!-- Payment Methods & Daily Revenue -->
+      <!-- Payment Methods & Referral Channel -->
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         <!-- Payment Methods Breakdown -->
         {% include 'main/admin/partials/payment_methods_chart.html' with data=revenue_data %}
 
-        <!-- Daily Revenue Chart -->
-        {% include 'main/admin/partials/daily_revenue_chart.html' with data=revenue_data %}
+        <!-- Revenue by Referral Channel -->
+        {% include 'main/admin/partials/revenue_by_referral_channel.html' with data=revenue_data %}
       </div>
 
       <!-- Revenue Breakdown Tables -->
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
         <!-- Top Excursions by Revenue -->
         {% include 'main/admin/partials/revenue_by_excursion.html' with data=revenue_data %}
 
@@ -137,6 +142,9 @@
 
         <!-- Revenue by Representative -->
         {% include 'main/admin/partials/revenue_by_representative.html' with data=revenue_data %}
+
+        <!-- Revenue by Agent -->
+        {% include 'main/admin/partials/revenue_by_agent.html' with data=revenue_data %}
       </div>
 
     {% else %}

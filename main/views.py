@@ -35,10 +35,11 @@ from django.db.models import Q, Sum, Count
 logger = logging.getLogger(__name__)
 from django.apps import apps
 from .cyber_api import get_groups, get_hotels, get_pickup_points, get_excursions, get_excursion_description, get_providers, get_excursion_availabilities, get_reservation
-from .utils import FeedbackService, BookingService, ExcursionService, VoucherService, create_reservation, ExcursionAnalyticsService, RevenueAnalyticsService, JCCPaymentService, EmailService, EmailBuilder
+from .utils import FeedbackService, BookingService, ExcursionService, VoucherService, create_reservation, ExcursionAnalyticsService, RevenueAnalyticsService, JCCPaymentService, EmailService, EmailBuilder, attach_excursion_list_data
 
 def is_staff(user):
     return user.is_staff
+
 
 def testmodels(request):
     bookings = Booking.objects.all()
@@ -55,7 +56,14 @@ def testmodels(request):
 
 @ensure_csrf_cookie
 def homepage(request):
-    excursions = Excursion.objects.all().filter(availabilities__isnull=False).filter(status='active').distinct()
+    excursions = (
+        Excursion.objects.all()
+        .filter(availabilities__isnull=False)
+        .filter(status='active')
+        .distinct()
+        .prefetch_related('tags', 'category', 'availabilities__regions')
+    )
+    excursions = attach_excursion_list_data(excursions)
     return render(request, 'main/home.html', {
         'excursions': excursions,
     })
@@ -532,7 +540,8 @@ def excursion_list(request):
         excursions = excursions.filter(tags__id=tag_query)
     
     # Apply distinct at the end to remove duplicates from availability joins
-    excursions = excursions.distinct()
+    excursions = excursions.distinct().prefetch_related('tags', 'category', 'availabilities__regions')
+    excursions = attach_excursion_list_data(excursions)
 
     print('excursions: ' + str(excursions))
 

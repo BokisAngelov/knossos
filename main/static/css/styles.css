@@ -156,3 +156,29 @@ select option {
     background-color: #2196f3;
     opacity: 0.8;
 }
+.intro-header{
+    color: #fff;
+    font-size: 60px;
+    font-weight: 800;
+}
+.rating-stars {
+    display: flex;
+    flex-direction: row-reverse;
+    justify-content: flex-end;
+    gap: 0.25rem;
+}
+.rating-stars input {
+    display: none;
+}
+.rating-stars label {
+    cursor: pointer;
+    color: #d1d5db;
+    transition: color 150ms ease;
+}
+.rating-stars label:hover,
+.rating-stars label:hover ~ label {
+    color: #facc15;
+}
+.rating-stars input:checked ~ label {
+    color: #facc15;
+}

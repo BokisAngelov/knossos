@@ -3,15 +3,64 @@ from django.db import transaction
 from django.utils import timezone
 from django.core.exceptions import ValidationError
 from .models import (
-    Excursion, Feedback, Booking, Reservation, 
+    Excursion, Feedback, Booking, Reservation, Transaction,
     AvailabilityDays, ExcursionAvailability, PickupPoint, Hotel, Region, JCCGatewayConfig, EmailSettings
 )
 from .cyber_api import get_reservation
-from datetime import datetime
+from datetime import datetime, date, timedelta
 import requests
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+def _format_hours_value(hours):
+    if hours is None:
+        return None
+    if float(hours).is_integer():
+        return str(int(hours))
+    return f"{hours:.1f}".rstrip('0').rstrip('.')
+
+
+def attach_excursion_list_data(excursions):
+    for excursion in excursions:
+        active_availabilities = [
+            availability for availability in excursion.availabilities.all()
+            if availability.is_active
+        ]
+
+        region_names = []
+        region_set = set()
+        for availability in active_availabilities:
+            for region in availability.regions.all():
+                if region.name not in region_set:
+                    region_set.add(region.name)
+                    region_names.append(region.name)
+
+        durations = []
+        for availability in active_availabilities:
+            if availability.start_time and availability.end_time:
+                start_dt = datetime.combine(date.today(), availability.start_time)
+                end_dt = datetime.combine(date.today(), availability.end_time)
+                if end_dt < start_dt:
+                    end_dt += timedelta(days=1)
+                durations.append((end_dt - start_dt).total_seconds() / 3600)
+
+        duration_range = None
+        if durations:
+            min_hours = min(durations)
+            max_hours = max(durations)
+            min_label = _format_hours_value(min_hours)
+            max_label = _format_hours_value(max_hours)
+            if min_label == max_label:
+                duration_range = f"{min_label} hours"
+            else:
+                duration_range = f"{min_label}-{max_label} hours"
+
+        excursion.active_regions = region_names
+        excursion.duration_range = duration_range
+
+    return excursions
 
 
 class AvailabilityValidationService:
@@ -983,10 +1032,11 @@ class RevenueAnalyticsService:
         Returns:
             dict: Comprehensive revenue analytics data
         """
-        from django.db.models import Sum, Count, Q, Avg
+        from django.db.models import Sum, Count, Q, F, Value, DecimalField, ExpressionWrapper
+        from django.db.models.functions import Coalesce
         from decimal import Decimal
         
-        # Get all completed bookings in the date range
+        # Get all completed bookings in the date range (booking created date)
         bookings = Booking.objects.filter(
             payment_status='completed',
             created_at__date__gte=start_date,
@@ -996,13 +1046,39 @@ class RevenueAnalyticsService:
             'excursion_availability__excursion',
             'excursion_availability__excursion__provider',
             'user',
-            'user__profile'
+            'user__profile',
+            'referral_code',
+            'referral_code__agent'
+        )
+        
+        transactions = Transaction.objects.filter(
+            booking__in=bookings
+        ).select_related(
+            'booking',
+            'payment_method'
+        )
+        
+        revenue_expression = ExpressionWrapper(
+            Coalesce(F('total_price'), Value(0)) + Coalesce(F('partial_paid'), Value(0)),
+            output_field=DecimalField(max_digits=12, decimal_places=2)
         )
         
         # Total revenue metrics
-        total_revenue = bookings.aggregate(total=Sum('total_price'))['total'] or Decimal('0')
+        total_revenue = bookings.aggregate(total=Sum(revenue_expression))['total'] or Decimal('0')
         total_bookings = bookings.count()
-        average_booking_value = bookings.aggregate(avg=Avg('total_price'))['avg'] or Decimal('0')
+        average_booking_value = (
+            (total_revenue / total_bookings).quantize(Decimal('0.01'))
+            if total_bookings
+            else Decimal('0')
+        )
+        
+        # Discounts applied on bookings in this date range
+        total_discounts = bookings.aggregate(
+            total=Sum('referral_discount_amount')
+        )['total'] or Decimal('0')
+        discounted_bookings_count = bookings.exclude(
+            Q(referral_discount_amount__isnull=True) | Q(referral_discount_amount=0)
+        ).count()
         
         # Partial payments
         partial_payments = bookings.exclude(
@@ -1014,14 +1090,43 @@ class RevenueAnalyticsService:
         total_partial_payments = partial_payments['total'] or Decimal('0')
         partial_payments_count = partial_payments['count'] or 0
         
-        # Payment method breakdown
-        cash_revenue = bookings.filter(partial_paid_method='cash').aggregate(
-            total=Sum('partial_paid')
-        )['total'] or Decimal('0')
+        # Payment method breakdown (transactions)
+        payment_method_breakdown = []
+        payment_methods_data = transactions.values(
+            'payment_method__name'
+        ).annotate(
+            revenue=Sum('amount'),
+            booking_count=Count('booking', distinct=True)
+        ).order_by('-revenue')
         
-        card_revenue = bookings.filter(partial_paid_method='card').aggregate(
-            total=Sum('partial_paid')
-        )['total'] or Decimal('0')
+        for item in payment_methods_data:
+            payment_method_breakdown.append({
+                'payment_method': item['payment_method__name'] or 'Unknown',
+                'revenue': item['revenue'],
+                'bookings': item['booking_count']
+            })
+        
+        payment_methods_total = transactions.aggregate(total=Sum('amount'))['total'] or Decimal('0')
+        
+        # Partial payment method breakdown (bookings)
+        partial_method_breakdown = []
+        partial_methods_data = bookings.exclude(
+            Q(partial_paid__isnull=True) | Q(partial_paid=0)
+        ).values(
+            'partial_paid_method'
+        ).annotate(
+            revenue=Sum('partial_paid'),
+            booking_count=Count('id')
+        ).order_by('-revenue')
+        
+        for item in partial_methods_data:
+            partial_method_breakdown.append({
+                'payment_method': item['partial_paid_method'] or 'Unknown',
+                'revenue': item['revenue'],
+                'bookings': item['booking_count']
+            })
+        
+        partial_methods_total = total_partial_payments
         
         # Revenue by excursion (Top 10)
         revenue_by_excursion = []
@@ -1029,7 +1134,7 @@ class RevenueAnalyticsService:
             'excursion_availability__excursion__id',
             'excursion_availability__excursion__title'
         ).annotate(
-            revenue=Sum('total_price'),
+            revenue=Sum(revenue_expression),
             booking_count=Count('id')
         ).order_by('-revenue')[:10]
         
@@ -1049,7 +1154,7 @@ class RevenueAnalyticsService:
             'excursion_availability__excursion__provider__id',
             'excursion_availability__excursion__provider__name'
         ).annotate(
-            revenue=Sum('total_price'),
+            revenue=Sum(revenue_expression),
             booking_count=Count('id')
         ).order_by('-revenue')[:10]
         
@@ -1071,7 +1176,7 @@ class RevenueAnalyticsService:
             'user__profile__id',
             'user__profile__name'
         ).annotate(
-            revenue=Sum('total_price'),
+            revenue=Sum(revenue_expression),
             booking_count=Count('id')
         ).order_by('-revenue')[:10]
         
@@ -1083,34 +1188,71 @@ class RevenueAnalyticsService:
                 'bookings': item['booking_count']
             })
         
-        # Daily revenue breakdown
-        from datetime import timedelta
-        daily_revenue = []
-        current_date = start_date
-        while current_date <= end_date:
-            day_bookings = bookings.filter(created_at__date=current_date)
-            day_revenue = day_bookings.aggregate(total=Sum('total_price'))['total'] or Decimal('0')
-            day_count = day_bookings.count()
-            
-            daily_revenue.append({
-                'date': current_date,
-                'revenue': day_revenue,
-                'bookings': day_count
+        # Revenue by agent (Top 10)
+        revenue_by_agent = []
+        agent_data = bookings.filter(
+            referral_code__agent__isnull=False
+        ).values(
+            'referral_code__agent__id',
+            'referral_code__agent__name'
+        ).annotate(
+            revenue=Sum(revenue_expression),
+            booking_count=Count('id')
+        ).order_by('-revenue')[:10]
+        
+        for item in agent_data:
+            revenue_by_agent.append({
+                'agent_id': item['referral_code__agent__id'],
+                'agent_name': item['referral_code__agent__name'],
+                'revenue': item['revenue'],
+                'bookings': item['booking_count']
             })
-            current_date += timedelta(days=1)
+        
+        # Revenue by referral channel (Agent vs Direct)
+        agent_revenue = bookings.filter(
+            referral_code__agent__isnull=False
+        ).aggregate(total=Sum(revenue_expression))['total'] or Decimal('0')
+        direct_revenue = bookings.filter(
+            referral_code__agent__isnull=True
+        ).aggregate(total=Sum(revenue_expression))['total'] or Decimal('0')
+        
+        agent_bookings_count = bookings.filter(
+            referral_code__agent__isnull=False
+        ).count()
+        direct_bookings_count = bookings.filter(
+            referral_code__agent__isnull=True
+        ).count()
+        
+        revenue_by_referral_channel = [
+            {
+                'channel': 'Agent',
+                'revenue': agent_revenue,
+                'bookings': agent_bookings_count
+            },
+            {
+                'channel': 'Direct',
+                'revenue': direct_revenue,
+                'bookings': direct_bookings_count
+            }
+        ]
         
         return {
             'total_revenue': total_revenue,
             'total_bookings': total_bookings,
             'average_booking_value': average_booking_value,
+            'total_discounts': total_discounts,
+            'discounted_bookings_count': discounted_bookings_count,
             'total_partial_payments': total_partial_payments,
             'partial_payments_count': partial_payments_count,
-            'cash_revenue': cash_revenue,
-            'card_revenue': card_revenue,
+            'payment_methods_total': payment_methods_total,
+            'revenue_by_payment_method': payment_method_breakdown,
+            'partial_methods_total': partial_methods_total,
+            'revenue_by_partial_method': partial_method_breakdown,
             'revenue_by_excursion': revenue_by_excursion,
             'revenue_by_provider': revenue_by_provider,
             'revenue_by_representative': revenue_by_representative,
-            'daily_revenue': daily_revenue,
+            'revenue_by_agent': revenue_by_agent,
+            'revenue_by_referral_channel': revenue_by_referral_channel,
         }
 
 

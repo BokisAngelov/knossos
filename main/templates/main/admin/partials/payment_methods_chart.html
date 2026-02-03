@@ -3,48 +3,62 @@
 <div class="bg-white p-6 rounded-lg shadow-sm">
   <h3 class="text-lg font-semibold text-gray-900 mb-4">Payment Methods</h3>
   
-  <div class="space-y-4">
-    <!-- Cash Payments -->
+  <div class="space-y-6">
     <div>
-      <div class="flex items-center justify-between mb-2">
-        <div class="flex items-center gap-2">
-          <div class="w-3 h-3 bg-green rounded-full"></div>
-          <span class="text-sm font-medium text-gray-700">Cash</span>
-        </div>
-        <span class="text-sm font-bold text-gray-900">€{{ data.cash_revenue|floatformat:2 }}</span>
-      </div>
-      <div class="w-full bg-gray-200 rounded-full h-2">
-        {% if data.cash_revenue > 0 or data.card_revenue > 0 %}
-          {% with total=data.cash_revenue|add:data.card_revenue %}
-            {% with percentage=data.cash_revenue|mul:100|div:total %}
-              <div class="bg-green h-2 rounded-full" style="width: {{ percentage|floatformat:0 }}%"></div>
-            {% endwith %}
-          {% endwith %}
-        {% else %}
-          <div class="bg-green h-2 rounded-full" style="width: 0%"></div>
-        {% endif %}
+      <p class="text-xs font-semibold text-gray-500 uppercase mb-3">Transactions</p>
+      <div class="space-y-4">
+        {% for item in data.revenue_by_payment_method %}
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <div class="flex items-center gap-2">
+                <div class="w-3 h-3 bg-blue rounded-full"></div>
+                <span class="text-sm font-medium text-gray-700">{{ item.payment_method }}</span>
+              </div>
+              <span class="text-sm font-bold text-gray-900">€{{ item.revenue|floatformat:2 }}</span>
+            </div>
+            <div class="w-full bg-gray-200 rounded-full h-2">
+              {% if data.payment_methods_total > 0 %}
+                {% with percentage=item.revenue|mul:100|div:data.payment_methods_total %}
+                  <div class="bg-blue h-2 rounded-full" style="width: {{ percentage|floatformat:0 }}%"></div>
+                {% endwith %}
+              {% else %}
+                <div class="bg-blue h-2 rounded-full" style="width: 0%"></div>
+              {% endif %}
+            </div>
+            <p class="text-xs text-gray-500 mt-1">{{ item.bookings }} booking(s)</p>
+          </div>
+        {% empty %}
+          <div class="text-sm text-gray-500">No transaction data available</div>
+        {% endfor %}
       </div>
     </div>
 
-    <!-- Card Payments -->
     <div>
-      <div class="flex items-center justify-between mb-2">
-        <div class="flex items-center gap-2">
-          <div class="w-3 h-3 bg-blue rounded-full"></div>
-          <span class="text-sm font-medium text-gray-700">Card</span>
-        </div>
-        <span class="text-sm font-bold text-gray-900">€{{ data.card_revenue|floatformat:2 }}</span>
-      </div>
-      <div class="w-full bg-gray-200 rounded-full h-2">
-        {% if data.cash_revenue > 0 or data.card_revenue > 0 %}
-          {% with total=data.cash_revenue|add:data.card_revenue %}
-            {% with percentage=data.card_revenue|mul:100|div:total %}
-              <div class="bg-blue h-2 rounded-full" style="width: {{ percentage|floatformat:0 }}%"></div>
-            {% endwith %}
-          {% endwith %}
-        {% else %}
-          <div class="bg-blue h-2 rounded-full" style="width: 0%"></div>
-        {% endif %}
+      <p class="text-xs font-semibold text-gray-500 uppercase mb-3">Partial Payments</p>
+      <div class="space-y-4">
+        {% for item in data.revenue_by_partial_method %}
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <div class="flex items-center gap-2">
+                <div class="w-3 h-3 bg-green rounded-full"></div>
+                <span class="text-sm font-medium text-gray-700">{{ item.payment_method }}</span>
+              </div>
+              <span class="text-sm font-bold text-gray-900">€{{ item.revenue|floatformat:2 }}</span>
+            </div>
+            <div class="w-full bg-gray-200 rounded-full h-2">
+              {% if data.partial_methods_total > 0 %}
+                {% with percentage=item.revenue|mul:100|div:data.partial_methods_total %}
+                  <div class="bg-green h-2 rounded-full" style="width: {{ percentage|floatformat:0 }}%"></div>
+                {% endwith %}
+              {% else %}
+                <div class="bg-green h-2 rounded-full" style="width: 0%"></div>
+              {% endif %}
+            </div>
+            <p class="text-xs text-gray-500 mt-1">{{ item.bookings }} booking(s)</p>
+          </div>
+        {% empty %}
+          <div class="text-sm text-gray-500">No partial payment data available</div>
+        {% endfor %}
       </div>
     </div>
   </div>
@@ -52,8 +66,12 @@
   <!-- Summary -->
   <div class="mt-6 pt-4 border-t border-gray-200">
     <div class="flex items-center justify-between">
+      <span class="text-sm font-semibold text-gray-700">Transactions Total</span>
+      <span class="text-lg font-bold text-purple">€{{ data.payment_methods_total|floatformat:2 }}</span>
+    </div>
+    <div class="flex items-center justify-between mt-2">
       <span class="text-sm font-semibold text-gray-700">Partial Payments Total</span>
-      <span class="text-lg font-bold text-purple">€{{ data.cash_revenue|add:data.card_revenue|floatformat:2 }}</span>
+      <span class="text-lg font-bold text-purple">€{{ data.partial_methods_total|floatformat:2 }}</span>
     </div>
   </div>
 </div>
