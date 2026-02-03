@@ -111,6 +111,22 @@
             </div>
             {% endif %}
             
+            {% if is_jcc_sandbox %}
+            <div class="bg-yellow-50 border-l-4 border-yellow-500 p-4">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <svg class="h-5 w-5 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M8.257 3.099c.366-.756 1.42-.756 1.786 0l6.518 13.444A1 1 0 0115.671 18H4.329a1 1 0 01-.89-1.457L9.957 3.1zM11 14a1 1 0 10-2 0 1 1 0 002 0zm-1-2a1 1 0 01-1-1V8a1 1 0 112 0v3a1 1 0 01-1 1z" clip-rule="evenodd"/>
+                        </svg>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm font-medium text-yellow-800">JCC Sandbox Mode</p>
+                        <p class="mt-1 text-xs text-yellow-700">Payments are running in the JCC sandbox/test environment. Transactions are for testing only and will not charge cards.</p>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
             <!-- Payment Summary -->
             <h3 class="text-lg leading-6 font-bold mb-2">Payment Summary</h3>
             <div class="bg-white overflow-hidden">
