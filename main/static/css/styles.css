@@ -182,3 +182,8 @@ select option {
 .rating-stars input:checked ~ label {
     color: #facc15;
 }
+.signup-hero {
+    background-image: url("../images/signup-hero.png");
+    background-size: cover;
+    background-position: center;
+}

@@ -33,58 +33,90 @@
   }
 </style>
 
-<div class="flex justify-center items-center min-h-[80vh]">
-  <div class="bg-white rounded-lg shadow-md w-full max-w-md p-6">
-    <div class="text-center mb-6">
-      <h1 class="text-2xl font-bold text-gray-800">Sign Up</h1>
-    </div>
-
-    <!-- Display form-level errors -->
-    {% if form.non_field_errors %}
-      <div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
-        {% for error in form.non_field_errors %}
-          <p class="text-red-600 text-sm">{{ error }}</p>
-        {% endfor %}
-      </div>
-    {% endif %}
-
-    <form method="POST" action="{% url 'signup' %}" class="space-y-4">
-      {% csrf_token %}
-
-      {% for field in form %}
-        <div class="space-y-1">
-          <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-gray-700">
-            {{ field.label }}
-            {% if field.field.required %}
-              <span class="text-red-500">*</span>
-            {% endif %}
-          </label>
-          <div class="w-full auth-input-field">
-            {{ field }}
-          </div>
-          <!-- Display field-specific errors -->
-          {% if field.errors %}
-            {% for error in field.errors %}
-              <p class="error-message">{{ error }}</p>
-            {% endfor %}
-          {% endif %}
-          <!-- Display field help text
-          {% if field.help_text %}
-            <p class="text-sm text-gray-500 mt-1">{{ field.help_text }}</p>
-          {% endif %} -->
+<div class="min-h-[80vh] flex items-center justify-center bg-white px-4 py-10">
+  <div class="w-full max-w-5xl bg-white rounded-2xl shadow-md overflow-hidden">
+    <div class="lg:grid lg:grid-cols-2">
+      <div class="p-8 sm:p-10">
+        <div class="text-center mb-8">
+          <h1 class="text-3xl font-bold page-header-color">Create an account</h1>
         </div>
-      {% endfor %}
-      
-      <div class="mt-6">
-        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
-          Sign Up
-        </button>
+
+        <div class="border border-gray-200 rounded-2xl p-6">
+          <!-- Display form-level errors -->
+          {% if form.non_field_errors %}
+            <div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+              {% for error in form.non_field_errors %}
+                <p class="text-red-600 text-sm">{{ error }}</p>
+              {% endfor %}
+            </div>
+          {% endif %}
+
+          <form method="POST" action="{% url 'signup' %}" class="space-y-4">
+            {% csrf_token %}
+
+            <div class="space-y-1">
+              <label for="{{ form.name.id_for_label }}" class="block text-sm font-semibold text-gray-700">Full name</label>
+              <div class="w-full auth-input-field">{{ form.name }}</div>
+              {% if form.name.errors %}
+                {% for error in form.name.errors %}
+                  <p class="error-message">{{ error }}</p>
+                {% endfor %}
+              {% endif %}
+            </div>
+
+            <div class="space-y-1">
+              <label for="{{ form.username.id_for_label }}" class="block text-sm font-semibold text-gray-700">Email</label>
+              <div class="w-full auth-input-field">{{ form.username }}</div>
+              {% if form.username.errors %}
+                {% for error in form.username.errors %}
+                  <p class="error-message">{{ error }}</p>
+                {% endfor %}
+              {% endif %}
+            </div>
+
+            <div class="space-y-1">
+              <label for="{{ form.password1.id_for_label }}" class="block text-sm font-semibold text-gray-700">Password</label>
+              <div class="w-full auth-input-field">{{ form.password1 }}</div>
+              {% if form.password1.errors %}
+                {% for error in form.password1.errors %}
+                  <p class="error-message">{{ error }}</p>
+                {% endfor %}
+              {% endif %}
+            </div>
+
+            <div class="space-y-1">
+              <label for="{{ form.password2.id_for_label }}" class="block text-sm font-semibold text-gray-700">Confirm Password</label>
+              <div class="w-full auth-input-field">{{ form.password2 }}</div>
+              {% if form.password2.errors %}
+                {% for error in form.password2.errors %}
+                  <p class="error-message">{{ error }}</p>
+                {% endfor %}
+              {% endif %}
+            </div>
+
+            <div class="mt-6">
+              <button type="submit" class="w-full bg-blue hover:opacity-90 text-white font-semibold py-3 px-4 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                Sign Up
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <div class="text-center mt-6 text-xs text-gray-600">
+          <p>
+            By creating an account, you agree to the
+            <a href="#" class="text-blue hover:opacity-80 font-semibold">Terms of use</a>
+            and
+            <a href="#" class="text-blue hover:opacity-80 font-semibold">Privacy Policy</a>.
+          </p>
+          <div class="mt-4 text-sm">
+            <p>Already have an account? <span><a href="{% url 'login' %}" class="text-blue hover:opacity-80 font-semibold">Login</a></span></p>
+          </div>
+        </div>
       </div>
-    </form>
-    
-    <div class="text-center mt-4 text-sm text-gray-600">
-      <p>Already have an account? <span><a href="{% url 'login' %}" class="text-blue-600 hover:text-blue-800 font-medium">Login</a></span></p>
-      <p>Forgot your password? <span><a href="{% url 'password_reset_form' %}" class="text-blue-600 hover:text-blue-800 font-medium">Reset Password</a></span></p>
+
+      <div class="hidden lg:block h-full signup-hero">
+      </div>
     </div>
   </div>
 </div>
