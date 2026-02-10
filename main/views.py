@@ -18,7 +18,7 @@ from django.utils.text import slugify
 from .models import (
     Excursion, ExcursionImage, ExcursionAvailability,
     Booking, Feedback, UserProfile, Region, 
-        Group, Category, Tag, PickupPoint, AvailabilityDays, DayOfWeek, Hotel, PickupGroup, PickupGroupAvailability, Reservation, Bus, JCCGatewayConfig
+        Group, Category, Tag, PickupPoint, AvailabilityDays, DayOfWeek, Hotel, PickupGroup, PickupGroupAvailability, Reservation, Bus
     )
 from .forms import (
     ExcursionForm, ExcursionImageFormSet,
@@ -35,10 +35,11 @@ from django.db.models import Q, Sum, Count
 logger = logging.getLogger(__name__)
 from django.apps import apps
 from .cyber_api import get_groups, get_hotels, get_pickup_points, get_excursions, get_excursion_description, get_providers, get_excursion_availabilities, get_reservation
-from .utils import FeedbackService, BookingService, ExcursionService, VoucherService, create_reservation, ExcursionAnalyticsService, RevenueAnalyticsService, JCCPaymentService, EmailService, EmailBuilder
+from .utils import FeedbackService, BookingService, ExcursionService, VoucherService, create_reservation, ExcursionAnalyticsService, RevenueAnalyticsService, JCCPaymentService, EmailService, EmailBuilder, attach_excursion_list_data
 
 def is_staff(user):
     return user.is_staff
+
 
 def testmodels(request):
     bookings = Booking.objects.all()
@@ -55,7 +56,14 @@ def testmodels(request):
 
 @ensure_csrf_cookie
 def homepage(request):
-    excursions = Excursion.objects.all().filter(availabilities__isnull=False).filter(status='active').distinct()
+    excursions = (
+        Excursion.objects.all()
+        .filter(availabilities__isnull=False)
+        .filter(status='active')
+        .distinct()
+        .prefetch_related('tags', 'category', 'availabilities__regions')
+    )
+    excursions = attach_excursion_list_data(excursions)
     return render(request, 'main/home.html', {
         'excursions': excursions,
     })
@@ -532,7 +540,8 @@ def excursion_list(request):
         excursions = excursions.filter(tags__id=tag_query)
     
     # Apply distinct at the end to remove duplicates from availability joins
-    excursions = excursions.distinct()
+    excursions = excursions.distinct().prefetch_related('tags', 'category', 'availabilities__regions')
+    excursions = attach_excursion_list_data(excursions)
 
     print('excursions: ' + str(excursions))
 
@@ -1353,6 +1362,86 @@ def send_booking_confirmation_email(booking, request):
         return False
 
 
+def send_admin_payment_notification(booking, request, status, order_status=None):
+    """
+    Send payment status notification to admins (success or failure).
+    
+    Args:
+        booking: Booking instance
+        request: HttpRequest object (needed for building absolute URLs)
+        status: 'success' or 'failed'
+        order_status: Optional dict with JCC order status details
+    
+    Returns:
+        bool: True if email was sent successfully, False otherwise
+    """
+    try:
+        excursion_title = (
+            booking.excursion_availability.excursion.title
+            if booking.excursion_availability and booking.excursion_availability.excursion
+            else 'N/A'
+        )
+        booking_date = booking.date.strftime('%B %d, %Y') if booking.date else 'N/A'
+        customer_email = booking.guest_email or (booking.user.email if booking.user else 'No email')
+        customer_name = booking.guest_name or (booking.user.get_full_name() if booking.user else 'Guest')
+        order_id = booking.jcc_order_id or 'N/A'
+        
+        booking_url = request.build_absolute_uri(
+            reverse('booking_detail', kwargs={'pk': booking.pk})
+        )
+        if booking.access_token:
+            booking_url += f'?token={booking.access_token}'
+        
+        subject_status = 'Successful' if status == 'success' else 'Failed'
+        subject = f'[iTrip Knossos] Payment {subject_status} - Booking #{booking.id}'
+        
+        builder = EmailBuilder()
+        builder.h2(f"Payment {subject_status}")
+        if status == 'success':
+            builder.success("Payment confirmed via JCC")
+        else:
+            builder.warning("Payment failed or was cancelled via JCC")
+        
+        status_code = None
+        action_code = None
+        if order_status:
+            status_code = order_status.get('orderStatus')
+            action_code = order_status.get('actionCode')
+        
+        details = {
+            'Booking #': f'{booking.id}',
+            'Customer': f'{customer_name} ({customer_email})',
+            'Excursion': excursion_title,
+            'Date': booking_date,
+            'Amount': f"€{booking.total_price:.2f}",
+            'JCC Order ID': order_id
+        }
+        if status != 'success':
+            details['JCC Status'] = status_code or 'unknown'
+            details['JCC Action'] = action_code or 'unknown'
+        
+        builder.card("Payment Details", details)
+        builder.button("View Booking", booking_url)
+        builder.p("Best regards,<br>Automated System")
+        
+        # For testing, send to the hardcoded admin email.
+        # TODO: Switch to EmailService.send_to_admins(...) when ready.
+        EmailService.send_dynamic_email(
+            subject=subject,
+            recipient_list=['bokis.angelov@innovade.eu'],
+            email_body=builder.build(),
+            preview_text=f'Payment {subject_status.lower()} for booking #{booking.id}',
+            fail_silently=True
+        )
+        # EmailService.send_to_admins(subject=subject, message='', html_message=builder.build(), fail_silently=True)
+        
+        logger.info(f'Admin payment {status} notification sent for booking #{booking.pk}')
+        return True
+    except Exception as e:
+        logger.error(f'Failed to send admin payment {status} notification for booking #{booking.pk}: {str(e)}')
+        return False
+
+
 # @login_required
 def booking_detail(request, pk):
     
@@ -1564,11 +1653,7 @@ def booking_detail(request, pk):
 def checkout(request, booking_pk):
     booking = get_object_or_404(Booking, pk=booking_pk)
     token = request.GET.get('token')
-    jcc_config = JCCPaymentService.get_config()
-    is_jcc_sandbox = bool(jcc_config and jcc_config.environment == 'sandbox')
-
-    print(is_jcc_sandbox)
-    
+     
     if request.method == 'POST':
         action_type = request.POST.get('action_type')
         token = request.POST.get('token') or token
@@ -1616,7 +1701,6 @@ def checkout(request, booking_pk):
     return render(request, 'main/bookings/checkout.html', {
         'booking': booking,
         'access_token': token if not request.user.is_authenticated and booking.access_token else None,
-        'is_jcc_sandbox': is_jcc_sandbox,
     })
 
 # ----- JCC Payment Views -----
@@ -1786,6 +1870,8 @@ def payment_success(request, booking_pk=None):
             
             # Send booking confirmation email to customer
             send_booking_confirmation_email(booking, request)
+            # Send admin notification
+            send_admin_payment_notification(booking, request, status='success')
             
             messages.success(request, 'Payment completed successfully! Your booking is confirmed.')
             logger.info(f"Payment confirmed for booking #{booking_pk}, orderId: {order_id}")
@@ -1858,11 +1944,13 @@ def payment_fail(request, booking_pk=None):
         order_id = booking.jcc_order_id
     
     # Optionally verify status to get more details
+    order_status_details = None
     if order_id:
         try:
             order_status = JCCPaymentService.get_order_status(order_id)
             order_status_code = order_status.get('orderStatus', 'unknown')
             action_code = order_status.get('actionCode', 'unknown')
+            order_status_details = order_status
             
             logger.info(
                 f"Payment failed for booking #{booking_pk}, "
@@ -1921,6 +2009,9 @@ def payment_fail(request, booking_pk=None):
             
     except Exception as e:
         logger.error(f'Failed to send payment failed email for booking #{booking.pk}: {str(e)}')
+    
+    # Send admin notification (JCC failure return)
+    send_admin_payment_notification(booking, request, status='failed', order_status=order_status_details)
     
     # Keep payment status as pending (don't mark as cancelled automatically)
     # User can retry payment
@@ -4162,7 +4253,7 @@ def manage_reservations(request):
         
     return render(request, 'main/admin/admin_reservations.html', {
         'reservations': Reservation.objects.filter(status='active').order_by('check_in'),
-        'page_obj': page_obj,
+        # 'page_obj': page_obj,
     })
 
 def check_excursion_pickup_groups(request):

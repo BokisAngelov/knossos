@@ -2,26 +2,57 @@
 {% load static %}
 
 {% block content %}
-
-
-    <div class="container mx-auto px-4 py-8">
-        <h1 class="text-2xl font-bold">Welcome to Knossos</h1>
-        <p class="text-gray-600">Explore our wide range of excursions and book your next adventure with us.</p> 
-    </div>
-
-    <div class="container mx-auto px-4 py-8">
-        <h2 class="text-xl font-bold">Featured Excursions</h2>
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {% for excursion in excursions %}
-                <div class="bg-white shadow-md rounded-lg overflow-hidden">
-                    <a href="{% url 'excursion_detail' excursion.pk %}">
-                        <img src="{% if excursion.intro_image %}{{ excursion.intro_image.url }}{% else %}{% static 'main/media/excursions/98_LawaxTO.jpg' %}{% endif %}" alt="{{ excursion.title }}" class="w-full h-48 object-cover">
-                    </a>
+<div class="w-full">
+    <!-- Hero -->
+    <!-- <section class="w-full bg-cover bg-center min-h-[70vh] flex items-center" style="background-image: url('{% static 'main/images/home-intro-img.png' %}'); margin-left: calc(50% - 50vw); margin-right: calc(50% - 50vw);"> -->
+    <section class="relative w-full bg-cover bg-center min-h-[70vh] flex items-center" style="background-image: url('/media/home-intro-img.png'); margin-left: calc(50% - 50vw); margin-right: calc(50% - 50vw);">
+        <div class="absolute inset-0" style="background-color: rgba(51, 51, 51, 0.40);"></div>
+        <div class="relative container mx-auto px-4">
+            <div class="grid gap-6 lg:grid-cols-2 items-center">
+                <div>
+                    <h1 class="text-4xl font-bold intro-header">
+                        Turn every moment of your getaway into a local experience
+                    </h1>
                 </div>
-            {% endfor %}
+                <form method="get" action="{% url 'excursion_list' %}" class="bg-white rounded-lg shadow-xl p-8 max-w-lg float-right">
+                    <h2 class="text-3xl font-semibold text-purple mb-8 text-center block">Select your dates</h2>
+                    <div class="grid gap-3 sm:grid-cols-2 mb-4">
+                        
+                        <input
+                            type="date"
+                            name="date_from"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                        <input
+                            type="date"
+                            name="date_to"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                    </div>
+                    <button
+                        type="submit"
+                        class="px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    >
+                        Find excursions
+                    </button>
+                </form>
+            </div>
         </div>
-    </div>
+    </section>
 
+    <!-- Excursions -->
+    <section id="excursions">
+        <div class="container mx-auto px-4 py-8">
+            <h2 class="text-center font-semibold">
+                Excursions
+            </h2>
+
+            <div class="mt-6">
+                {% include 'main/excursions/partials/_excursion_list_content.html' %}
+            </div>
+        </div>
+    </section>
+</div>
 {% endblock %}
 
 
