@@ -188,7 +188,7 @@ select option {
     background-position: center;
 }
 .home-hero-section{
-    background-image: url('../media/home-intro-img.png'); 
+    background-image: url('../images/home-intro-img.png'); 
     margin-left: calc(50% - 50vw); 
     margin-right: calc(50% - 50vw);
 }
