@@ -516,19 +516,23 @@ def excursion_list(request):
     # Build availability filter
     availability_filter = Q(availabilities__isnull=False, availabilities__is_active=True)
     
-    # Date range filtering: check if availability overlaps with search range
+    # Date range filtering: only excursions that have at least one active AvailabilityDay in the selected range
     if date_from_query and date_to_query:
-        # Both dates provided - availability must overlap the entire range
         availability_filter &= Q(
-            availabilities__start_date__lte=date_to_query,
-            availabilities__end_date__gte=date_from_query
+            availabilities__availability_days__date_day__gte=date_from_query,
+            availabilities__availability_days__date_day__lte=date_to_query,
+            availabilities__availability_days__status='active'
         )
     elif date_from_query:
-        # Only start date - availability must end on or after this date
-        availability_filter &= Q(availabilities__end_date__gte=date_from_query)
+        availability_filter &= Q(
+            availabilities__availability_days__date_day__gte=date_from_query,
+            availabilities__availability_days__status='active'
+        )
     elif date_to_query:
-        # Only end date - availability must start on or before this date
-        availability_filter &= Q(availabilities__start_date__lte=date_to_query)
+        availability_filter &= Q(
+            availabilities__availability_days__date_day__lte=date_to_query,
+            availabilities__availability_days__status='active'
+        )
     
     excursions = excursions.filter(availability_filter)
 
