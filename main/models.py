@@ -99,7 +99,7 @@ class UserProfile(models.Model):
             for referral_code in referral_codes:
                 bookings = Booking.objects.filter(referral_code=referral_code)
                 total_bookings += bookings.count()
-                total_spent += bookings.aggregate(total=Sum('total_price'))['total']
+                total_spent += bookings.aggregate(total=Sum('total_price'))['total'] or 0
             return total_bookings, total_spent
         return 0, 0
     
