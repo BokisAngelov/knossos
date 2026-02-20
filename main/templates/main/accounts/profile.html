@@ -162,6 +162,7 @@
               <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">Expires At</th>
               <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">Status</th>
               <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">Used in Bookings</th>
+              <th scope="col" class="px-4 py-3 text-left font-semibold text-header-grey tracking-wider text-lg">Total Revenue</th>
               {% if request.user.is_staff %}
               <th scope="col" class="px-4 py-3 text-right font-semibold text-header-grey tracking-wider text-lg">Actions</th>
               {% endif %}
@@ -193,6 +194,9 @@
                 </td>
                 <td class="px-4 py-4 whitespace-nowrap">
                   <div class="text-sm font-normal">{{ code.bookings.count }}</div>
+                </td>
+                <td class="px-4 py-4 whitespace-nowrap">
+                  <div class="text-sm font-normal">€{{ code.total_revenue|default:0|floatformat:2 }}</div>
                 </td>
                 {% if request.user.is_staff %}
                 <td class="px-4 py-4 whitespace-nowrap text-right flex justify-end">
@@ -228,7 +232,7 @@
   <!-- Bookings Section -->
   <div class="bg-white p-6">
     <h2 class="text-xl font-semibold text-purple mb-4">
-      Bookings <span class="text-sm font-normal text-gray-500">({{ bookings.count }} {% if user_profile.role == 'agent' %} - includes bookings using your referral codes{% endif %})
+      Bookings <span class="text-sm font-normal text-gray-500">({{ bookings.count }} {% if user_profile.role == 'agent' %} — Total revenue: €{{ bookings_total_revenue|floatformat:2 }}{% endif %})
       </span>      
     </h2>
     
