@@ -1,114 +1,131 @@
+"""
+Run daily at 4pm (e.g. via cron): get tomorrow's groups and send admin a list
+of bookings that have NOT confirmed their pickup time.
+"""
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 from datetime import timedelta
-from main.models import Group
-from main.utils import EmailService
+
+from main.models import Group, GroupPickupPoint
+from main.utils import EmailService, EmailBuilder
 import logging
 
 logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
-    help = 'Check groups with booking date tomorrow and send email notification to admins'
+    help = 'Daily 4pm: list tomorrow\'s groups and bookings that have not confirmed pickup time; send to admin'
 
     def handle(self, *args, **options):
         today = timezone.now().date()
         tomorrow = today + timedelta(days=1)
-        
-        # Get all groups with date tomorrow
+
         groups = Group.objects.filter(date=tomorrow).select_related(
             'excursion', 'bus', 'guide', 'provider'
-        ).prefetch_related('bookings')
-        
-        group_count = groups.count()
-        
-        if group_count > 0:
-            self.stdout.write(
-                self.style.SUCCESS(f'Found {group_count} group(s) with booking date tomorrow ({tomorrow})')
-            )
-            self.send_admin_notification(groups, group_count, tomorrow)
-        else:
-            self.stdout.write(
-                self.style.SUCCESS(f'No groups found with booking date tomorrow ({tomorrow})')
-            )
-            logger.info(f'No groups found with booking date tomorrow ({tomorrow})')
+        ).prefetch_related('bookings', 'bookings__pickup_point', 'pickup_times', 'pickup_times__pickup_point')
 
-    def send_admin_notification(self, groups, count, booking_date):
-        """
-        Send email notification to admin users about groups with booking date tomorrow.
-        """
+        group_count = groups.count()
+        if group_count == 0:
+            self.stdout.write(self.style.SUCCESS(f'No groups found for tomorrow ({tomorrow})'))
+            logger.info(f'No groups found for tomorrow ({tomorrow})')
+            return
+
+        # Build list: per group, bookings that have NOT confirmed pickup time
+        groups_with_unconfirmed = []
+        total_unconfirmed = 0
+
+        for group in groups:
+            unconfirmed_bookings = []
+            pickup_times_map = {gpp.pickup_point_id: gpp.pickup_time for gpp in group.pickup_times.all()}
+
+            for booking in group.bookings.filter(confirmTime=False).select_related('pickup_point'):
+                pickup_time = None
+                if booking.pickup_point_id:
+                    pickup_time = pickup_times_map.get(booking.pickup_point_id)
+                guest_name = booking.guest_name or (booking.user.get_full_name() if booking.user else '') or '—'
+                guest_email = booking.guest_email or (booking.user.email if booking.user else '') or '—'
+                pickup_name = booking.pickup_point.name if booking.pickup_point else '—'
+                unconfirmed_bookings.append({
+                    'guest_name': guest_name,
+                    'guest_email': guest_email,
+                    'pickup_point': pickup_name,
+                    'pickup_time': pickup_time,
+                })
+                total_unconfirmed += 1
+
+            groups_with_unconfirmed.append({
+                'group': group,
+                'unconfirmed': unconfirmed_bookings,
+            })
+
+        self._send_admin_email(tomorrow, groups_with_unconfirmed, total_unconfirmed, group_count)
+
+    def _send_admin_email(self, booking_date, groups_with_unconfirmed, total_unconfirmed, group_count):
         try:
-            # Prepare email content
-            subject = f'[iTrip Knossos] {count} Group(s) Scheduled for Tomorrow ({booking_date})'
-            
-            # Build email message with group details
-            message_lines = [
-                f'Reminder: {count} transport group(s) have bookings scheduled for tomorrow ({booking_date.strftime("%Y-%m-%d")}).',
-                '',
-                'Groups Scheduled for Tomorrow:',
-                '-' * 80,
-            ]
-            
-            for group in groups:
+            subject = (
+                f'[iTrip Knossos] Tomorrow\'s groups – {total_unconfirmed} booking(s) have not confirmed pickup time'
+                if total_unconfirmed > 0
+                else f'[iTrip Knossos] Tomorrow\'s groups – all pickup times confirmed'
+            )
+
+            builder = EmailBuilder()
+            builder.h2('Daily reminder: groups tomorrow')
+            builder.p(
+                f'Booking date: {booking_date.strftime("%A, %d %B %Y")}. '
+                f'Total groups: {group_count}. '
+                f'Bookings not yet confirmed: {total_unconfirmed}.'
+            )
+
+            for item in groups_with_unconfirmed:
+                group = item['group']
+                unconfirmed = item['unconfirmed']
                 excursion_name = group.excursion.title if group.excursion else 'N/A'
-                bus_name = group.bus.name if group.bus else 'No Bus Assigned'
-                
-                # Get guide name
-                if group.guide:
-                    guide_name = group.guide.name or (group.guide.user.get_full_name() if group.guide.user else 'N/A')
+                builder.h3(f'{group.name} – {excursion_name}')
+
+                if not unconfirmed:
+                    builder.p('All bookings in this group have confirmed their pickup time.')
                 else:
-                    guide_name = 'No Guide Assigned'
-                
-                # Get provider name
-                if group.provider:
-                    provider_name = group.provider.name or (group.provider.user.get_full_name() if group.provider.user else 'N/A')
-                else:
-                    provider_name = 'No Provider Assigned'
-                
-                total_guests = group.total_guests
-                booking_count = group.bookings.count()
-                status = dict(group.STATUS_CHOICES).get(group.status, group.status)
-                
-                message_lines.extend([
-                    f'Group ID: {group.id}',
-                    f'Group Name: {group.name}',
-                    f'Excursion: {excursion_name}',
-                    f'Date: {group.date.strftime("%Y-%m-%d") if group.date else "N/A"}',
-                    f'Bus: {bus_name}',
-                    f'Guide: {guide_name}',
-                    f'Provider: {provider_name}',
-                    f'Total Guests: {total_guests}',
-                    f'Booking Count: {booking_count}',
-                    f'Status: {status}',
-                    '-' * 80,
-                ])
-            
-            message_lines.append('')
-            message_lines.append('Please ensure all preparations are in place for these groups.')
-            
-            message = '\n'.join(message_lines)
-            
-            # Send email using EmailService.send_to_admins
+                    rows = []
+                    for i, b in enumerate(unconfirmed, 1):
+                        time_str = b['pickup_time'].strftime('%H:%M') if b['pickup_time'] else '—'
+                        detail = f"{b['guest_email']} | {b['pickup_point']} | {time_str}"
+                        rows.append((f"{i}. {b['guest_name']}", detail))
+                    builder.card(
+                        'Not confirmed',
+                        rows,
+                        border_color='#f59e0b',
+                    )
+
+            builder.p('Please follow up with guests who have not confirmed.')
+            builder.p('Best regards,<br>Knossos')
+
+            html_body = builder.build()
+            plain = (
+                f"Groups tomorrow: {booking_date}. "
+                f"Unconfirmed pickup time: {total_unconfirmed} booking(s) across {group_count} group(s)."
+            )
+
             emails_sent = EmailService.send_to_admins(
                 subject=subject,
-                message=message,
-                fail_silently=True  # Don't fail the command if email fails
+                message=plain,
+                html_message=html_body,
+                fail_silently=True,
             )
-            
+
             if emails_sent > 0:
                 self.stdout.write(
-                    self.style.SUCCESS(f'Email notification sent to {emails_sent} admin(s)')
+                    self.style.SUCCESS(
+                        f'Sent to {emails_sent} admin(s): {group_count} group(s), {total_unconfirmed} unconfirmed booking(s)'
+                    )
                 )
-                logger.info(f'Group reminder notification sent to {emails_sent} admin(s) for {count} group(s)')
+                logger.info(
+                    f'Notify groups tomorrow: email sent to {emails_sent} admin(s), '
+                    f'{group_count} group(s), {total_unconfirmed} unconfirmed'
+                )
             else:
-                self.stdout.write(
-                    self.style.WARNING('Email notification could not be sent. Check email configuration.')
-                )
-                logger.warning('Failed to send group reminder notification to admins')
-            
-        except Exception as e:
-            self.stdout.write(
-                self.style.ERROR(f'Error sending admin notification: {str(e)}')
-            )
-            logger.error(f'Error sending group reminder notification to admin: {str(e)}', exc_info=True)
+                self.stdout.write(self.style.WARNING('No admin emails sent. Check email config and admin users.'))
+                logger.warning('Notify groups tomorrow: no admin emails sent')
 
+        except Exception as e:
+            self.stdout.write(self.style.ERROR(f'Error sending admin notification: {str(e)}'))
+            logger.error(f'Error in notify_groups_tomorrow: {str(e)}', exc_info=True)
