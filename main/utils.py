@@ -1032,8 +1032,9 @@ class RevenueAnalyticsService:
         Returns:
             dict: Comprehensive revenue analytics data
         """
-        from django.db.models import Sum, Count, Q, F, Value, DecimalField, ExpressionWrapper
+        from django.db.models import Sum, Count, Q, F, Value, DecimalField, ExpressionWrapper, Case, When
         from django.db.models.functions import Coalesce
+        from django.db.models.fields import CharField
         from decimal import Decimal
         
         # Get all completed bookings in the date range (booking created date)
@@ -1049,13 +1050,6 @@ class RevenueAnalyticsService:
             'user__profile',
             'referral_code',
             'referral_code__agent'
-        )
-        
-        transactions = Transaction.objects.filter(
-            booking__in=bookings
-        ).select_related(
-            'booking',
-            'payment_method'
         )
         
         revenue_expression = ExpressionWrapper(
@@ -1090,23 +1084,27 @@ class RevenueAnalyticsService:
         total_partial_payments = partial_payments['total'] or Decimal('0')
         partial_payments_count = partial_payments['count'] or 0
         
-        # Payment method breakdown (transactions)
+        # Payment method breakdown from Booking: Card (has jcc_order_id) vs Cash
         payment_method_breakdown = []
-        payment_methods_data = transactions.values(
-            'payment_method__name'
-        ).annotate(
-            revenue=Sum('amount'),
-            booking_count=Count('booking', distinct=True)
+        payment_methods_data = bookings.annotate(
+            payment_type=Case(
+                When(jcc_order_id__isnull=False, jcc_order_id__gt='', then=Value('Card')),
+                default=Value('Cash'),
+                output_field=CharField()
+            )
+        ).values('payment_type').annotate(
+            revenue=Sum(revenue_expression),
+            booking_count=Count('id')
         ).order_by('-revenue')
         
         for item in payment_methods_data:
             payment_method_breakdown.append({
-                'payment_method': item['payment_method__name'] or 'Unknown',
+                'payment_method': item['payment_type'] or 'Unknown',
                 'revenue': item['revenue'],
                 'bookings': item['booking_count']
             })
         
-        payment_methods_total = transactions.aggregate(total=Sum('amount'))['total'] or Decimal('0')
+        payment_methods_total = total_revenue
         
         # Partial payment method breakdown (bookings)
         partial_method_breakdown = []
@@ -1208,32 +1206,24 @@ class RevenueAnalyticsService:
                 'bookings': item['booking_count']
             })
         
-        # Revenue by referral channel (Agent vs Direct)
-        agent_revenue = bookings.filter(
-            referral_code__agent__isnull=False
-        ).aggregate(total=Sum(revenue_expression))['total'] or Decimal('0')
-        direct_revenue = bookings.filter(
-            referral_code__agent__isnull=True
-        ).aggregate(total=Sum(revenue_expression))['total'] or Decimal('0')
-        
-        agent_bookings_count = bookings.filter(
-            referral_code__agent__isnull=False
-        ).count()
-        direct_bookings_count = bookings.filter(
-            referral_code__agent__isnull=True
-        ).count()
-        
+        # Revenue by referral channel (Agent, Reps, Direct)
+        agent_bookings = bookings.filter(referral_code__agent__isnull=False)
+        agent_revenue = agent_bookings.aggregate(total=Sum(revenue_expression))['total'] or Decimal('0')
+        agent_bookings_count = agent_bookings.count()
+
+        non_agent_bookings = bookings.filter(referral_code__agent__isnull=True)
+        reps_bookings = non_agent_bookings.filter(user__profile__role='representative')
+        reps_revenue = reps_bookings.aggregate(total=Sum(revenue_expression))['total'] or Decimal('0')
+        reps_bookings_count = reps_bookings.count()
+
+        direct_bookings = non_agent_bookings.exclude(user__profile__role='representative')
+        direct_revenue = direct_bookings.aggregate(total=Sum(revenue_expression))['total'] or Decimal('0')
+        direct_bookings_count = direct_bookings.count()
+
         revenue_by_referral_channel = [
-            {
-                'channel': 'Agent',
-                'revenue': agent_revenue,
-                'bookings': agent_bookings_count
-            },
-            {
-                'channel': 'Direct',
-                'revenue': direct_revenue,
-                'bookings': direct_bookings_count
-            }
+            {'channel': 'Agent', 'revenue': agent_revenue, 'bookings': agent_bookings_count},
+            {'channel': 'Reps', 'revenue': reps_revenue, 'bookings': reps_bookings_count},
+            {'channel': 'Direct', 'revenue': direct_revenue, 'bookings': direct_bookings_count},
         ]
         
         return {
