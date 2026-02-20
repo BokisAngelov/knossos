@@ -2362,14 +2362,22 @@ def profile(request, pk):
         messages.error(request, "You don't have permission to view this profile.")
         return redirect('homepage')
     
-    # Get referral codes if profile is an agent
+    # Total revenue from completed bookings in this profile's list
+    bookings_total_revenue = bookings.filter(payment_status='completed').aggregate(
+        total=Sum('total_price')
+    )['total'] or 0
+
+    # Get referral codes if profile is an agent (annotate total revenue from completed bookings)
     referral_codes = None
     if profile.role == 'agent':
         from .models import ReferralCode
-        referral_codes = ReferralCode.objects.filter(agent=profile).order_by('-created_at')
+        referral_codes = ReferralCode.objects.filter(agent=profile).annotate(
+            total_revenue=Sum('bookings__total_price', filter=Q(bookings__payment_status='completed'))
+        ).order_by('-created_at')
     
     return render(request, 'main/accounts/profile.html', {
         'bookings': bookings,
+        'bookings_total_revenue': bookings_total_revenue,
         'user_profile': profile,
         'reservations': reservations,
         'referral_codes': referral_codes,
