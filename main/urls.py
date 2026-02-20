@@ -42,6 +42,7 @@ urlpatterns = [
     path('signup/', views.signup, name='signup'),
     path('profile/<int:pk>/', views.profile, name='profile'),
     path('profile/<int:pk>/edit/', views.profile_edit, name='profile_edit'),
+    path('reservations/<int:pk>/confirm-departure-time/', views.confirm_reservation_departure_time, name='confirm_reservation_departure_time'),
     path('manage_referral_codes/', views.manage_referral_codes, name='manage_referral_codes'),
     path('validate_referral_code/', views.validate_referral_code, name='validate_referral_code'),
     path('logout/', views.logout_view, name='logout'),

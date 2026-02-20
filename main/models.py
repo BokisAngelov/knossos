@@ -552,7 +552,13 @@ class Reservation(models.Model):
     pickup_point = models.ForeignKey(PickupPoint, on_delete=models.SET_NULL, null=True, blank=True, related_name='reservations')
     departure_time = models.TimeField(null=True, blank=True)
     departure_time_updated = models.BooleanField(default=False)
-    
+    confirm_departure_time = models.BooleanField(default=False)
+    confirm_departure_time_at = models.DateTimeField(null=True, blank=True, help_text="When the user confirmed the departure time")
+    departure_confirm_token = models.CharField(
+        max_length=64, null=True, blank=True, unique=True, db_index=True,
+        help_text="Token for one-click departure time confirmation from email"
+    )
+
     status = models.CharField(max_length=255, choices=STATUS_CHOICES, default='active')
     
     # Link to client UserProfile

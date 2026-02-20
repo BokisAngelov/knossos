@@ -1719,6 +1719,26 @@ def confirm_pickup_time(request, pk):
         redirect_url += f'?token={token}'
     return redirect(redirect_url)
 
+
+def confirm_reservation_departure_time(request, pk):
+    """One-click confirm departure time (from email link with token) or POST from profile."""
+    reservation = get_object_or_404(Reservation, pk=pk)
+    token = request.GET.get('token') or request.POST.get('token')
+    has_access = False
+    if token and reservation.departure_confirm_token and token == reservation.departure_confirm_token:
+        has_access = True
+    elif request.user.is_authenticated and reservation.client_profile and reservation.client_profile.user == request.user:
+        has_access = True
+    if not has_access:
+        raise Http404("Reservation not found or you don't have permission.")
+    reservation.confirm_departure_time = True
+    reservation.confirm_departure_time_at = timezone.now()
+    reservation.save(update_fields=['confirm_departure_time', 'confirm_departure_time_at'])
+    messages.success(request, 'Your departure time has been confirmed. Thank you!')
+    if reservation.client_profile_id:
+        return redirect('profile', pk=reservation.client_profile.user_id)
+    return redirect('homepage')
+
 # ----- Checkout View -----
 # Guests and clients go through checkout; reps/admins redirected to detail
 def checkout(request, booking_pk):

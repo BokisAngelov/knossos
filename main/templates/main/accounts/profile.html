@@ -41,11 +41,11 @@
     
     <div class="space-y-4">
       {% for reservation in reservations %}
-      {% if reservation.departure_time_updated %}
+      {% if reservation.departure_time_updated and not reservation.confirm_departure_time %}
       <div class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded relative w-auto inline-block" role="alert">
         <strong class="font-bold">Notification!</strong>
-        <span class="block sm:inline">Flight time has been updated. Please check your reservation details.</span>
-      </div>  
+        <span class="block sm:inline">Departure time has been updated. Please confirm your new time below.</span>
+      </div>
       {% endif %}
       <div class="">
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -111,7 +111,15 @@
           {% if reservation.departure_time %}
           <div>
             <p class="text-sm font-semibold text-gray-600">Departure Time</p>
-            <p class="{% if reservation.departure_time_updated %}text-red-900 font-bold {% else %}text-base text-gray-900{% endif %}">{{ reservation.departure_time|time:"H:i" }}</p>
+            <p class="{% if reservation.departure_time_updated and not reservation.confirm_departure_time %}text-red-900 font-bold {% else %}text-base text-gray-900{% endif %}">{{ reservation.departure_time|time:"H:i" }}</p>
+            {% if reservation.confirm_departure_time %}
+              <p class="text-sm text-green-600 mt-1">✓ Confirmed{% if reservation.confirm_departure_time_at %} on {{ reservation.confirm_departure_time_at|date:"d M Y H:i" }}{% endif %}</p>
+            {% elif request.user.id == user_profile.user_id or request.user.is_staff %}
+              <form method="post" action="{% url 'confirm_reservation_departure_time' reservation.pk %}" class="inline mt-2">
+                {% csrf_token %}
+                <button type="submit" class="inline-flex items-center h-8 px-4 py-1 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-md text-sm">Confirm departure time</button>
+              </form>
+            {% endif %}
           </div>
           {% endif %}
           
