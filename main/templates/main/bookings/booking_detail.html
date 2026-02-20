@@ -3,6 +3,8 @@
 
 {% block content %}
 <div class="container mx-auto px-4 py-8">
+    <input type="hidden" id="booking-id" value="{{ booking.id }}">
+
     <!-- Header Section -->
     <div class="flex justify-between items-center mb-2">
         <div class="relative w-full">
@@ -38,7 +40,6 @@
         {% if booking.payment_status == 'pending' and not is_date_past %}
             {% if not user.is_staff %}
                 {% if is_own_booking or access_token %}
-                <input type="hidden" id="booking-id" value="{{ booking.id }}">
                 <div class="mt-4 flex gap-2">
                     <a href="{% url 'checkout' booking_pk=booking.pk %}{% if access_token %}?token={{ access_token }}{% endif %}" class="inline-flex items-center h-8 px-4 py-1 bg-blue hover:opacity-80 text-white font-semibold rounded-md">
                         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -56,7 +57,6 @@
         
         {% if user.is_staff %}
         <div class="float-right absolute right-0 bottom-0">
-            <input type="hidden" id="booking-id" value="{{ booking.id }}">
             <!-- <a id="edit-booking" class="relative px-4 py-1 text-white bg-turquaz rounded-md font-semibold hover:opacity-80" href="{% url 'booking_edit' booking.id %}">
                 Edit</a> -->
             {% if booking.payment_status == 'pending' or booking.payment_status == 'cancelled' %}
@@ -124,6 +124,21 @@
                 <h4 class="text-lg font-bold  mb-1">Pickup Point</h4>
                 <p class="text-md font-semibold ">{% if booking.pickup_point %}{{ booking.pickup_point.name }}{% else %}N/A{% endif %}</p>
             </div>
+            {% if pickup_time %}
+            <div class="">
+                <h4 class="text-lg font-bold  mb-1">Pickup Time</h4>
+                <p class="text-md font-semibold ">{{ pickup_time|time:"H:i" }}</p>
+                {% if booking.confirmTime %}
+                    <p class="text-sm text-green-600 mt-1">✓ Confirmed{% if booking.confirm_time_at %} on {{ booking.confirm_time_at|date:"d M Y H:i" }}{% endif %}</p>
+                {% elif show_confirm_pickup %}
+                    {% if is_own_booking or access_token %}
+                    <button type="button" id="confirm-pickup-time-btn" class="mt-2 inline-flex items-center h-8 px-4 py-1 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-md text-sm">
+                        Confirm pickup time
+                    </button>
+                    {% endif %}
+                {% endif %}
+            </div>
+            {% endif %}
         </div>
     </div>
 
@@ -411,6 +426,36 @@
                             });
                         });
                     }
+                });
+            });
+        }
+
+        const confirmPickupBtn = document.getElementById('confirm-pickup-time-btn');
+        if (confirmPickupBtn) {
+            confirmPickupBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                fetch(ajaxUrl, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrftoken,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        action_type: 'confirm_pickup_time',
+                        csrfmiddlewaretoken: csrftoken,
+                        token: token || undefined
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success' && data.redirect_url) {
+                        window.location.href = data.redirect_url;
+                    } else if (data.message) {
+                        Swal.fire({ title: data.status === 'success' ? 'Done' : 'Error', text: data.message, icon: data.status === 'success' ? 'success' : 'error' });
+                    }
+                })
+                .catch(() => {
+                    Swal.fire({ title: 'Error', text: 'An error occurred.', icon: 'error' });
                 });
             });
         }

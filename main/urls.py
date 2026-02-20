@@ -23,6 +23,7 @@ urlpatterns = [
     # path('availability/<int:availability_pk>/book/', views.booking_create, name='booking_create'),
     path('bookings/', views.bookings_list, name='bookings_list'),
     path('bookings/<int:pk>/', views.booking_detail, name='booking_detail'),
+    path('bookings/<int:pk>/confirm-pickup-time/', views.confirm_pickup_time, name='confirm_pickup_time'),
     path('bookings/<int:pk>/delete/', views.booking_delete, name='delete_booking'),
     path('bookings/<int:pk>/edit/', views.booking_edit, name='booking_edit'),
 
@@ -106,6 +107,7 @@ urlpatterns = [
     path('groups/<int:pk>/export-pdf/', views.group_export_pdf, name='group_export_pdf'),
     path('groups/<int:pk>/export-csv/', views.group_export_csv, name='group_export_csv'),
     path('groups/<int:pk>/send/', views.group_send, name='group_send'),
+    path('groups/<int:pk>/send-pickup-times/', views.group_send_pickup_times, name='group_send_pickup_times'),
     path('groups/<int:pk>/set-pickup-time/', views.set_pickup_time, name='set_pickup_time'),
     path('debug/availability-days/<int:excursion_id>/<str:date>/', views.debug_availability_days, name='debug_availability_days'),
     path('get_bookings_for_group/', views.get_bookings_for_group, name='get_bookings_for_group'),
