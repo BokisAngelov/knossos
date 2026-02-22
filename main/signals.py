@@ -286,34 +286,46 @@ def update_client_profile_on_reservation_change(sender, instance, **kwargs):
 @receiver(pre_save, sender=Reservation)
 def detect_departure_time_change(sender, instance, **kwargs):
     """
-    Detect if departure time has changed and set notification flag.
+    Detect if departure time has changed: set notification flag, reset confirmation, send email with confirm button.
     """
     if not instance.pk:
-        # New reservation, skip
         return
-    
     try:
         old_instance = Reservation.objects.get(pk=instance.pk)
-        
-        # Check if departure_time has changed
         if old_instance.departure_time != instance.departure_time:
             logger.info(f"Departure time changed for reservation {instance.voucher_id}: {old_instance.departure_time} -> {instance.departure_time}")
             instance.departure_time_updated = True
-            
-            # Send email notification
+            instance.confirm_departure_time = False
+            instance.confirm_departure_time_at = None
+            import secrets
+            instance.departure_confirm_token = secrets.token_urlsafe(32)
+
             if instance.client_email:
+                from django.urls import reverse
+                base_url = getattr(settings, 'SITE_URL', 'http://127.0.0.1:8000').rstrip('/')
+                confirm_path = reverse('confirm_reservation_departure_time', kwargs={'pk': instance.pk})
+                confirm_url = f"{base_url}{confirm_path}?token={instance.departure_confirm_token}"
+
                 builder = EmailBuilder()
                 builder.h2(f"Hello {instance.client_name or 'Guest'}!")
                 builder.warning("Departure Time Changed")
-                builder.p(f"The departure time for your reservation has been updated.")
+                builder.p("The departure time for your reservation has been updated.")
                 builder.card("Reservation Details", {
                     'Voucher ID': instance.voucher_id,
                     'Previous Time': str(old_instance.departure_time) if old_instance.departure_time else 'Not set',
                     'New Time': str(instance.departure_time) if instance.departure_time else 'Not set'
                 })
+                builder.button("Confirm departure time", confirm_url)
+                if instance.client_profile_id:
+                    try:
+                        profile = UserProfile.objects.get(pk=instance.client_profile_id)
+                        profile_path = reverse('profile', kwargs={'pk': profile.user_id})
+                        builder.p(f'<a href="{base_url}{profile_path}" style="color:#666;font-size:14px;">View your profile</a>')
+                    except UserProfile.DoesNotExist:
+                        pass
                 builder.p("Please make note of this change and plan accordingly.")
                 builder.p("Best regards,<br>The iTrip Knossos Team")
-                
+
                 EmailService.send_dynamic_email(
                     subject='[iTrip Knossos] Departure Time Changed',
                     recipient_list=[instance.client_email],
@@ -321,9 +333,7 @@ def detect_departure_time_change(sender, instance, **kwargs):
                     preview_text='Your departure time has been updated',
                     fail_silently=True
                 )
-        
     except Reservation.DoesNotExist:
-        # New reservation
         pass
 
 

@@ -552,7 +552,13 @@ class Reservation(models.Model):
     pickup_point = models.ForeignKey(PickupPoint, on_delete=models.SET_NULL, null=True, blank=True, related_name='reservations')
     departure_time = models.TimeField(null=True, blank=True)
     departure_time_updated = models.BooleanField(default=False)
-    
+    confirm_departure_time = models.BooleanField(default=False)
+    confirm_departure_time_at = models.DateTimeField(null=True, blank=True, help_text="When the user confirmed the departure time")
+    departure_confirm_token = models.CharField(
+        max_length=64, null=True, blank=True, unique=True, db_index=True,
+        help_text="Token for one-click departure time confirmation from email"
+    )
+
     status = models.CharField(max_length=255, choices=STATUS_CHOICES, default='active')
     
     # Link to client UserProfile
@@ -634,6 +640,8 @@ class Booking(models.Model):
     price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     deleteByUser = models.BooleanField(default=False)
+    confirmTime = models.BooleanField(default=False)
+    confirm_time_at = models.DateTimeField(null=True, blank=True, help_text="When the user confirmed the pickup time")
     referral_code = models.ForeignKey(ReferralCode, on_delete=models.SET_NULL, null=True, blank=True, related_name='bookings')
     referral_discount_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, default=0)
     jcc_order_id = models.CharField(
@@ -786,6 +794,22 @@ class GroupPickupPoint(models.Model):
 
     def __str__(self):
         return f"{self.group.name} - {self.pickup_point.name} @ {self.pickup_time or 'Not Set'}"
+
+
+class BookingPickupTimeNotification(models.Model):
+    """Tracks the last pickup time we emailed to a booking for a group. Used to send only when time has changed."""
+    booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name='pickup_time_notifications')
+    group = models.ForeignKey(Group, on_delete=models.CASCADE, related_name='pickup_time_notifications')
+    pickup_time_sent = models.TimeField(null=True, blank=True)
+    sent_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ['booking', 'group']
+        ordering = ['-sent_at']
+
+    def __str__(self):
+        return f"Booking #{self.booking_id} @ {self.pickup_time_sent or 'N/A'} for {self.group.name}"
+
 
 class EmailSettings(models.Model):
     email = models.EmailField(max_length=255)

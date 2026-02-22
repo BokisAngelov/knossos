@@ -610,7 +610,16 @@ def excursion_detail(request, pk):
     # Handle booking submission
     elif request.method == 'POST' and 'booking_submit' in request.POST:
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return _handle_ajax_booking_submission(request, excursion_availability)
+            availability_id = request.POST.get('availability_id')
+            submission_availability = excursion_availability
+            if availability_id:
+                try:
+                    submission_availability = ExcursionAvailability.objects.get(
+                        id=availability_id, excursion=excursion
+                    )
+                except ExcursionAvailability.DoesNotExist:
+                    pass
+            return _handle_ajax_booking_submission(request, submission_availability)
         
 
     # Calculate remaining seats and prepare context
@@ -1626,6 +1635,25 @@ def booking_detail(request, pk):
                     'message': 'Booking set to pending successfully.',
                     'redirect_url': redirect_url
                 })
+            elif action_type == 'confirm_pickup_time':
+                sent_group = booking.transport_groups.filter(status='sent', date=booking.date).first()
+                if sent_group and booking.pickup_point:
+                    from .models import GroupPickupPoint
+                    try:
+                        GroupPickupPoint.objects.get(group=sent_group, pickup_point=booking.pickup_point)
+                        booking.confirmTime = True
+                        booking.confirm_time_at = timezone.now()
+                        booking.save()
+                    except GroupPickupPoint.DoesNotExist:
+                        pass
+                redirect_url = reverse('booking_detail', kwargs={'pk': pk})
+                if token:
+                    redirect_url += f'?token={token}'
+                return JsonResponse({
+                    'status': 'success',
+                    'message': 'Pickup time confirmed.',
+                    'redirect_url': redirect_url
+                })
         
         except Exception as e:
             error_message = f'Error updating booking: {str(e)}'
@@ -1645,12 +1673,71 @@ def booking_detail(request, pk):
     if request.user.is_authenticated and booking.user:
         is_own_booking = booking.user == request.user
     
+    # Pickup time from sent group (for confirm UI)
+    pickup_time = None
+    show_confirm_pickup = False
+    sent_group = booking.transport_groups.filter(status='sent', date=booking.date).first()
+    if sent_group and booking.pickup_point:
+        from .models import GroupPickupPoint
+        try:
+            gpp = GroupPickupPoint.objects.get(group=sent_group, pickup_point=booking.pickup_point)
+            if gpp.pickup_time:
+                pickup_time = gpp.pickup_time
+                show_confirm_pickup = not booking.confirmTime
+        except GroupPickupPoint.DoesNotExist:
+            pass
+
     return render(request, 'main/bookings/booking_detail.html', {
         'booking': booking,
         'is_date_past': is_date_past,
         'is_own_booking': is_own_booking,
         'access_token': token if not request.user.is_authenticated and booking.access_token else None,
+        'pickup_time': pickup_time,
+        'show_confirm_pickup': show_confirm_pickup,
     })
+
+# ----- Confirm pickup time (one-click from email or from booking detail) -----
+def confirm_pickup_time(request, pk):
+    """One-click confirm pickup time. Requires token for guests. Redirects to booking detail."""
+    booking = get_object_or_404(Booking, pk=pk)
+    token = request.GET.get('token') or request.POST.get('token')
+    has_access = False
+    if request.user.is_authenticated and request.user.is_staff:
+        has_access = True
+    elif request.user.is_authenticated and booking.user and booking.user == request.user:
+        has_access = True
+    elif not request.user.is_authenticated and booking.access_token and token == booking.access_token:
+        has_access = True
+    if not has_access:
+        raise Http404("Booking not found or you don't have permission.")
+    booking.confirmTime = True
+    booking.confirm_time_at = timezone.now()
+    booking.save()
+    messages.success(request, 'Your pickup time has been confirmed. Thank you!')
+    redirect_url = reverse('booking_detail', kwargs={'pk': pk})
+    if token:
+        redirect_url += f'?token={token}'
+    return redirect(redirect_url)
+
+
+def confirm_reservation_departure_time(request, pk):
+    """One-click confirm departure time (from email link with token) or POST from profile."""
+    reservation = get_object_or_404(Reservation, pk=pk)
+    token = request.GET.get('token') or request.POST.get('token')
+    has_access = False
+    if token and reservation.departure_confirm_token and token == reservation.departure_confirm_token:
+        has_access = True
+    elif request.user.is_authenticated and reservation.client_profile and reservation.client_profile.user == request.user:
+        has_access = True
+    if not has_access:
+        raise Http404("Reservation not found or you don't have permission.")
+    reservation.confirm_departure_time = True
+    reservation.confirm_departure_time_at = timezone.now()
+    reservation.save(update_fields=['confirm_departure_time', 'confirm_departure_time_at'])
+    messages.success(request, 'Your departure time has been confirmed. Thank you!')
+    if reservation.client_profile_id:
+        return redirect('profile', pk=reservation.client_profile.user_id)
+    return redirect('homepage')
 
 # ----- Checkout View -----
 # Guests and clients go through checkout; reps/admins redirected to detail
@@ -2605,7 +2692,10 @@ def group_create(request):
         form = GroupForm(request.POST)
         if form.is_valid():
             group = form.save()  # Form now handles bookings assignment
-            
+            # Status is set to 'sent' only when sending the group list to supplier (group_send), not on creation
+            group.status = 'not_sent'
+            group.save(update_fields=['status'])
+
             # Check capacity and warn if exceeded
             if group.bus:
                 from .utils import TransportGroupService
@@ -2614,7 +2704,7 @@ def group_create(request):
                 )
                 if total_guests > group.bus.capacity:
                     messages.warning(request, f'Warning: Group has {total_guests} guests, exceeding the bus capacity of {group.bus.capacity}.')
-            
+
             messages.success(request, 'Group created successfully.')
             return redirect('group_detail', pk=group.pk)
     else:
@@ -2755,6 +2845,9 @@ def set_pickup_time(request, pk):
         gpp.pickup_time = pickup_time
         gpp.save()
         
+        # Reset confirmation for bookings at this pickup point (time changed, user must confirm again)
+        group.bookings.filter(pickup_point=pickup_point).update(confirmTime=False, confirm_time_at=None)
+        
         # Check if all pickup times are now set
         bookings = group.bookings.all()
         unique_pickup_points = set()
@@ -2784,146 +2877,144 @@ def set_pickup_time(request, pk):
 
 @user_passes_test(is_staff)
 def group_send(request, pk):
-    """Send group list to transportation company and mark availability as inactive"""
+    """Send group list to transportation company (supplier only) and mark availability as inactive."""
     if request.method != 'POST':
         messages.error(request, 'Invalid request method')
         return redirect('group_detail', pk=pk)
-    
     try:
-        from .models import GroupPickupPoint, AvailabilityDays
-        from django.core.mail import send_mail
-        from django.conf import settings
-        
         group = get_object_or_404(Group, pk=pk)
-        
-        # Check if all pickup times are set
-        bookings = group.bookings.all()
-        unique_pickup_points = set()
-        for booking in bookings:
-            if booking.pickup_point:
-                unique_pickup_points.add(booking.pickup_point.id)
-        
-        if not unique_pickup_points:
-            messages.error(request, 'No pickup points found in this group')
+        all_set, missing_times = _validate_group_pickup_times(group)
+        if not all_set:
+            if not missing_times:
+                messages.error(request, 'No pickup points found in this group')
+            else:
+                messages.error(request, f'Please set pickup times for: {", ".join(missing_times)}')
             return redirect('group_detail', pk=pk)
-        
-        # Verify all times are set
-        missing_times = []
-        for pp_id in unique_pickup_points:
-            try:
-                gpp = GroupPickupPoint.objects.get(group=group, pickup_point_id=pp_id)
-                if not gpp.pickup_time:
-                    pickup_point = PickupPoint.objects.get(pk=pp_id)
-                    missing_times.append(pickup_point.name)
-            except GroupPickupPoint.DoesNotExist:
-                pickup_point = PickupPoint.objects.get(pk=pp_id)
-                missing_times.append(pickup_point.name)
-        
-        if missing_times:
-            messages.error(request, f'Please set pickup times for: {", ".join(missing_times)}')
-            return redirect('group_detail', pk=pk)
-        
-        # Note: AvailabilityDays status is now updated via signals (see signals.py)
-        # The signal will automatically mark dates as inactive when group.status = 'sent'
-        # and reactivate them when a sent group is deleted
-        
-        # Mark group as sent
         group.status = 'sent'
         group.save()
-        
-        # Send email notifications
-        notifications_sent = send_group_notifications(request, group)
-        
-        messages.success(
-            request, 
-            f'Group sent successfully! Notifications sent to provider and {notifications_sent} customer(s).'
-        )
+        send_group_to_provider(request, group)
+        messages.success(request, 'Group sent successfully! Notification sent to the supplier.')
         return redirect('group_detail', pk=pk)
-        
     except Exception as e:
         messages.error(request, f'Error sending group list: {str(e)}')
         return redirect('group_detail', pk=pk)
 
-def send_group_notifications(request, group):
-    """Send email notifications to provider and customers when group is sent."""
+
+def _validate_group_pickup_times(group):
+    """Return (True, None) if all pickup times set, else (False, missing_times_list)."""
     from .models import GroupPickupPoint
-    
-    customers_notified = 0
-    
-    # 1. Send email to provider
-    if group.provider and group.provider.email:
-        try:
-            builder = EmailBuilder()
-            builder.h2(f"Hello {group.provider.name}!")
-            builder.success(f"New Transport Group: {group.name}")
-            builder.p(
-                f"A new transport group has been assigned to you for {group.excursion.title}. "
-                "Please review the details below."
-            )
-            
-            # Group details
-            builder.card("Group Information", {
-                'Group Name': group.name,
-                'Excursion': group.excursion.title,
-                'Date': group.date.strftime('%B %d, %Y'),
-                'Total Guests': group.total_guests,
-                'Bus': group.bus.name if group.bus else 'Not assigned',
-                'Guide': group.guide.name if group.guide else 'Not assigned'
-            })
-            
-            # Pickup schedule
-            pickup_points = GroupPickupPoint.objects.filter(group=group).select_related('pickup_point').order_by('pickup_time')
-            if pickup_points.exists():
-                pickup_data = []
-                for gpp in pickup_points:
-                    pickup_data.append((
-                        gpp.pickup_point.name,
-                        gpp.pickup_time.strftime('%I:%M %p') if gpp.pickup_time else 'Not set'
-                    ))
-                builder.card("Pickup Schedule", pickup_data, border_color="#4caf50")
-            
-            builder.button("View Group Details", request.build_absolute_uri(reverse('group_detail', kwargs={'pk': group.pk})))
-            builder.p("Please confirm receipt and prepare accordingly.")
-            builder.p("Best regards,<br>The iTrip Knossos Team")
-            
-            EmailService.send_dynamic_email(
-                subject=f'[iTrip Knossos] New Transport Group - {group.name}',
-                recipient_list=[group.provider.email],
-                email_body=builder.build(),
-                preview_text=f'New transport group for {group.excursion.title}',
-                fail_silently=True
-            )
-            logger.info(f'Group notification sent to provider {group.provider.email}')
-            
-        except Exception as e:
-            logger.error(f'Failed to send notification to provider for group #{group.pk}: {str(e)}')
-    
-    # 2. Send email to each customer with their specific pickup time
     bookings = group.bookings.all()
+    unique_pickup_points = set()
     for booking in bookings:
+        if booking.pickup_point:
+            unique_pickup_points.add(booking.pickup_point.id)
+    if not unique_pickup_points:
+        return False, []
+    missing_times = []
+    for pp_id in unique_pickup_points:
+        try:
+            gpp = GroupPickupPoint.objects.get(group=group, pickup_point_id=pp_id)
+            if not gpp.pickup_time:
+                pickup_point = PickupPoint.objects.get(pk=pp_id)
+                missing_times.append(pickup_point.name)
+        except GroupPickupPoint.DoesNotExist:
+            pickup_point = PickupPoint.objects.get(pk=pp_id)
+            missing_times.append(pickup_point.name)
+    return (len(missing_times) == 0, missing_times)
+
+
+@user_passes_test(is_staff)
+def group_send_pickup_times(request, pk):
+    """Send pickup time emails to customers only. Does not change group status."""
+    if request.method != 'POST':
+        messages.error(request, 'Invalid request method')
+        return redirect('group_detail', pk=pk)
+    try:
+        group = get_object_or_404(Group, pk=pk)
+        all_set, missing_times = _validate_group_pickup_times(group)
+        if not all_set:
+            messages.error(request, f'Please set pickup times for: {", ".join(missing_times)}')
+            return redirect('group_detail', pk=pk)
+        customers_notified = send_pickup_times_to_customers(request, group)
+        messages.success(request, f'Pickup time emails sent to {customers_notified} customer(s).')
+        return redirect('group_detail', pk=pk)
+    except Exception as e:
+        messages.error(request, f'Error sending pickup times: {str(e)}')
+        return redirect('group_detail', pk=pk)
+
+
+def send_group_to_provider(request, group):
+    """Send email notification to the transport provider when group list is sent."""
+    from .models import GroupPickupPoint
+    if not group.provider or not group.provider.email:
+        return
+    try:
+        builder = EmailBuilder()
+        builder.h2(f"Hello {group.provider.name}!")
+        builder.success(f"New Transport Group: {group.name}")
+        builder.p(
+            f"A new transport group has been assigned to you for {group.excursion.title}. "
+            "Please review the details below."
+        )
+        builder.card("Group Information", {
+            'Group Name': group.name,
+            'Excursion': group.excursion.title,
+            'Date': group.date.strftime('%B %d, %Y'),
+            'Total Guests': group.total_guests,
+            'Bus': group.bus.name if group.bus else 'Not assigned',
+            'Guide': group.guide.name if group.guide else 'Not assigned'
+        })
+        pickup_points = GroupPickupPoint.objects.filter(group=group).select_related('pickup_point').order_by('pickup_time')
+        if pickup_points.exists():
+            pickup_data = [
+                (gpp.pickup_point.name, gpp.pickup_time.strftime('%I:%M %p') if gpp.pickup_time else 'Not set')
+                for gpp in pickup_points
+            ]
+            builder.card("Pickup Schedule", pickup_data, border_color="#4caf50")
+        builder.button("View Group Details", request.build_absolute_uri(reverse('group_detail', kwargs={'pk': group.pk})))
+        builder.p("Please confirm receipt and prepare accordingly.")
+        builder.p("Best regards,<br>The iTrip Knossos Team")
+        EmailService.send_dynamic_email(
+            subject=f'[iTrip Knossos] New Transport Group - {group.name}',
+            recipient_list=[group.provider.email],
+            email_body=builder.build(),
+            preview_text=f'New transport group for {group.excursion.title}',
+            fail_silently=True
+        )
+        logger.info(f'Group notification sent to provider {group.provider.email}')
+    except Exception as e:
+        logger.error(f'Failed to send notification to provider for group #{group.pk}: {str(e)}')
+
+
+def send_pickup_times_to_customers(request, group):
+    """Send pickup time email only to customers whose pickup time has changed (or never sent)."""
+    from .models import GroupPickupPoint, BookingPickupTimeNotification
+    customers_notified = 0
+    for booking in group.bookings.all():
         try:
             customer_email = booking.guest_email or (booking.user.email if booking.user else None)
             customer_name = booking.guest_name or (booking.user.get_full_name() if booking.user else 'Guest')
-            
             if not customer_email or not booking.pickup_point:
                 continue
-            
-            # Get pickup time for this booking's pickup point
-            pickup_time_str = 'To be confirmed'
             try:
                 gpp = GroupPickupPoint.objects.get(group=group, pickup_point=booking.pickup_point)
-                if gpp.pickup_time:
-                    pickup_time_str = gpp.pickup_time.strftime('%I:%M %p')
+                current_time = gpp.pickup_time
             except GroupPickupPoint.DoesNotExist:
+                continue
+            if not current_time:
+                continue
+            # Send only if we never sent, or the time has changed since last send
+            try:
+                last = BookingPickupTimeNotification.objects.get(booking=booking, group=group)
+                if last.pickup_time_sent == current_time:
+                    continue
+            except BookingPickupTimeNotification.DoesNotExist:
                 pass
-            
-            # Build email
+            pickup_time_str = current_time.strftime('%I:%M %p')
             builder = EmailBuilder()
             builder.h2(f"Hello {customer_name}!")
             builder.success("Your Pickup Time Has Been Confirmed!")
             builder.p("We're excited for your upcoming excursion! Your pickup details are ready.")
-            
-            # Pickup information - highlighted
             builder.card("Pickup Information", {
                 'Excursion': group.excursion.title,
                 'Date': group.date.strftime('%B %d, %Y'),
@@ -2931,8 +3022,6 @@ def send_group_notifications(request, group):
                 'Pickup Location': booking.pickup_point.name,
                 'Booking #': f'{booking.id}'
             }, border_color="#4caf50")
-            
-            # Important reminders
             builder.list_box("⚠️ Please Remember", [
                 f"Be at {booking.pickup_point.name} by {pickup_time_str}",
                 "Arrive 10 minutes early to ensure you don't miss the departure",
@@ -2940,16 +3029,16 @@ def send_group_notifications(request, group):
                 "Wear comfortable clothing and shoes",
                 "Don't forget water, sunscreen, and a camera!"
             ])
-            
-            # Booking URL
+            confirm_url = request.build_absolute_uri(reverse('confirm_pickup_time', kwargs={'pk': booking.pk}))
+            if booking.access_token:
+                confirm_url += f'?token={booking.access_token}'
+            builder.button("Confirm pickup time", confirm_url)
             booking_url = request.build_absolute_uri(reverse('booking_detail', kwargs={'pk': booking.pk}))
             if booking.access_token:
                 booking_url += f'?token={booking.access_token}'
-            
-            builder.button("View Your Booking", booking_url)
+            builder.p(f'<a href="{booking_url}" style="color:#666;font-size:14px;">View your booking</a>')
             builder.p("If you have any questions, please don't hesitate to contact us.")
             builder.p("Best regards,<br>The iTrip Knossos Team")
-            
             EmailService.send_dynamic_email(
                 subject=f'[iTrip Knossos] Your Pickup Time - {group.excursion.title}',
                 recipient_list=[customer_email],
@@ -2957,12 +3046,15 @@ def send_group_notifications(request, group):
                 preview_text=f'Your pickup time is {pickup_time_str} at {booking.pickup_point.name}',
                 fail_silently=True
             )
+            BookingPickupTimeNotification.objects.update_or_create(
+                booking=booking,
+                group=group,
+                defaults={'pickup_time_sent': current_time}
+            )
             customers_notified += 1
             logger.info(f'Pickup time notification sent to {customer_email} for booking #{booking.id}')
-            
         except Exception as e:
             logger.error(f'Failed to send pickup notification to booking #{booking.id}: {str(e)}')
-    
     return customers_notified
 
 @user_passes_test(is_staff)

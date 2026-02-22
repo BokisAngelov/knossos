@@ -18,12 +18,51 @@
             <p class="text-sm text-gray-500">Transport Group Details</p>
         </div>
         <div class="flex space-x-3">
+            {% if group.status == 'sent' %}
+            <span class="inline-flex items-center px-4 py-2 border border-gray-200 shadow-sm text-sm font-medium rounded-md text-gray-400 bg-gray-100 cursor-not-allowed">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                Edit
+            </span>
+            {% else %}
             <a href="{% url 'group_update' group.pk %}" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                 </svg>
                 Edit
             </a>
+            {% endif %}
+            <!-- Send pickup times to customers -->
+            <form method="POST" action="{% url 'group_send_pickup_times' group.pk %}" id="sendPickupTimesForm" class="inline">
+                {% csrf_token %}
+                <button type="submit"
+                        id="sendPickupTimesBtn"
+                        {% if not all_times_set or group.status == 'sent' %}disabled{% endif %}
+                        class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white
+                        {% if all_times_set and group.status == 'not_sent' %}bg-green-600 hover:bg-green-700 focus:ring-green-500{% else %}bg-gray-400 cursor-not-allowed{% endif %}
+                        focus:outline-none focus:ring-2 focus:ring-offset-2">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                    Send pickup times
+                </button>
+            </form>
+            <!-- Send Group List (supplier only) -->
+            <form method="POST" action="{% url 'group_send' group.pk %}" id="sendGroupForm" class="inline">
+                {% csrf_token %}
+                <button type="submit"
+                        id="sendGroupBtn"
+                        {% if not all_times_set or group.status == 'sent' %}disabled{% endif %}
+                        class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white
+                        {% if all_times_set and group.status == 'not_sent' %}bg-orange-600 hover:bg-orange-700 focus:ring-orange-500{% else %}bg-gray-400 cursor-not-allowed{% endif %}
+                        focus:outline-none focus:ring-2 focus:ring-offset-2">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                    </svg>
+                    {% if group.status == 'sent' %}Sent{% else %}Send Group List{% endif %}
+                </button>
+            </form>
             <a href="{% url 'group_export_pdf' group.pk %}" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -36,23 +75,6 @@
                 </svg>
                 Export CSV
             </a>
-            
-            <!-- Send Group List Button -->
-            <form method="POST" action="{% url 'group_send' group.pk %}" id="sendGroupForm" class="inline">
-                {% csrf_token %}
-                <button type="submit" 
-                        id="sendGroupBtn" 
-                        {% if not all_times_set %}disabled{% endif %}
-                        class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white 
-                        {% if all_times_set and group.status == 'not_sent' %}bg-orange-600 hover:bg-orange-700 focus:ring-orange-500{% else %}bg-gray-400 cursor-not-allowed{% endif %}
-                        focus:outline-none focus:ring-2 focus:ring-offset-2">
-                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                    </svg>
-                    {% if group.status == 'sent' %}Sent{% else %}Send Group List{% endif %}
-                </button>
-                
-            </form>
         </div>
     </div>
 
@@ -168,6 +190,7 @@
                                     <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Children</th>
                                     <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Infants</th>
                                     <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
+                                    <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Time confirmed</th>
                                 </tr>
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-100">
@@ -187,6 +210,13 @@
                                     <td class="px-4 py-3 text-sm text-gray-500 text-left">{{ booking.total_infants|default:"0" }}</td>
                                     <td class="px-4 py-3 text-sm font-medium text-gray-900 text-left">
                                         {{ booking.total_adults|default:0|add:booking.total_kids|default:0|add:booking.total_infants|default:0 }}
+                                    </td>
+                                    <td class="px-4 py-3 text-sm text-gray-700 text-left">
+                                        {% if booking.confirmTime %}
+                                            {% if booking.confirm_time_at %}Yes ({{ booking.confirm_time_at|date:"d M Y H:i" }}){% else %}Yes{% endif %}
+                                        {% else %}
+                                            No
+                                        {% endif %}
                                     </td>
                                 </tr>
                                 {% endfor %}
@@ -228,6 +258,7 @@
 document.addEventListener('DOMContentLoaded', function() {
     const pickupTimeInputs = document.querySelectorAll('.pickup-time-input');
     const sendGroupBtn = document.getElementById('sendGroupBtn');
+    const sendPickupTimesBtn = document.getElementById('sendPickupTimesBtn');
     const sendGroupForm = document.getElementById('sendGroupForm');
     const groupStatus = '{{ group.status }}';
     
@@ -281,7 +312,17 @@ document.addEventListener('DOMContentLoaded', function() {
                     `;
                 }
                 
-                // Update send button state
+                // Update Send pickup times button (enabled when all times set)
+                if (data.all_times_set) {
+                    sendPickupTimesBtn.disabled = false;
+                    sendPickupTimesBtn.classList.remove('bg-gray-400', 'cursor-not-allowed');
+                    sendPickupTimesBtn.classList.add('bg-green-600', 'hover:bg-green-700', 'focus:ring-green-500');
+                } else {
+                    sendPickupTimesBtn.disabled = true;
+                    sendPickupTimesBtn.classList.add('bg-gray-400', 'cursor-not-allowed');
+                    sendPickupTimesBtn.classList.remove('bg-green-600', 'hover:bg-green-700', 'focus:ring-green-500');
+                }
+                // Update Send Group List button (enabled when all times set and group not yet sent)
                 if (data.all_times_set && groupStatus === 'not_sent') {
                     sendGroupBtn.disabled = false;
                     sendGroupBtn.classList.remove('bg-gray-400', 'cursor-not-allowed');
