@@ -2233,6 +2233,14 @@ def login_view(request):
         if form.is_valid():
             user = form.get_user()
             if user:
+                # Require email verification for clients who signed up (password-based login)
+                profile = getattr(user, 'profile', None)
+                if profile and profile.role == 'client' and not profile.email_verified:
+                    messages.error(
+                        request,
+                        'Please verify your email before logging in. Check your inbox for the verification link, or request a new one from the signup page.'
+                    )
+                    return redirect('login')
                 login(request, user)
                 if user.profile.role == 'admin':
                     response = redirect('admin_dashboard', user.profile.id)
@@ -2252,6 +2260,74 @@ def login_view(request):
     else:
         form = AuthenticationForm()
     return render(request, 'main/accounts/login.html', {'form': form})
+
+
+def resend_verification_email(request):
+    """
+    Resend verification email only if a user exists with the given email and their email is not verified yet.
+    """
+    if request.method != 'POST':
+        return redirect('login')
+    from django.contrib.auth.tokens import default_token_generator
+    from django.utils.http import urlsafe_base64_encode
+    from django.utils.encoding import force_bytes
+
+    email = (request.POST.get('email') or '').strip().lower()
+    if not email:
+        messages.error(request, 'Please enter your email address.')
+        return redirect('login')
+
+    user = User.objects.filter(email=email).first() or User.objects.filter(username=email).first()
+    if not user:
+        messages.error(request, 'No account found with this email address.')
+        return redirect('login')
+
+    try:
+        user_profile = user.profile
+    except UserProfile.DoesNotExist:
+        messages.error(request, 'No account found with this email address.')
+        return redirect('login')
+
+    if user_profile.role != 'client' or user_profile.email_verified:
+        messages.error(request, 'This email is already verified or does not require verification. You can try logging in.')
+        return redirect('login')
+
+    token = default_token_generator.make_token(user)
+    user_profile.email_verification_token = token
+    user_profile.save(update_fields=['email_verification_token'])
+
+    uid = urlsafe_base64_encode(force_bytes(user.pk))
+    verification_url = f"{request.scheme}://{request.get_host()}/verify_email/{uid}/{token}/"
+    name = user_profile.name or user.get_full_name() or 'User'
+    builder = EmailBuilder()
+    builder.h2(f"Hello {name}!")
+    builder.p("You requested a new verification email for your iTrip Knossos account.")
+    builder.p("Please verify your email address to activate your account.")
+    builder.button("Verify Email Address", verification_url)
+    builder.p(
+        f'Or copy and paste this link into your browser:<br>'
+        f'<a href="{verification_url}" style="color: #2196f3; word-break: break-all;">{verification_url}</a>',
+        size="14px"
+    )
+    builder.list_box("⏱️ Important", [
+        "This link will expire in 24 hours",
+        "If you did not request this, please ignore this email"
+    ])
+    builder.p("Best regards,<br>The iTrip Knossos Team")
+    try:
+        EmailService.send_dynamic_email(
+            subject='[iTrip Knossos] Verify Your Email Address',
+            recipient_list=[email],
+            email_body=builder.build(),
+            preview_text='Verify your email to activate your account',
+            fail_silently=False
+        )
+        messages.success(request, 'A new verification email has been sent. Please check your inbox and spam folder.')
+    except Exception as e:
+        logger.error(f"Failed to send resend verification email: {str(e)}")
+        messages.error(request, 'We could not send the verification email. Please try again later or contact support.')
+    return redirect('login')
+
 
 def logout_view(request):
     logout(request)
