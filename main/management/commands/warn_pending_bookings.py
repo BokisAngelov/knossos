@@ -31,6 +31,7 @@ class Command(BaseCommand):
         ).select_related(
             'excursion_availability',
             'excursion_availability__excursion',
+            'excursion',
             'user',
             'pickup_point'
         )
@@ -60,7 +61,8 @@ class Command(BaseCommand):
             for booking in pending_bookings:
                 # Get customer email
                 customer_email = booking.guest_email or (booking.user.email if booking.user else None)
-                excursion_name = booking.excursion_availability.excursion.title if booking.excursion_availability and booking.excursion_availability.excursion else 'N/A'
+                display_excursion = booking.get_display_excursion()
+                excursion_name = display_excursion.title if display_excursion else 'N/A'
                 booking_date = booking.date.strftime('%Y-%m-%d') if booking.date else 'N/A'
                 guest_name = booking.guest_name or (booking.user.get_full_name() if booking.user else 'Guest')
                 total_price = booking.total_price or booking.price or 0
@@ -185,7 +187,8 @@ class Command(BaseCommand):
             self.stdout.write('')
             self.stdout.write('Bookings that would be warned:')
             for booking in pending_bookings[:10]:  # Show first 10
-                excursion_name = booking.excursion_availability.excursion.title if booking.excursion_availability and booking.excursion_availability.excursion else 'N/A'
+                display_excursion = booking.get_display_excursion()
+                excursion_name = display_excursion.title if display_excursion else 'N/A'
                 guest_email = booking.guest_email or (booking.user.email if booking.user else 'No email')
                 self.stdout.write(
                     f'  - Booking #{booking.id}: {excursion_name} - {guest_email}'
