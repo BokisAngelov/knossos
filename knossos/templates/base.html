@@ -83,9 +83,20 @@
     {% block content %}{% endblock %}
   </main>
 
-  <footer class="bg-white border-t">
-    <div class="container mx-auto px-4 py-4 text-center text-gray-600 text-sm">
-      &copy; {{ now|date:"Y" }} Knossos. All rights reserved.
+  <footer class="bg-white border-t border-gray-200">
+    <div class="container mx-auto px-4 pt-4 pb-2 text-gray-600 text-xs md:text-sm">
+      <div class="flex flex-col md:flex-row items-center md:items-start gap-4">
+        <div class="w-full md:w-1/6 flex justify-center md:justify-start">
+          <img src="{% static 'images/EN_FundedbytheEU.png' %}" alt="Funded by the European Union" class="h-11 object-contain">
+        </div>
+        <div class="w-full md:w-5/6 text-left text-xs">
+          Funded by the European Union. Views and opinions expressed are however those of the author(s) only and do not necessarily reflect those of the European Union or the European Innovation Council and SMEs Executive Agency (EISMEA). Neither the European Union nor the granting authority can be held responsible for them.
+        </div>
+      </div>
+    </div>
+    <!-- <hr class="border-gray-200"> -->
+    <div class="container mx-auto px-4 pb-4 pt-2 text-center text-gray-600 text-sm">
+      &copy; {% now "Y" %} Knossos. All rights reserved.
     </div>
   </footer>
 
