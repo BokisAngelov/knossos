@@ -1162,7 +1162,12 @@ def excursion_delete(request, pk):
 # Booking detail: only authenticated users (clients/reps/admins)
 @login_required
 def booking_delete(request, pk):
-    booking = get_object_or_404(Booking, pk=pk)
+    booking = get_object_or_404(
+        Booking.objects.select_related(
+            'user', 'excursion_availability', 'excursion', 'pickup_point', 'voucher_id'
+        ),
+        pk=pk
+    )
     
     # Check if user is staff or if the booking belongs to the user
     if not (request.user.is_staff or booking.user == request.user):
@@ -1458,7 +1463,12 @@ def send_admin_payment_notification(booking, request, status, order_status=None)
 # @login_required
 def booking_detail(request, pk):
     
-    booking = get_object_or_404(Booking, pk=pk)
+    booking = get_object_or_404(
+        Booking.objects.select_related(
+            'user', 'excursion_availability', 'excursion', 'pickup_point', 'voucher_id'
+        ).prefetch_related('transport_groups'),
+        pk=pk
+    )
     
     # Access control: Check if user has permission to view this booking
     has_access = False
@@ -1701,7 +1711,12 @@ def booking_detail(request, pk):
 # ----- Confirm pickup time (one-click from email or from booking detail) -----
 def confirm_pickup_time(request, pk):
     """One-click confirm pickup time. Requires token for guests. Redirects to booking detail."""
-    booking = get_object_or_404(Booking, pk=pk)
+    booking = get_object_or_404(
+        Booking.objects.select_related(
+            'user', 'excursion_availability', 'excursion', 'pickup_point', 'voucher_id'
+        ),
+        pk=pk
+    )
     token = request.GET.get('token') or request.POST.get('token')
     has_access = False
     if request.user.is_authenticated and request.user.is_staff:
@@ -1744,8 +1759,30 @@ def confirm_reservation_departure_time(request, pk):
 # ----- Checkout View -----
 # Guests and clients go through checkout; reps/admins redirected to detail
 def checkout(request, booking_pk):
-    booking = get_object_or_404(Booking, pk=booking_pk)
-    token = request.GET.get('token')
+    booking = get_object_or_404(
+        Booking.objects.select_related(
+            'user', 'excursion_availability', 'excursion', 'pickup_point', 'voucher_id'
+        ),
+        pk=booking_pk
+    )
+    token = request.GET.get('token') or request.POST.get('token')
+
+    # Enforce the same access rules as booking_detail:
+    # - staff can always access
+    # - logged-in user can access own booking
+    # - anonymous user needs a valid access_token
+    has_access = False
+    if request.user.is_authenticated and request.user.is_staff:
+        has_access = True
+    elif request.user.is_authenticated and booking.user and booking.user == request.user:
+        has_access = True
+    elif not request.user.is_authenticated and booking.access_token:
+        if token and token == booking.access_token:
+            has_access = True
+
+    if not has_access:
+        from django.http import Http404
+        raise Http404("Booking not found or you don't have permission to view checkout.")
      
     if request.method == 'POST':
         action_type = request.POST.get('action_type')
@@ -1802,9 +1839,28 @@ def payment_initiate(request, booking_pk):
     Initiate JCC payment by registering the order and redirecting to JCC payment page.
     This view is called when user clicks 'Pay' button in checkout.
     """
-    booking = get_object_or_404(Booking, pk=booking_pk)
+    booking = get_object_or_404(
+        Booking.objects.select_related(
+            'user', 'excursion_availability', 'excursion', 'pickup_point', 'voucher_id'
+        ),
+        pk=booking_pk
+    )
     
-    token = request.GET.get('token')
+    token = request.GET.get('token') or request.POST.get('token')
+
+    # Same access rules as booking_detail / checkout
+    has_access = False
+    if request.user.is_authenticated and request.user.is_staff:
+        has_access = True
+    elif request.user.is_authenticated and booking.user and booking.user == request.user:
+        has_access = True
+    elif not request.user.is_authenticated and booking.access_token:
+        if token and token == booking.access_token:
+            has_access = True
+
+    if not has_access:
+        from django.http import Http404
+        raise Http404("Booking not found or you don't have permission to initiate payment.")
     
     # Check if booking is already paid
     if booking.payment_status == 'completed':
@@ -2520,13 +2576,19 @@ def profile(request, pk):
         bookings = Booking.objects.filter(
             Q(user=user, deleteByUser=False) | 
             Q(referral_code__agent=profile, deleteByUser=False)
+        ).select_related(
+            'user', 'excursion_availability', 'excursion', 'pickup_point', 'voucher_id'
         ).distinct().order_by('-created_at')
     else:
         # For non-agents, only show their own bookings
-        bookings = Booking.objects.filter(user=user, deleteByUser=False).order_by('-created_at')
+        bookings = Booking.objects.filter(user=user, deleteByUser=False).select_related(
+            'user', 'excursion_availability', 'excursion', 'pickup_point', 'voucher_id'
+        ).order_by('-created_at')
     
     # Get reservations linked to this user profile
-    reservations = Reservation.objects.filter(client_profile=profile).order_by('-created_at')
+    reservations = Reservation.objects.filter(client_profile=profile).select_related(
+        'hotel', 'pickup_group', 'pickup_point'
+    ).order_by('-created_at')
 
     # Only allow users to view their own profile unless they're staff
     if request.user.id != user.id and not request.user.is_staff:
@@ -4280,7 +4342,9 @@ def admin_reservations(request):
 def bookings_list(request):
 
     search_query = request.GET.get('search', '')
-    bookings = Booking.objects.all().order_by('-id')
+    bookings = Booking.objects.all().select_related(
+        'user', 'excursion_availability', 'excursion', 'pickup_point', 'voucher_id'
+    ).order_by('-id')
     
     # Apply search filter if search query is provided
     if search_query:
@@ -4305,7 +4369,9 @@ def bookings_list(request):
 def filter_bookings(request):
     status = request.GET.get('status')
 
-    bookings = Booking.objects.all().order_by('-created_at')
+    bookings = Booking.objects.all().select_related(
+        'user', 'excursion_availability', 'excursion', 'pickup_point', 'voucher_id'
+    ).order_by('-created_at')
 
     if status:
         bookings = bookings.filter(payment_status=status)
@@ -4317,7 +4383,12 @@ def filter_bookings(request):
 @user_passes_test(is_staff)
 def booking_edit(request, pk):
     try:
-        booking = get_object_or_404(Booking, pk=pk)
+        booking = get_object_or_404(
+            Booking.objects.select_related(
+                'user', 'excursion_availability', 'excursion', 'pickup_point', 'voucher_id'
+            ),
+            pk=pk
+        )
         
         if request.method == 'POST':
             form = BookingForm(request.POST, instance=booking, user=request.user)

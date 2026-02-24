@@ -838,7 +838,9 @@ class VoucherService:
             checkout_date >= timezone.now().date()
         )
         
-        if hasattr(reservation, 'get_bookings_count'):
+        if getattr(reservation.bookings, '_prefetched_objects_cache', None) is not None:
+            data['total_bookings'] = len(reservation.bookings)
+        elif hasattr(reservation, 'get_bookings_count'):
             data['total_bookings'] = reservation.get_bookings_count()
         else:
             data['total_bookings'] = reservation.bookings.count() if hasattr(reservation, 'bookings') else 0
@@ -1291,7 +1293,8 @@ class ExcursionAnalyticsService:
             id__in=availability_ids
         ).select_related('excursion').prefetch_related(
             'availability_days',
-            'bookings'
+            'bookings',
+            'pickup_groups'
         ).order_by('excursion__title', 'start_time')
         
         analytics_data = []
