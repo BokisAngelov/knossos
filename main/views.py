@@ -2,6 +2,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.urls import reverse
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.password_validation import validate_password
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
@@ -2346,13 +2347,18 @@ def password_reset_token(request, token):
                 if not check_token:
                     messages.error(request, 'Invalid token.')
                     return redirect('password_reset_form')
-                else:   
-                    user.set_password(password)
-                    user_profile.password_reset_token = None
-                    user_profile.save()
-                    user.save()
-                    messages.success(request, 'Password reset successfully! You can now login with your new password.')
-                    return redirect('login')
+                try:
+                    validate_password(password)
+                except ValidationError as e:
+                    for msg in e.messages:
+                        messages.error(request, msg)
+                    return render(request, 'main/accounts/password_reset_token.html', {'token': token})
+                user.set_password(password)
+                user_profile.password_reset_token = None
+                user_profile.save()
+                user.save()
+                messages.success(request, 'Password reset successfully! You can now login with your new password.')
+                return redirect('login')
             else:
                 messages.error(request, 'Invalid token.')
                 return redirect('password_reset_form')
@@ -3813,6 +3819,12 @@ def manage_reps(request):
                 if status:
                     rep.status = status.lower()
                 if password:
+                    try:
+                        validate_password(password)
+                    except ValidationError as e:
+                        for msg in e.messages:
+                            messages.error(request, msg)
+                        return redirect('manage_reps')
                     rep.user.set_password(password)
                     rep.user.save()
                 rep.save()
@@ -4744,6 +4756,12 @@ def manage_staff(request):
                 staff_profile.phone = phone
                 staff_profile.role = "admin"
                 if new_password:
+                    try:
+                        validate_password(new_password)
+                    except ValidationError as e:
+                        for msg in e.messages:
+                            messages.error(request, msg)
+                        return redirect('staff_list')
                     staff_profile.user.set_password(new_password)
                     staff_profile.user.save()
                 staff_profile.is_superadmin = is_superadmin
