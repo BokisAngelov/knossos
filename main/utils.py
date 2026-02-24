@@ -464,6 +464,7 @@ class BookingService:
         booking = Booking.objects.create(
             user=user if user.is_authenticated else None,
             excursion_availability=excursion_availability,
+            excursion=excursion_availability.excursion,
             voucher_id=voucher_instance,
             guest_name=guest_data.get('guest_name'),
             guest_email=guest_data.get('guest_email'),
@@ -891,17 +892,18 @@ class TransportGroupService:
         bookings = Booking.objects.filter(
             payment_status='completed'
         ).select_related(
-            'pickup_point', 
+            'pickup_point',
             'pickup_point__pickup_group',
             'excursion_availability',
-            'excursion_availability__excursion'
+            'excursion_availability__excursion',
+            'excursion'
         ).order_by(
             'pickup_point__pickup_group__name',
             'pickup_point__name'
         )
         
         if excursion:
-            bookings = bookings.filter(excursion_availability__excursion=excursion)
+            bookings = bookings.filter(Q(excursion=excursion) | Q(excursion_availability__excursion=excursion))
         
         if date:
             bookings = bookings.filter(date=date)
@@ -1046,6 +1048,8 @@ class RevenueAnalyticsService:
             'excursion_availability',
             'excursion_availability__excursion',
             'excursion_availability__excursion__provider',
+            'excursion',
+            'excursion__provider',
             'user',
             'user__profile',
             'referral_code',
@@ -1126,11 +1130,11 @@ class RevenueAnalyticsService:
         
         partial_methods_total = total_partial_payments
         
-        # Revenue by excursion (Top 10)
+        # Revenue by excursion (Top 10) - use direct excursion FK so bookings keep attribution if availability is deleted
         revenue_by_excursion = []
-        excursion_data = bookings.values(
-            'excursion_availability__excursion__id',
-            'excursion_availability__excursion__title'
+        excursion_data = bookings.exclude(excursion__isnull=True).values(
+            'excursion__id',
+            'excursion__title'
         ).annotate(
             revenue=Sum(revenue_expression),
             booking_count=Count('id')
@@ -1138,19 +1142,17 @@ class RevenueAnalyticsService:
         
         for item in excursion_data:
             revenue_by_excursion.append({
-                'excursion_id': item['excursion_availability__excursion__id'],
-                'excursion_title': item['excursion_availability__excursion__title'],
+                'excursion_id': item['excursion__id'],
+                'excursion_title': item['excursion__title'],
                 'revenue': item['revenue'],
                 'bookings': item['booking_count']
             })
         
-        # Revenue by provider
+        # Revenue by provider (via booking.excursion)
         revenue_by_provider = []
-        provider_data = bookings.exclude(
-            excursion_availability__excursion__provider__isnull=True
-        ).values(
-            'excursion_availability__excursion__provider__id',
-            'excursion_availability__excursion__provider__name'
+        provider_data = bookings.exclude(excursion__provider__isnull=True).values(
+            'excursion__provider__id',
+            'excursion__provider__name'
         ).annotate(
             revenue=Sum(revenue_expression),
             booking_count=Count('id')
@@ -1158,8 +1160,8 @@ class RevenueAnalyticsService:
         
         for item in provider_data:
             revenue_by_provider.append({
-                'provider_id': item['excursion_availability__excursion__provider__id'],
-                'provider_name': item['excursion_availability__excursion__provider__name'],
+                'provider_id': item['excursion__provider__id'],
+                'provider_name': item['excursion__provider__name'],
                 'revenue': item['revenue'],
                 'bookings': item['booking_count']
             })

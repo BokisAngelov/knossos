@@ -1177,7 +1177,8 @@ def booking_delete(request, pk):
                 # Store booking details before deletion/cancellation
                 customer_email = booking.guest_email or (booking.user.email if booking.user else None)
                 customer_name = booking.guest_name or (booking.user.get_full_name() if booking.user else 'Guest')
-                excursion_title = booking.excursion_availability.excursion.title
+                display_excursion = booking.get_display_excursion()
+                excursion_title = display_excursion.title if display_excursion else 'Excursion'
                 booking_date = booking.date.strftime('%B %d, %Y') if booking.date else 'N/A'
                 total_price = booking.total_price
                 booking_id = booking.id
@@ -1339,9 +1340,10 @@ def send_booking_confirmation_email(booking, request):
         builder.p("Thank you for choosing iTrip Knossos. We're excited to have you join us for an unforgettable experience!")
         
         # Booking details
+        display_excursion = booking.get_display_excursion()
         builder.card("Booking Details", {
             'Confirmation #': f'{booking.id}',
-            'Excursion': booking.excursion_availability.excursion.title,
+            'Excursion': display_excursion.title if display_excursion else 'Excursion',
             'Date': booking.date.strftime('%B %d, %Y'),
             'Pickup Point': booking.pickup_point.name if booking.pickup_point else 'To be confirmed',
             'Guests': f"{booking.total_adults or 0} Adults, {booking.total_kids or 0} Children, {booking.total_infants or 0} Infants",
@@ -1362,10 +1364,10 @@ def send_booking_confirmation_email(booking, request):
         builder.p("Best regards,<br>The iTrip Knossos Team")
         
         EmailService.send_dynamic_email(
-            subject=f'[iTrip Knossos] Booking Confirmed - {booking.excursion_availability.excursion.title}',
+            subject=f'[iTrip Knossos] Booking Confirmed - {display_excursion.title if display_excursion else "Excursion"}',
             recipient_list=[customer_email],
             email_body=builder.build(),
-            preview_text=f'Your booking for {booking.excursion_availability.excursion.title} is confirmed!',
+            preview_text=f'Your booking for {display_excursion.title if display_excursion else "Excursion"} is confirmed!',
             fail_silently=True
         )
         logger.info(f'Booking confirmation email sent to {customer_email} for booking #{booking.pk}')
@@ -1390,11 +1392,8 @@ def send_admin_payment_notification(booking, request, status, order_status=None)
         bool: True if email was sent successfully, False otherwise
     """
     try:
-        excursion_title = (
-            booking.excursion_availability.excursion.title
-            if booking.excursion_availability and booking.excursion_availability.excursion
-            else 'N/A'
-        )
+        display_excursion = booking.get_display_excursion()
+        excursion_title = display_excursion.title if display_excursion else 'N/A'
         booking_date = booking.date.strftime('%B %d, %Y') if booking.date else 'N/A'
         customer_email = booking.guest_email or (booking.user.email if booking.user else 'No email')
         customer_name = booking.guest_name or (booking.user.get_full_name() if booking.user else 'Guest')
@@ -1536,7 +1535,8 @@ def booking_detail(request, pk):
                 # Store info before cancellation
                 customer_email = booking.guest_email or (booking.user.email if booking.user else None)
                 customer_name = booking.guest_name or (booking.user.get_full_name() if booking.user else 'Guest')
-                excursion_title = booking.excursion_availability.excursion.title
+                display_excursion = booking.get_display_excursion()
+                excursion_title = display_excursion.title if display_excursion else 'Excursion'
                 booking_date = booking.date.strftime('%B %d, %Y') if booking.date else 'N/A'
                 total_price = booking.total_price
                 booking_id = booking.id
@@ -1609,10 +1609,11 @@ def booking_detail(request, pk):
                     logger.error(f'Failed to send admin notification for cancellation #{booking_id}: {str(e)}')
                 
                 messages.success(request, 'Booking cancelled.')
+                redirect_url_cancel = reverse('excursion_detail', kwargs={'pk': display_excursion.id}) if display_excursion else reverse('bookings_list')
                 return JsonResponse({
                     'status': 'success',
                     'message': 'Booking cancelled successfully.',
-                    'redirect_url': reverse('excursion_detail', kwargs={'pk': booking.excursion_availability.excursion.id})
+                    'redirect_url': redirect_url_cancel
                 })
 
             elif action_type == 'delete_booking':
@@ -1867,7 +1868,7 @@ def payment_initiate(request, booking_pk):
             booking=booking,
             return_url=return_url,
             fail_url=fail_url,
-            description=f"Booking #{booking.id} - {booking.excursion_availability.excursion.title if booking.excursion_availability else 'Excursion'}",
+            description=f"Booking #{booking.id} - {(booking.get_display_excursion().title if booking.get_display_excursion() else 'Excursion')}",
             language='en',  # You can make this dynamic based on user preference
             use_unique_order_number=use_unique_order_number
         )
@@ -2075,9 +2076,10 @@ def payment_fail(request, booking_pk=None):
             )
             
             # Booking info
+            display_excursion = booking.get_display_excursion()
             builder.card("Booking Information", {
                 'Booking #': f'{booking.id}',
-                'Excursion': booking.excursion_availability.excursion.title,
+                'Excursion': display_excursion.title if display_excursion else 'Excursion',
                 'Date': booking.date.strftime('%B %d, %Y'),
                 'Amount Due': f"€{booking.total_price:.2f}"
             })

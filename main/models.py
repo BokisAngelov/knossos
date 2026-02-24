@@ -625,6 +625,7 @@ class Booking(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='bookings')
     voucher_id = models.ForeignKey(Reservation, on_delete=models.SET_NULL, null=True, blank=True, related_name='bookings')
     excursion_availability = models.ForeignKey(ExcursionAvailability, on_delete=models.SET_NULL, null=True, blank=True, related_name='bookings')
+    excursion = models.ForeignKey(Excursion, on_delete=models.SET_NULL, null=True, blank=True, related_name='bookings')
     date = models.DateField(null=True, blank=True)
     pickup_point = models.ForeignKey(PickupPoint, on_delete=models.SET_NULL, null=True, blank=True, related_name='bookings')
     regions = models.ForeignKey(Region, on_delete=models.SET_NULL, null=True, blank=True, related_name='bookings')
@@ -662,7 +663,16 @@ class Booking(models.Model):
 
     def __str__(self):
         return f"Booking #{self.id} by {self.user.username if self.user else 'Guest'}"
-    
+
+    def get_display_excursion(self):
+        """Excursion for display (title/link). Prefer direct FK; fallback to availability's excursion."""
+        return self.excursion or (self.excursion_availability.excursion if self.excursion_availability else None)
+
+    @property
+    def display_excursion(self):
+        """For templates: same as get_display_excursion()."""
+        return self.get_display_excursion()
+
     def generate_access_token(self):
         """Generate a secure access token for non-logged-in users."""
         import secrets

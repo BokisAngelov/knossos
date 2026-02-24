@@ -355,7 +355,7 @@
                   <div class="text-sm table-text font-normal">{{ booking.created_at|date:"d/m/Y" }}</div>
                 </td>
                 <td class="px-4 py-4 whitespace-nowrap">
-                  <div class="text-sm table-text font-normal">{{ booking.excursion_availability.excursion.title }}</div>
+                  <div class="text-sm table-text font-normal">{% if booking.display_excursion %}{{ booking.display_excursion.title }}{% else %}Excursion{% endif %}</div>
                 </td>
                 <td class="px-4 py-4 whitespace-nowrap">
                   <div class="text-sm table-text font-normal">{{ booking.guest_name }}</div>

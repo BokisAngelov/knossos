@@ -101,7 +101,7 @@
                                 <span class="editable-guest-name text-sm font-normal">{{ booking.guest_name }}</span>
                             </td>
                             <td class="px-4 py-4 whitespace-nowrap">
-                                <span class="editable-excursion text-sm font-normal">{{ booking.excursion_availability.excursion.title }}</span>
+                                <span class="editable-excursion text-sm font-normal">{% if booking.display_excursion %}{{ booking.display_excursion.title }}{% else %}Excursion{% endif %}</span>
                             </td>
                             <td class="px-4 py-4 whitespace-nowrap">
                                 <span class="editable-amount text-sm font-normal">€{{ booking.price }}</span>
