@@ -214,6 +214,10 @@
                         <form id="payment-form" method="post" action="{% url 'checkout' booking_pk=booking.pk %}">
                             {% csrf_token %}
                             <input type="hidden" name="action_type" id="action_type" value="">
+                            {% if access_token %}
+                            <!-- Preserve guest access token across POST so checkout/payment stay authorized -->
+                            <input type="hidden" name="token" value="{{ access_token }}">
+                            {% endif %}
                             {% if not user.is_staff %}
                             <button type="submit" onclick="initiatePayment(event)" class="w-full bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 text-white font-bold py-3 px-4 rounded-md transition duration-150 ease-in-out">
                                 <div class="flex items-center justify-center">

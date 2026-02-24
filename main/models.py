@@ -69,7 +69,7 @@ class UserProfile(models.Model):
     name = models.CharField(max_length=255, null=True, blank=True)
     email = models.EmailField(null=True, blank=True)
     phone = models.CharField(max_length=50, null=True, blank=True)
-    role = models.CharField(max_length=15, choices=ROLE_CHOICES)
+    role = models.CharField(max_length=15, choices=ROLE_CHOICES, db_index=True)
     status = models.CharField(max_length=8, choices=STATUS_CHOICES, default='active')
     address = models.CharField(max_length=255, null=True, blank=True)
     zipcode = models.CharField(max_length=255, null=True, blank=True)
@@ -280,10 +280,10 @@ class Excursion(models.Model):
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
     intro_image = models.ImageField(upload_to=excursion_intro_image_path, blank=True, null=True)
-    category = models.ManyToManyField(Category, related_name='excursions', blank=True, null=True)
-    tags = models.ManyToManyField(Tag, related_name='excursions', blank=True, null=True)
+    category = models.ManyToManyField(Category, related_name='excursions', blank=True)
+    tags = models.ManyToManyField(Tag, related_name='excursions', blank=True)
     overall_rating = models.DecimalField(max_digits=3, decimal_places=2, null=True, blank=True)
-    status = models.CharField(max_length=8, choices=STATUS_CHOICES, default='inactive')
+    status = models.CharField(max_length=8, choices=STATUS_CHOICES, default='inactive', db_index=True)
     full_day = models.BooleanField(default=False)
     on_request = models.BooleanField(default=False)
     provider = models.ForeignKey(UserProfile, on_delete=models.SET_NULL,blank=True, null=True, related_name='excursions_provider', limit_choices_to={'role': 'provider'})
@@ -711,6 +711,11 @@ class Booking(models.Model):
     
     class Meta:
         ordering = ['created_at']
+        indexes = [
+            models.Index(fields=['payment_status']),
+            models.Index(fields=['date']),
+            models.Index(fields=['created_at']),
+        ]
 
 class Transaction(models.Model):
     booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name='transactions')

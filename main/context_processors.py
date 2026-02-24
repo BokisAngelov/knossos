@@ -23,12 +23,12 @@ def voucher_context(request):
             try:
                 voucher = Reservation.objects.select_related(
                     'pickup_group', 'pickup_point', 'hotel', 'client_profile'
-                ).get(voucher_id=voucher_code)
+                ).prefetch_related('bookings').get(voucher_id=voucher_code)
             except Exception:
                 # Fallback without client_profile if field doesn't exist
                 voucher = Reservation.objects.select_related(
                     'pickup_group', 'pickup_point', 'hotel'
-                ).get(voucher_id=voucher_code)
+                ).prefetch_related('bookings').get(voucher_id=voucher_code)
             
             # Check if voucher is still valid using status and check_out fields
             # Handle both date objects and strings
