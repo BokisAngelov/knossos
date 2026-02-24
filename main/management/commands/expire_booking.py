@@ -16,7 +16,7 @@ class Command(BaseCommand):
 
         # Get all pending bookings
         pending_bookings = Booking.objects.filter(payment_status='pending').select_related(
-            'excursion_availability', 'excursion_availability__excursion', 'user'
+            'excursion_availability', 'excursion_availability__excursion', 'excursion', 'user'
         )
         
         expired_bookings = []
@@ -68,7 +68,8 @@ class Command(BaseCommand):
             
             # Add each booking as a card
             for booking in expired_bookings[:10]:  # Limit to first 10 for email size
-                excursion_name = booking.excursion_availability.excursion.title if booking.excursion_availability and booking.excursion_availability.excursion else 'N/A'
+                display_excursion = booking.get_display_excursion()
+                excursion_name = display_excursion.title if display_excursion else 'N/A'
                 guest_name = booking.guest_name or 'N/A'
                 guest_email = booking.guest_email or 'N/A'
                 booking_date = booking.date.strftime('%B %d, %Y') if booking.date else 'N/A'

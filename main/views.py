@@ -1177,7 +1177,8 @@ def booking_delete(request, pk):
                 # Store booking details before deletion/cancellation
                 customer_email = booking.guest_email or (booking.user.email if booking.user else None)
                 customer_name = booking.guest_name or (booking.user.get_full_name() if booking.user else 'Guest')
-                excursion_title = booking.excursion_availability.excursion.title
+                display_excursion = booking.get_display_excursion()
+                excursion_title = display_excursion.title if display_excursion else 'Excursion'
                 booking_date = booking.date.strftime('%B %d, %Y') if booking.date else 'N/A'
                 total_price = booking.total_price
                 booking_id = booking.id
@@ -1339,9 +1340,10 @@ def send_booking_confirmation_email(booking, request):
         builder.p("Thank you for choosing iTrip Knossos. We're excited to have you join us for an unforgettable experience!")
         
         # Booking details
+        display_excursion = booking.get_display_excursion()
         builder.card("Booking Details", {
             'Confirmation #': f'{booking.id}',
-            'Excursion': booking.excursion_availability.excursion.title,
+            'Excursion': display_excursion.title if display_excursion else 'Excursion',
             'Date': booking.date.strftime('%B %d, %Y'),
             'Pickup Point': booking.pickup_point.name if booking.pickup_point else 'To be confirmed',
             'Guests': f"{booking.total_adults or 0} Adults, {booking.total_kids or 0} Children, {booking.total_infants or 0} Infants",
@@ -1362,10 +1364,10 @@ def send_booking_confirmation_email(booking, request):
         builder.p("Best regards,<br>The iTrip Knossos Team")
         
         EmailService.send_dynamic_email(
-            subject=f'[iTrip Knossos] Booking Confirmed - {booking.excursion_availability.excursion.title}',
+            subject=f'[iTrip Knossos] Booking Confirmed - {display_excursion.title if display_excursion else "Excursion"}',
             recipient_list=[customer_email],
             email_body=builder.build(),
-            preview_text=f'Your booking for {booking.excursion_availability.excursion.title} is confirmed!',
+            preview_text=f'Your booking for {display_excursion.title if display_excursion else "Excursion"} is confirmed!',
             fail_silently=True
         )
         logger.info(f'Booking confirmation email sent to {customer_email} for booking #{booking.pk}')
@@ -1390,11 +1392,8 @@ def send_admin_payment_notification(booking, request, status, order_status=None)
         bool: True if email was sent successfully, False otherwise
     """
     try:
-        excursion_title = (
-            booking.excursion_availability.excursion.title
-            if booking.excursion_availability and booking.excursion_availability.excursion
-            else 'N/A'
-        )
+        display_excursion = booking.get_display_excursion()
+        excursion_title = display_excursion.title if display_excursion else 'N/A'
         booking_date = booking.date.strftime('%B %d, %Y') if booking.date else 'N/A'
         customer_email = booking.guest_email or (booking.user.email if booking.user else 'No email')
         customer_name = booking.guest_name or (booking.user.get_full_name() if booking.user else 'Guest')
@@ -1536,7 +1535,8 @@ def booking_detail(request, pk):
                 # Store info before cancellation
                 customer_email = booking.guest_email or (booking.user.email if booking.user else None)
                 customer_name = booking.guest_name or (booking.user.get_full_name() if booking.user else 'Guest')
-                excursion_title = booking.excursion_availability.excursion.title
+                display_excursion = booking.get_display_excursion()
+                excursion_title = display_excursion.title if display_excursion else 'Excursion'
                 booking_date = booking.date.strftime('%B %d, %Y') if booking.date else 'N/A'
                 total_price = booking.total_price
                 booking_id = booking.id
@@ -1609,10 +1609,11 @@ def booking_detail(request, pk):
                     logger.error(f'Failed to send admin notification for cancellation #{booking_id}: {str(e)}')
                 
                 messages.success(request, 'Booking cancelled.')
+                redirect_url_cancel = reverse('excursion_detail', kwargs={'pk': display_excursion.id}) if display_excursion else reverse('bookings_list')
                 return JsonResponse({
                     'status': 'success',
                     'message': 'Booking cancelled successfully.',
-                    'redirect_url': reverse('excursion_detail', kwargs={'pk': booking.excursion_availability.excursion.id})
+                    'redirect_url': redirect_url_cancel
                 })
 
             elif action_type == 'delete_booking':
@@ -1867,7 +1868,7 @@ def payment_initiate(request, booking_pk):
             booking=booking,
             return_url=return_url,
             fail_url=fail_url,
-            description=f"Booking #{booking.id} - {booking.excursion_availability.excursion.title if booking.excursion_availability else 'Excursion'}",
+            description=f"Booking #{booking.id} - {(booking.get_display_excursion().title if booking.get_display_excursion() else 'Excursion')}",
             language='en',  # You can make this dynamic based on user preference
             use_unique_order_number=use_unique_order_number
         )
@@ -2075,9 +2076,10 @@ def payment_fail(request, booking_pk=None):
             )
             
             # Booking info
+            display_excursion = booking.get_display_excursion()
             builder.card("Booking Information", {
                 'Booking #': f'{booking.id}',
-                'Excursion': booking.excursion_availability.excursion.title,
+                'Excursion': display_excursion.title if display_excursion else 'Excursion',
                 'Date': booking.date.strftime('%B %d, %Y'),
                 'Amount Due': f"€{booking.total_price:.2f}"
             })
@@ -2233,6 +2235,14 @@ def login_view(request):
         if form.is_valid():
             user = form.get_user()
             if user:
+                # Require email verification for clients who signed up (password-based login)
+                profile = getattr(user, 'profile', None)
+                if profile and profile.role == 'client' and not profile.email_verified:
+                    messages.error(
+                        request,
+                        'Please verify your email before logging in. Check your inbox for the verification link, or request a new one from the signup page.'
+                    )
+                    return redirect('login')
                 login(request, user)
                 if user.profile.role == 'admin':
                     response = redirect('admin_dashboard', user.profile.id)
@@ -2252,6 +2262,74 @@ def login_view(request):
     else:
         form = AuthenticationForm()
     return render(request, 'main/accounts/login.html', {'form': form})
+
+
+def resend_verification_email(request):
+    """
+    Resend verification email only if a user exists with the given email and their email is not verified yet.
+    """
+    if request.method != 'POST':
+        return redirect('login')
+    from django.contrib.auth.tokens import default_token_generator
+    from django.utils.http import urlsafe_base64_encode
+    from django.utils.encoding import force_bytes
+
+    email = (request.POST.get('email') or '').strip().lower()
+    if not email:
+        messages.error(request, 'Please enter your email address.')
+        return redirect('login')
+
+    user = User.objects.filter(email=email).first() or User.objects.filter(username=email).first()
+    if not user:
+        messages.error(request, 'No account found with this email address.')
+        return redirect('login')
+
+    try:
+        user_profile = user.profile
+    except UserProfile.DoesNotExist:
+        messages.error(request, 'No account found with this email address.')
+        return redirect('login')
+
+    if user_profile.role != 'client' or user_profile.email_verified:
+        messages.error(request, 'This email is already verified or does not require verification. You can try logging in.')
+        return redirect('login')
+
+    token = default_token_generator.make_token(user)
+    user_profile.email_verification_token = token
+    user_profile.save(update_fields=['email_verification_token'])
+
+    uid = urlsafe_base64_encode(force_bytes(user.pk))
+    verification_url = f"{request.scheme}://{request.get_host()}/verify_email/{uid}/{token}/"
+    name = user_profile.name or user.get_full_name() or 'User'
+    builder = EmailBuilder()
+    builder.h2(f"Hello {name}!")
+    builder.p("You requested a new verification email for your iTrip Knossos account.")
+    builder.p("Please verify your email address to activate your account.")
+    builder.button("Verify Email Address", verification_url)
+    builder.p(
+        f'Or copy and paste this link into your browser:<br>'
+        f'<a href="{verification_url}" style="color: #2196f3; word-break: break-all;">{verification_url}</a>',
+        size="14px"
+    )
+    builder.list_box("⏱️ Important", [
+        "This link will expire in 24 hours",
+        "If you did not request this, please ignore this email"
+    ])
+    builder.p("Best regards,<br>The iTrip Knossos Team")
+    try:
+        EmailService.send_dynamic_email(
+            subject='[iTrip Knossos] Verify Your Email Address',
+            recipient_list=[email],
+            email_body=builder.build(),
+            preview_text='Verify your email to activate your account',
+            fail_silently=False
+        )
+        messages.success(request, 'A new verification email has been sent. Please check your inbox and spam folder.')
+    except Exception as e:
+        logger.error(f"Failed to send resend verification email: {str(e)}")
+        messages.error(request, 'We could not send the verification email. Please try again later or contact support.')
+    return redirect('login')
+
 
 def logout_view(request):
     logout(request)

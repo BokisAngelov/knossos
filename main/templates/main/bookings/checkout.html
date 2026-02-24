@@ -6,12 +6,21 @@
     <!-- Header Section -->
     <div class="flex justify-between items-center mb-6">
         <div>
-            <a href="{% url 'excursion_detail' booking.excursion_availability.excursion.id %}" class="inline-flex items-center text-blue font-semibold text-sm hover:opacity-80">
+            {% if booking.display_excursion %}
+            <a href="{% url 'excursion_detail' booking.display_excursion.id %}" class="inline-flex items-center text-blue font-semibold text-sm hover:opacity-80">
                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                 </svg>
                 Back to Excursion
             </a>
+            {% else %}
+            <a href="{% url 'excursion_list' %}" class="inline-flex items-center text-blue font-semibold text-sm hover:opacity-80">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                Back to Excursions
+            </a>
+            {% endif %}
             <h1 class="text-3xl font-bold page-header-color mb-1">Checkout</h1>
             <p class="text-sm text-purple font-semibold">Complete your payment to confirm your booking</p>
         </div>
@@ -59,9 +68,13 @@
                     <div class="grid grid-cols-2 gap-4 p-6">
                         <div class="">
                             <h4 class="text-sm font-medium mb-1">Excursion</h4>
-                            <a href="{% url 'excursion_detail' booking.excursion_availability.excursion.id %}" class="text-lg font-semibold text-blue-600 hover:text-blue-800">
-                                {{ booking.excursion_availability.excursion.title }}
+                            {% if booking.display_excursion %}
+                            <a href="{% url 'excursion_detail' booking.display_excursion.id %}" class="text-lg font-semibold text-blue-600 hover:text-blue-800">
+                                {{ booking.display_excursion.title }}
                             </a>
+                            {% else %}
+                            <span class="text-lg font-semibold text-gray-900">Excursion</span>
+                            {% endif %}
                         </div>
                         <div class="">
                             <h4 class="text-sm font-medium mb-1">Date</h4>
@@ -69,7 +82,7 @@
                         </div>
                         <div class="">
                             <h4 class="text-sm font-medium mb-1">Time</h4>
-                            <p class="text-lg font-semibold text-gray-900">{{ booking.excursion_availability.start_time|time:"H:i" }} - {{ booking.excursion_availability.end_time|time:"H:i" }}</p>
+                            <p class="text-lg font-semibold text-gray-900">{% if booking.excursion_availability %}{{ booking.excursion_availability.start_time|time:"H:i" }} - {{ booking.excursion_availability.end_time|time:"H:i" }}{% else %}N/A{% endif %}</p>
                         </div>
                         <div class="">
                             <h4 class="text-sm font-medium mb-1">Pickup Point</h4>
@@ -271,7 +284,7 @@
 
     function cancelBooking() {
         console.log('cancelBooking');
-        window.location.href = "{% url 'excursion_detail' booking.excursion_availability.excursion.id %}";
+        window.location.href = "{% if booking.display_excursion %}{% url 'excursion_detail' booking.display_excursion.id %}{% else %}{% url 'excursion_list' %}{% endif %}";
     }
 
 

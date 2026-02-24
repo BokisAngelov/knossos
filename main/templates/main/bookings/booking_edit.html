@@ -59,7 +59,7 @@
   <div class="bg-white rounded-lg shadow-md w-full max-w-4xl p-6">
     <div class="text-center mb-6">
       <h1 class="text-2xl font-bold text-brown">Edit Booking #{{ booking.id }}</h1>
-      <p class="text-sm text-brown mt-2">Update booking information for {{ booking.guest_name }} at {{ booking.excursion_availability.excursion.title }}</p>
+      <p class="text-sm text-brown mt-2">Update booking information for {{ booking.guest_name }} at {% if booking.display_excursion %}{{ booking.display_excursion.title }}{% else %}Excursion{% endif %}</p>
     </div>
 
     {% if messages %}

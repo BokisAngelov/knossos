@@ -20,7 +20,7 @@
         <tr>
             <td>{{ booking.id }}</td>
             <td>{{ booking.client.name }}</td>
-            <td>{{ booking.excursion_availability.excursion.title }}</td>
+            <td>{% if booking.display_excursion %}{{ booking.display_excursion.title }}{% else %}Excursion{% endif %}</td>
             <td>{{ booking.partial_paid }}</td>
             <td>{{ booking.price }}</td>
             <td>{{ booking.payment_status }}</td>
