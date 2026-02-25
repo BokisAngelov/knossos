@@ -48,7 +48,6 @@ SCHEDULES = [
     },
 ]
 
-
 def setup_schedules():
     created = 0
     updated = 0
