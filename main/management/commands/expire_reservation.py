@@ -61,8 +61,11 @@ class Command(BaseCommand):
                         f"Your reservation (Voucher: {reservation.voucher_id}) has now expired "
                         f"as your checkout date has passed."
                     )
+                    builder.p(
+                        f"You can still use your email address and password to login."
+                    )
                     builder.card("Reservation Details", {
-                        'Voucher ID': reservation.voucher_id,
+                        'Check-in Date': reservation.check_in.strftime('%B %d, %Y'),
                         'Check-out Date': reservation.check_out.strftime('%B %d, %Y'),
                         'Total Bookings': reservation.get_bookings_count(),
                         'Total Spent': f"€{reservation.get_total_spent():.2f}"
@@ -77,7 +80,7 @@ class Command(BaseCommand):
                         subject='[iTrip Knossos] Thank You for Choosing Us!',
                         recipient_list=[reservation.client_email],
                         email_body=builder.build(),
-                        preview_text='Your reservation has expired - Thank you!',
+                        preview_text='Your reservation code has expired - Thank you!',
                         fail_silently=True
                     )
                     clients_notified += 1
@@ -102,7 +105,6 @@ class Command(BaseCommand):
                 builder.card(f"Voucher: {reservation.voucher_id}", {
                     'Client': reservation.client_name or 'N/A',
                     'Email': reservation.client_email or 'N/A',
-                    'Check-out': reservation.check_out.strftime('%B %d, %Y'),
                     'Bookings': reservation.get_bookings_count(),
                     'Total Spent': f"€{reservation.get_total_spent():.2f}"
                 }, border_color="#ff6b35")

@@ -1281,6 +1281,8 @@ def booking_delete(request, pk):
                     except Exception as e:
                         logger.error(f'Failed to send admin notification for cancellation #{booking_id}: {str(e)}')
                 
+                if booking.payment_status == 'completed':
+                    BookingService.decrement_booked_guests_for_booking(booking)
                 if request.user.is_staff:
                     booking.deleteByUser = False
                     booking.delete()
@@ -1493,9 +1495,11 @@ def booking_detail(request, pk):
 
     if payment_status == 'completed':
         try:
+            old_status = booking.payment_status
             booking.payment_status = 'completed'
             booking.save()
-            
+            if old_status != 'completed':
+                BookingService.increment_booked_guests_for_booking(booking)
             # Send booking confirmation email to customer
             send_booking_confirmation_email(booking, request)
             
@@ -1527,8 +1531,11 @@ def booking_detail(request, pk):
         
         try:
             if action_type == 'complete_payment':
+                old_status = booking.payment_status
                 booking.payment_status = 'completed'
                 booking.save()
+                if old_status != 'completed':
+                    BookingService.increment_booked_guests_for_booking(booking)
                 messages.success(request, 'Booking completed.')
 
                 # Preserve token in redirect if present
@@ -1550,7 +1557,8 @@ def booking_detail(request, pk):
                 booking_date = booking.date.strftime('%B %d, %Y') if booking.date else 'N/A'
                 total_price = booking.total_price
                 booking_id = booking.id
-                
+                if booking.payment_status == 'completed':
+                    BookingService.decrement_booked_guests_for_booking(booking)
                 booking.payment_status = 'cancelled'
                 booking.save()
                 
@@ -1627,6 +1635,8 @@ def booking_detail(request, pk):
                 })
 
             elif action_type == 'delete_booking':
+                if booking.payment_status == 'completed':
+                    BookingService.decrement_booked_guests_for_booking(booking)
                 booking.delete()
                 messages.success(request, 'Booking deleted.')
                 return JsonResponse({
@@ -1889,8 +1899,11 @@ def payment_initiate(request, booking_pk):
             # Check if payment was successful
             if JCCPaymentService.is_payment_successful(order_status):
                 # Payment is already completed, update booking status
+                old_status = booking.payment_status
                 booking.payment_status = 'completed'
                 booking.save(update_fields=['payment_status'])
+                if old_status != 'completed':
+                    BookingService.increment_booked_guests_for_booking(booking)
                 messages.success(request, 'Payment was already completed. Your booking is confirmed.')
                 redirect_url = reverse('booking_detail', kwargs={'pk': booking_pk})
                 if token:
@@ -2014,9 +2027,11 @@ def payment_success(request, booking_pk=None):
         
         if JCCPaymentService.is_payment_successful(order_status):
             # Payment is confirmed successful
+            old_status = booking.payment_status
             booking.payment_status = 'completed'
             booking.save(update_fields=['payment_status'])
-            
+            if old_status != 'completed':
+                BookingService.increment_booked_guests_for_booking(booking)
             # Send booking confirmation email to customer
             send_booking_confirmation_email(booking, request)
             # Send admin notification

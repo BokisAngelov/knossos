@@ -460,7 +460,7 @@ class BookingService:
                     access_token = token
                     break
         
-        # Create booking
+        # Create booking (booked_guests is incremented only when payment completes)
         booking = Booking.objects.create(
             user=user if user.is_authenticated else None,
             excursion_availability=excursion_availability,
@@ -477,20 +477,56 @@ class BookingService:
             access_token=access_token,
             **pricing_data
         )
-        
-        # Update availability counts
-        day_availability = AvailabilityDays.objects.get(
-            date_day=selected_date, 
-            excursion_availability=excursion_availability
-        )
-        day_availability.booked_guests += booking_data['total_guests']
-        day_availability.save()
-        
-        excursion_availability.booked_guests += booking_data['total_guests']
-        excursion_availability.save()
-        
         return booking
-    
+
+    @staticmethod
+    def _booking_guest_count(booking):
+        """Return total guests for a booking (adults + kids + infants)."""
+        return (booking.total_adults or 0) + (booking.total_kids or 0) + (booking.total_infants or 0)
+
+    @staticmethod
+    def increment_booked_guests_for_booking(booking):
+        """
+        Add this booking's guest count to AvailabilityDays and ExcursionAvailability.
+        Call only when payment becomes completed.
+        """
+        from django.db.models import F
+        if not booking.excursion_availability_id or not booking.date:
+            return
+        count = BookingService._booking_guest_count(booking)
+        if count <= 0:
+            return
+        AvailabilityDays.objects.filter(
+            date_day=booking.date,
+            excursion_availability_id=booking.excursion_availability_id,
+        ).update(booked_guests=F('booked_guests') + count)
+        ExcursionAvailability.objects.filter(pk=booking.excursion_availability_id).update(
+            booked_guests=F('booked_guests') + count
+        )
+        logger.debug(f'Incremented booked_guests by {count} for booking #{booking.pk}')
+
+    @staticmethod
+    def decrement_booked_guests_for_booking(booking):
+        """
+        Subtract this booking's guest count from AvailabilityDays and ExcursionAvailability.
+        Call only when a completed booking is cancelled or deleted. Uses max(0, ...) to avoid negative counts.
+        """
+        from django.db.models import F
+        from django.db.models.functions import Greatest
+        if not booking.excursion_availability_id or not booking.date:
+            return
+        count = BookingService._booking_guest_count(booking)
+        if count <= 0:
+            return
+        AvailabilityDays.objects.filter(
+            date_day=booking.date,
+            excursion_availability_id=booking.excursion_availability_id,
+        ).update(booked_guests=Greatest(0, F('booked_guests') - count))
+        ExcursionAvailability.objects.filter(pk=booking.excursion_availability_id).update(
+            booked_guests=Greatest(0, F('booked_guests') - count)
+        )
+        logger.debug(f'Decremented booked_guests by {count} for booking #{booking.pk}')
+
     @staticmethod
     @transaction.atomic
     def apply_referral_code_to_booking(booking, referral_code_instance):

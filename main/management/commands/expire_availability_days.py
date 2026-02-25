@@ -58,8 +58,8 @@ class Command(BaseCommand):
                 self.stdout.write(f'  ... and {count - 3} more')
             
             # Send email if many days expired (indicates system may not have run recently)
-            if send_emails and count >= 20:
-                self.send_admin_notification(count, expired_days_list)
+            # if send_emails and count >= 20:
+            #     self.send_admin_notification(count, expired_days_list)
         else:
             self.stdout.write(
                 self.style.SUCCESS('✅ No availability days to expire')

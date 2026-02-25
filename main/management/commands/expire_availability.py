@@ -62,8 +62,8 @@ class Command(BaseCommand):
         logger.info(f'Expired {count} availabilities, {excursions_made_inactive} excursions became inactive')
         
         # Send email notification
-        if send_emails and (count > 0 or excursions_made_inactive > 0):
-            self.send_admin_notification(expired_list, inactive_excursions)
+        # if send_emails and (count > 0 or excursions_made_inactive > 0):
+        #     self.send_admin_notification(expired_list, inactive_excursions)
     
     def send_admin_notification(self, expired_availabilities, inactive_excursions):
         """Send email notification to admins."""
