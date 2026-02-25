@@ -2132,3 +2132,114 @@ class EmailBuilder:
     def build(self):
         """Build and return the complete HTML."""
         return '\n'.join(self.parts)
+
+
+def generate_group_pdf_for_transport(group):
+    """
+    Generate a PDF with the booking list for a transport group.
+
+    Returns:
+        (filename, pdf_bytes) tuple, or (None, None) if generation fails.
+    """
+    from xhtml2pdf import pisa
+    from io import BytesIO
+    from django.template.loader import render_to_string
+    from .models import Group
+
+    try:
+        group = Group.objects.prefetch_related(
+            'bookings',
+            'bookings__pickup_point',
+            'bookings__pickup_point__pickup_group',
+            'bookings__voucher_id',
+            'bookings__voucher_id__hotel',
+            'pickup_times',
+            'pickup_times__pickup_point'
+        ).get(pk=group.pk)
+
+        pickup_times = {}
+        for gpp in group.pickup_times.all():
+            pickup_times[gpp.pickup_point.id] = gpp.pickup_time
+
+        bookings = group.bookings.all().order_by(
+            'pickup_point__pickup_group__name',
+            'pickup_point__name',
+            'guest_name'
+        )
+
+        organized_data = []
+        current_pickup_group = None
+        pickup_group_data = None
+
+        for booking in bookings:
+            if booking.pickup_point:
+                pickup_group = booking.pickup_point.pickup_group
+                pickup_point = booking.pickup_point
+            else:
+                pickup_group = None
+                pickup_point = None
+
+            if pickup_group != current_pickup_group:
+                if pickup_group_data:
+                    organized_data.append(pickup_group_data)
+                current_pickup_group = pickup_group
+                pickup_group_data = {
+                    'pickup_group': pickup_group,
+                    'pickup_points': []
+                }
+
+            pickup_point_data = None
+            for pp in pickup_group_data['pickup_points']:
+                if pp['pickup_point'] == pickup_point:
+                    pickup_point_data = pp
+                    break
+
+            if not pickup_point_data:
+                pickup_time = None
+                if pickup_point:
+                    pickup_time = pickup_times.get(pickup_point.id)
+                pickup_point_data = {
+                    'pickup_point': pickup_point,
+                    'pickup_time': pickup_time,
+                    'bookings': [],
+                    'subtotal': {'adults': 0, 'kids': 0, 'infants': 0, 'total': 0}
+                }
+                pickup_group_data['pickup_points'].append(pickup_point_data)
+
+            guest_total = (booking.total_adults or 0) + (booking.total_kids or 0) + (booking.total_infants or 0)
+            pickup_point_data['bookings'].append(booking)
+            pickup_point_data['subtotal']['adults'] += booking.total_adults or 0
+            pickup_point_data['subtotal']['kids'] += booking.total_kids or 0
+            pickup_point_data['subtotal']['infants'] += booking.total_infants or 0
+            pickup_point_data['subtotal']['total'] += guest_total
+
+        if pickup_group_data:
+            organized_data.append(pickup_group_data)
+
+        # Sort pickup points within each pickup group by pickup time (None last)
+        for pg_data in organized_data:
+            pg_data['pickup_points'].sort(
+                key=lambda pp: (pp['pickup_time'] is None, pp['pickup_time'])
+            )
+
+        html_content = render_to_string('main/groups/group_pdf.html', {
+            'group': group,
+            'bookings': bookings,
+            'organized_data': organized_data,
+        })
+
+        filename = f'transport_group_{group.name}_{group.date}.pdf'
+
+        buffer = BytesIO()
+        pisa_status = pisa.CreatePDF(html_content, dest=buffer)
+        if pisa_status.err:
+            logger.error(f'PDF generation error for group {group.pk}: {pisa_status.err}')
+            buffer.close()
+            return None, None
+
+        pdf_content = buffer.getvalue()
+        buffer.close()
+        return filename, pdf_content
+    except Exception as e:
+        logger.error(f'Error generating group PDF for group {getattr(group, "pk", "unknown")}: {str(e)}', exc_info=True)
+        return None, None

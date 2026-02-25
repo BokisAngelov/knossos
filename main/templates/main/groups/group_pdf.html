@@ -19,8 +19,8 @@
         .header {
             text-align: center;
             margin-bottom: 15px;
-            border-bottom: 2px solid #000;
-            padding-bottom: 8px;
+            /* border-bottom: 1px solid #ccc; */
+            padding-bottom: 6px;
         }
         
         .header h1 {
@@ -33,18 +33,7 @@
             margin: 3px 0;
             font-size: 10pt;
         }
-        
-        .info-bar {
-            margin-bottom: 15px;
-            padding: 8px;
-            background-color: #f0f0f0;
-            border: 1px solid #ccc;
-        }
-        
-        .info-bar strong {
-            margin-right: 15px;
-        }
-        
+                
         .pickup-group-section {
             margin-bottom: 20px;
             page-break-inside: avoid;
@@ -60,7 +49,7 @@
         }
         
         .pickup-point-header {
-            background-color: #666;
+            background-color: #999999;
             color: white;
             padding: 5px 10px;
             font-weight: bold;
@@ -96,11 +85,11 @@
         .subtotal-row {
             background-color: #e8e8e8 !important;
             font-weight: bold;
-            border-top: 2px solid #666 !important;
+            border-top: 1px solid #ccc !important;
         }
         
         .grand-total {
-            background-color: #333;
+            background-color: #999999;
             color: white;
             font-weight: bold;
             font-size: 10pt;
@@ -131,38 +120,35 @@
     <!-- Header -->
     <div class="header">
         <h1>TRANSPORT MANIFEST</h1>
+        
         <div class="info">{{ group.name }} - {{ group.excursion.title }}</div>
+        
         <div class="info">{{ group.date|date:"l, F d, Y" }}</div>
+
+        <hr>
     </div>
 
-    <!-- Info Bar -->
-    <div class="info-bar">
-        <strong>Total Guests:</strong> {{ group.total_guests }}
-        <strong style="margin-left: 20px;">Total Bookings:</strong> {{ bookings|length }}
-    </div>
 
     <!-- Pickup Groups and Points -->
     {% for pg_data in organized_data %}
         <div class="pickup-group-section">
-            <div class="pickup-group-header">
-                {% if pg_data.pickup_group %}
-                    PICKUP GROUP: {{ pg_data.pickup_group.name|upper }}
-                {% else %}
-                    NO PICKUP GROUP ASSIGNED
-                {% endif %}
-            </div>
-            
             {% for pp_data in pg_data.pickup_points %}
                 <div class="pickup-point-header">
                     {% if pp_data.pickup_point %}
-                        📍 {{ pp_data.pickup_point.name }}
+                        {{ pp_data.pickup_point.name }}
                         {% if pp_data.pickup_time %}
-                            - ⏰ Pickup Time: {{ pp_data.pickup_time|time:"H:i" }}
+                            - Pickup Time: {{ pp_data.pickup_time|time:"H:i" }}
                         {% else %}
-                            - ⏰ Pickup Time: NOT SET
+                            - Pickup Time: NOT SET
+                        {% endif %}
+                        {% if pg_data.pickup_group %}
+                            ({{ pg_data.pickup_group.name|upper }})
                         {% endif %}
                     {% else %}
-                        📍 No Pickup Point
+                        No Pickup Point
+                        {% if pg_data.pickup_group %}
+                            ({{ pg_data.pickup_group.name|upper }})
+                        {% endif %}
                     {% endif %}
                 </div>
                 
@@ -170,9 +156,8 @@
                     <thead>
                         <tr>
                             <th style="width: 4%;">#</th>
-                            <th style="width: 28%;">Guest Name</th>
-                            <th style="width: 18%;">Phone</th>
-                            <th style="width: 18%;">Hotel/Location</th>
+                            <th style="width: 34%;">Guest Name</th>
+                            <th style="width: 22%;">Phone</th>
                             <th style="width: 8%;">Adults</th>
                             <th style="width: 8%;">Children</th>
                             <th style="width: 8%;">Infants</th>
@@ -187,13 +172,8 @@
                             <td>
                                 {% if booking.voucher_id and booking.voucher_id.client_phone %}
                                     {{ booking.voucher_id.client_phone }}
-                                {% else %}
-                                    -
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if booking.voucher_id and booking.voucher_id.hotel %}
-                                    {{ booking.voucher_id.hotel.name }}
+                                {% elif booking.user and booking.user.profile.role == 'client' and booking.user.profile.phone %}
+                                    {{ booking.user.UserProfile.phone }}
                                 {% else %}
                                     -
                                 {% endif %}
@@ -205,7 +185,7 @@
                         </tr>
                         {% endfor %}
                         <tr class="subtotal-row">
-                            <td colspan="4" class="text-right">Subtotal ({{ pp_data.bookings|length }} booking{{ pp_data.bookings|length|pluralize }}):</td>
+                            <td colspan="3" class="text-right">Subtotal ({{ pp_data.bookings|length }} booking{{ pp_data.bookings|length|pluralize }}):</td>
                             <td class="text-center">{{ pp_data.subtotal.adults }}</td>
                             <td class="text-center">{{ pp_data.subtotal.kids }}</td>
                             <td class="text-center">{{ pp_data.subtotal.infants }}</td>
@@ -223,12 +203,12 @@
 
     <!-- Grand Total -->
     <div class="grand-total">
-        GRAND TOTAL: {{ group.total_guests }} Guests across {{ bookings|length }} Bookings
+        Total Guests: {{ group.total_guests }}
     </div>
 
     <!-- Footer -->
     <div class="footer">
-        <p>Generated on {{ "now"|date:"F d, Y \a\t H:i" }} | Document for Transportation Company</p>
+        <p>Generated on {% now "F d, Y  H:i" %} | iTrip Knossos</p>
     </div>
 </body>
 </html>
