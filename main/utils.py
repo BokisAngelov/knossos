@@ -1892,7 +1892,7 @@ class EmailService:
             return EmailService.send_email(
                 subject=subject,
                 message=message,
-                recipient_list=admin_emails,
+                recipient_list=['bokis.angelov@innovade.eu'], #TODO: Change to admin_emails
                 html_message=html_message,
                 fail_silently=fail_silently,
             )
