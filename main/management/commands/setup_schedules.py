@@ -14,3 +14,4 @@ class Command(BaseCommand):
         created, updated = setup_schedules()
         self.stdout.write(self.style.SUCCESS(f"Schedules ready: {created} created, {updated} updated."))
 
+
