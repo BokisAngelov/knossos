@@ -1,8 +1,16 @@
 """
 Tasks for django-q. Run the cluster with: python manage.py qcluster
 """
+import logging
+from django.core.management import call_command
 from .utils import EmailService
 
+logger = logging.getLogger(__name__)
+
+def run_management_command(command_name, **kwargs):
+    logger.info("Running management command %s kwargs=%s", command_name, kwargs)
+    call_command(command_name, **kwargs)
+    logger.info("Finished management command %s", command_name)
 
 def send_dynamic_email_task(
     subject,
