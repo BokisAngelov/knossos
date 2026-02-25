@@ -13,3 +13,4 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         created, updated = setup_schedules()
         self.stdout.write(self.style.SUCCESS(f"Schedules ready: {created} created, {updated} updated."))
+

@@ -7,6 +7,7 @@ from .utils import EmailService
 
 logger = logging.getLogger(__name__)
 
+
 def run_management_command(command_name, **kwargs):
     logger.info("Running management command %s kwargs=%s", command_name, kwargs)
     call_command(command_name, **kwargs)
