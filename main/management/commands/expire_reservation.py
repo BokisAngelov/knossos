@@ -13,7 +13,7 @@ class Command(BaseCommand):
         parser.add_argument(
             '--send-emails',
             action='store_true',
-            help='Send email notifications to clients and admins',
+            help='Also send thank-you emails to clients (admin report is always sent)',
         )
 
     def handle(self, *args, **options):
@@ -42,15 +42,12 @@ class Command(BaseCommand):
         )
         logger.info(f'Expired {count} reservation(s)')
         
-        # Send emails if requested
-        if send_emails:
-            self.send_notifications(expired_list)
+        self.send_admin_notification(expired_list)
+        self.send_client_notifications(expired_list)
     
-    def send_notifications(self, expired_reservations):
-        """Send email notifications to clients and admins."""
+    def send_client_notifications(self, expired_reservations):
+        """Send thank-you / expiration emails to each client. Returns number notified."""
         clients_notified = 0
-        
-        # Notify each client
         for reservation in expired_reservations:
             if reservation.client_email:
                 try:
@@ -88,8 +85,10 @@ class Command(BaseCommand):
                     
                 except Exception as e:
                     logger.error(f'Failed to send notification for voucher {reservation.voucher_id}: {str(e)}')
-        
-        # Send admin notification
+        return clients_notified
+
+    def send_admin_notification(self, expired_reservations):
+        """Send email report to admin when reservations are expired."""
         try:
             builder = EmailBuilder()
             builder.h2("Reservation Expiration Report")
@@ -97,7 +96,6 @@ class Command(BaseCommand):
             
             builder.card("Summary", {
                 'Total Expired': len(expired_reservations),
-                'Clients Notified': clients_notified
             })
             
             # Add details for each reservation
@@ -114,18 +112,20 @@ class Command(BaseCommand):
             
             builder.p("Best regards,<br>Automated System")
             
-            EmailService.send_dynamic_email(
+            emails_sent = EmailService.send_dynamic_email(
                 subject=f'[iTrip Knossos] {len(expired_reservations)} Reservation(s) Expired',
                 recipient_list=['bokis.angelov@innovade.eu'],
                 email_body=builder.build(),
                 preview_text=f'{len(expired_reservations)} reservations expired',
                 fail_silently=True
             )
-            logger.info('Sent expiration notification to admin')
-            
+            if emails_sent > 0:
+                logger.info('Sent expiration notification to admin')
+                self.stdout.write(self.style.SUCCESS('Admin notification email sent.'))
+            else:
+                self.stdout.write(
+                    self.style.WARNING('Admin email could not be sent. Check email configuration.')
+                )
         except Exception as e:
             logger.error(f'Failed to send admin notification: {str(e)}')
-        
-        self.stdout.write(
-            self.style.SUCCESS(f'Sent notifications to {clients_notified} client(s) and admin')
-        )
+            self.stdout.write(self.style.ERROR(f'Error sending admin notification: {str(e)}'))

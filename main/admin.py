@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib import messages
-from .models import UserProfile, Excursion, ExcursionAvailability, Booking, Transaction, Feedback, Category, Tag, Group, GroupPickupPoint, PaymentMethod, Reservation, Bus, JCCGatewayConfig, EmailSettings
+from .models import UserProfile, Excursion, ExcursionAvailability, Booking, Transaction, Feedback, Category, Tag, Group, GroupPickupPoint, PaymentMethod, Reservation, Bus, JCCGatewayConfig, EmailSettings, ReferralCode
 
 # Register your models here.
 admin.site.register(UserProfile)
@@ -17,6 +17,8 @@ admin.site.register(PaymentMethod)
 admin.site.register(Reservation)
 admin.site.register(Bus)
 admin.site.register(EmailSettings)
+admin.site.register(ReferralCode)
+
 
 
 class EmailSettingsAdmin(admin.ModelAdmin):

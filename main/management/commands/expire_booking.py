@@ -16,7 +16,7 @@ class Command(BaseCommand):
 
         # Get all pending bookings
         pending_bookings = Booking.objects.filter(payment_status='pending').select_related(
-            'excursion_availability', 'excursion_availability__excursion', 'excursion', 'user'
+            'excursion_availability', 'excursion_availability__excursion', 'excursion', 'user', 'user__profile'
         )
         
         expired_bookings = []
@@ -70,8 +70,18 @@ class Command(BaseCommand):
             for booking in expired_bookings[:10]:  # Limit to first 10 for email size
                 display_excursion = booking.get_display_excursion()
                 excursion_name = display_excursion.title if display_excursion else 'N/A'
-                guest_name = booking.guest_name or 'N/A'
-                guest_email = booking.guest_email or 'N/A'
+                # Prefer guest fields, then user profile name/email, then User name/email
+                guest_name = (
+                    booking.guest_name
+                    or (booking.user.profile.name if getattr(booking.user, 'profile', None) and booking.user.profile.name else None)
+                    or (booking.user.get_full_name() if booking.user else None)
+                    or (booking.user.username if booking.user else None)
+                ) or 'N/A'
+                guest_email = (
+                    booking.guest_email
+                    or (booking.user.email if booking.user else None)
+                    or (booking.user.profile.email if getattr(booking.user, 'profile', None) and booking.user.profile.email else None)
+                ) or 'N/A'
                 booking_date = booking.date.strftime('%B %d, %Y') if booking.date else 'N/A'
                 
                 builder.card(f"Booking #{booking.id}", {
