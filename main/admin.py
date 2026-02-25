@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib import messages
-from .models import UserProfile, Excursion, ExcursionAvailability, Booking, Transaction, Feedback, Category, Tag, Group, GroupPickupPoint, PaymentMethod, Reservation, Bus, JCCGatewayConfig, EmailSettings, ReferralCode
+from .models import UserProfile, Excursion, ExcursionAvailability, Booking, Transaction, Feedback, Category, Tag, Group, GroupPickupPoint, PaymentMethod, Reservation, Bus, JCCGatewayConfig, EmailSettings, EmailLog, ReferralCode
 
 # Register your models here.
 admin.site.register(UserProfile)
@@ -18,6 +18,15 @@ admin.site.register(Reservation)
 admin.site.register(Bus)
 admin.site.register(EmailSettings)
 admin.site.register(ReferralCode)
+
+
+@admin.register(EmailLog)
+class EmailLogAdmin(admin.ModelAdmin):
+    list_display = ('recipient', 'subject', 'email_kind', 'status', 'sent_at', 'created_at')
+    list_filter = ('status', 'email_kind')
+    search_fields = ('recipient', 'subject')
+    readonly_fields = ('subject', 'recipient', 'email_kind', 'status', 'sent_at', 'error_message', 'created_at')
+    date_hierarchy = 'created_at'
 
 
 

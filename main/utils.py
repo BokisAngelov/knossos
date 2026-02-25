@@ -4,7 +4,7 @@ from django.utils import timezone
 from django.core.exceptions import ValidationError
 from .models import (
     Excursion, Feedback, Booking, Reservation, Transaction,
-    AvailabilityDays, ExcursionAvailability, PickupPoint, Hotel, Region, JCCGatewayConfig, EmailSettings
+    AvailabilityDays, ExcursionAvailability, PickupPoint, Hotel, Region, JCCGatewayConfig, EmailSettings, EmailLog
 )
 from .cyber_api import get_reservation
 from datetime import datetime, date, timedelta
@@ -1956,12 +1956,13 @@ class EmailService:
             return 0
     
     @staticmethod
-    def send_dynamic_email(subject, recipient_list, email_body, email_title=None, preview_text=None, 
-                          unsubscribe_url=None, fail_silently=False):
+    def send_dynamic_email(subject, recipient_list, email_body, email_title=None, preview_text=None,
+                          unsubscribe_url=None, fail_silently=False, email_kind=''):
         """
         Send an email with dynamically built HTML content using the base template.
         Use EmailBuilder class to easily construct the email_body HTML.
-        
+        Logs each attempt to EmailLog for auditing.
+
         Args:
             subject: Email subject line
             recipient_list: List of recipient email addresses
@@ -1970,7 +1971,8 @@ class EmailService:
             preview_text: Preview text for inbox (optional)
             unsubscribe_url: URL for unsubscribe link (optional, for marketing emails)
             fail_silently: If True, suppress exceptions (default: False)
-        
+            email_kind: Optional label for logging (e.g. 'booking_confirmation', 'cancellation')
+
         Returns:
             int: Number of emails sent (1 if successful, 0 if failed)
         
@@ -1998,6 +2000,10 @@ class EmailService:
         from django.template.loader import render_to_string
         from django.utils.html import strip_tags
         
+        recipients = list(recipient_list) if isinstance(recipient_list, (list, tuple)) else [str(recipient_list)]
+        subject_slice = subject[:500]
+        kind_slice = (email_kind or '')[:64]
+        now = timezone.now()
         try:
             context = {
                 'email_title': email_title,
@@ -2005,26 +2011,82 @@ class EmailService:
                 'email_body': email_body,
                 'unsubscribe_url': unsubscribe_url,
             }
-            
+
             # Render using dynamic template
             html_message = render_to_string('emails/dynamic_email.html', context)
-            
+
             # Create plain text version
             plain_message = strip_tags(html_message)
-            
+
             # Send the email
-            return EmailService.send_email(
+            count = EmailService.send_email(
                 subject=subject,
                 message=plain_message,
                 recipient_list=recipient_list,
                 html_message=html_message,
                 fail_silently=fail_silently
             )
+            for email in recipients:
+                EmailLog.objects.create(
+                    subject=subject_slice,
+                    recipient=email[:254],
+                    email_kind=kind_slice,
+                    status='sent',
+                    sent_at=now,
+                )
+            return count
         except Exception as e:
             logger.error(f"Error sending dynamic email: {str(e)}", exc_info=True)
+            err_msg = str(e)[:10000]
+            for email in recipients:
+                EmailLog.objects.create(
+                    subject=subject_slice,
+                    recipient=email[:254],
+                    email_kind=kind_slice,
+                    status='failed',
+                    error_message=err_msg,
+                )
             if not fail_silently:
                 raise
             return 0
+
+    @staticmethod
+    def send_dynamic_email_async(
+        subject,
+        recipient_list,
+        email_body,
+        email_title=None,
+        preview_text=None,
+        unsubscribe_url=None,
+        email_kind='',
+    ):
+        """
+        Enqueue sending of a dynamic email in the background (django-q).
+        Use for non-urgent emails so the request returns without waiting for SMTP.
+        Run the cluster with: python manage.py qcluster
+
+        Args:
+            Same as send_dynamic_email (except no fail_silently).
+
+        Returns:
+            str: Task id from the queue, or None if enqueue failed.
+        """
+        try:
+            from django_q.tasks import async_task
+            task_id = async_task(
+                'main.tasks.send_dynamic_email_task',
+                subject,
+                list(recipient_list) if recipient_list else [],
+                email_body,
+                email_title=email_title,
+                preview_text=preview_text,
+                unsubscribe_url=unsubscribe_url,
+                email_kind=email_kind,
+            )
+            return task_id
+        except Exception as e:
+            logger.exception("Failed to enqueue email task: %s", e)
+            return None
 
 
 class EmailBuilder:

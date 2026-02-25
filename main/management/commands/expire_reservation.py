@@ -73,12 +73,12 @@ class Command(BaseCommand):
                     )
                     builder.p("Best regards,<br>The iTrip Knossos Team")
                     
-                    EmailService.send_dynamic_email(
+                    EmailService.send_dynamic_email_async(
                         subject='[iTrip Knossos] Thank You for Choosing Us!',
                         recipient_list=[reservation.client_email],
                         email_body=builder.build(),
                         preview_text='Your reservation code has expired - Thank you!',
-                        fail_silently=True
+                        email_kind='reservation_expired',
                     )
                     clients_notified += 1
                     logger.info(f'Sent expiration notification to {reservation.client_email}')

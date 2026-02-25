@@ -3226,12 +3226,12 @@ def send_pickup_times_to_customers(request, group):
             builder.p(f'<a href="{booking_url}" style="color:#666;font-size:14px;">View your booking</a>')
             builder.p("If you have any questions, please don't hesitate to contact us.")
             builder.p("Best regards,<br>The iTrip Knossos Team")
-            EmailService.send_dynamic_email(
+            EmailService.send_dynamic_email_async(
                 subject=f'[iTrip Knossos] Your Pickup Time - {group.excursion.title}',
                 recipient_list=[customer_email],
                 email_body=builder.build(),
                 preview_text=f'Your pickup time is {pickup_time_str} at {booking.pickup_point.name}',
-                fail_silently=True
+                email_kind='pickup_time',
             )
             BookingPickupTimeNotification.objects.update_or_create(
                 booking=booking,
