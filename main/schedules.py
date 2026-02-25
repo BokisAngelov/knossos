@@ -61,8 +61,8 @@ def setup_schedules():
         obj, was_created = Schedule.objects.get_or_create(name=name)
 
         obj.func = FUNC
-        obj.args = command
-        obj.kwargs = command_kwargs
+        obj.args = repr((command,))
+        obj.kwargs = repr(command_kwargs)
         obj.schedule_type = Schedule.CRON
         obj.cron = cron
         obj.repeats = -1
