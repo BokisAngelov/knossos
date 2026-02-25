@@ -1153,6 +1153,9 @@ def excursion_delete(request, pk):
     if request.method == 'POST':
         excursion.delete()
         messages.success(request, 'Excursion deleted.')
+        next_url = request.POST.get('next')
+        if next_url:
+            return redirect(next_url)
         return redirect('excursion_list')
     else:
         messages.error(request, 'Excursion not deleted.')
@@ -1561,13 +1564,17 @@ def booking_detail(request, pk):
                     BookingService.decrement_booked_guests_for_booking(booking)
                 booking.payment_status = 'cancelled'
                 booking.save()
-                
-                # Send cancellation email to customer
+
+                # Send cancellation email to customer (admin-initiated cancellation)
                 try:
                     if customer_email:
                         builder = EmailBuilder()
                         builder.h2(f"Hello {customer_name}!")
-                        builder.p("Your booking has been cancelled as requested.")
+                        builder.warning("Your Booking Has Been Cancelled")
+                        builder.p(
+                            "We're writing to inform you that your booking has been cancelled by our team. "
+                            "This may be due to excursion unavailability, weather conditions, or other operational reasons."
+                        )
                         
                         builder.card("Cancelled Booking", {
                             'Booking #': f'{booking_id}',
@@ -1581,7 +1588,16 @@ def booking_detail(request, pk):
                             "you can browse our available excursions below."
                         )
                         builder.button("Browse Excursions", request.build_absolute_uri(reverse('excursion_list')))
-                        builder.p("We hope to see you on another adventure soon!")
+                        builder.p(
+                            "We sincerely apologize for any inconvenience. If you've already made payment, "
+                            "a full refund will be processed within 5-7 business days."
+                        )
+                        builder.list_box("💬 Need Assistance?", [
+                            "Contact us for alternative excursion dates",
+                            "Browse similar excursions on our website",
+                            "Questions about refunds? Reach out to support",
+                            "We're here to help make your trip memorable!"
+                        ])
                         builder.p("Best regards,<br>The iTrip Knossos Team")
                         
                         EmailService.send_dynamic_email(
@@ -1595,37 +1611,7 @@ def booking_detail(request, pk):
                         
                 except Exception as e:
                     logger.error(f'Failed to send cancellation email for booking #{booking_id}: {str(e)}')
-                
-                # Send notification to admin
-                try:
-                    builder = EmailBuilder()
-                    builder.h2("Customer Booking Cancellation")
-                    builder.warning("A customer has cancelled their booking")
-                    
-                    builder.card("Cancelled Booking Details", {
-                        'Booking #': f'{booking_id}',
-                        'Customer': f'{customer_name} ({customer_email or "No email"})',
-                        'Excursion': excursion_title,
-                        'Date': booking_date,
-                        'Amount': f"€{total_price:.2f}",
-                        'Cancelled By': 'Customer'
-                    }, border_color="#ff6b35")
-                    
-                    builder.p("The customer cancelled this booking. No further action required unless refund is needed.")
-                    builder.p("Best regards,<br>Automated System")
-                    
-                    EmailService.send_dynamic_email(
-                        subject=f'[iTrip Knossos] Customer Cancelled Booking #{booking_id}',
-                        recipient_list=['bokis.angelov@innovade.eu'],
-                        email_body=builder.build(),
-                        preview_text=f'Customer cancelled booking for {excursion_title}',
-                        fail_silently=True
-                    )
-                    logger.info(f'Admin notification sent for booking cancellation #{booking_id}')
-                    
-                except Exception as e:
-                    logger.error(f'Failed to send admin notification for cancellation #{booking_id}: {str(e)}')
-                
+
                 messages.success(request, 'Booking cancelled.')
                 redirect_url_cancel = reverse('excursion_detail', kwargs={'pk': display_excursion.id}) if display_excursion else reverse('bookings_list')
                 return JsonResponse({
