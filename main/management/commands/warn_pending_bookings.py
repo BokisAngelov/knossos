@@ -109,13 +109,13 @@ class Command(BaseCommand):
                         )
                         builder.p("Best regards,<br>The iTrip Knossos Team")
                         
-                        # Send email
-                        EmailService.send_dynamic_email(
+                        # Send email (background)
+                        EmailService.send_dynamic_email_async(
                             subject='[iTrip Knossos] ⚠️ Payment Reminder - Excursion Tomorrow',
                             recipient_list=[customer_email],
                             email_body=builder.build(),
                             preview_text='Please complete your payment for tomorrow\'s excursion',
-                            fail_silently=True
+                            email_kind='payment_reminder',
                         )
                         warned_customers += 1
                         logger.info(f'Sent warning email to customer for booking #{booking.id}')

@@ -45,7 +45,7 @@
                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                     </svg>
-                    Send pickup times
+                    Send pickup times to bookings
                 </button>
             </form>
             <!-- Send Group List (supplier only) -->
@@ -197,10 +197,14 @@
                                 {% for booking in pickup_point.bookings %}
                                 <tr class="{% cycle 'bg-white' 'bg-gray-50' %}">
                                     <td class="px-4 py-3 text-sm text-gray-500">{{ forloop.counter }}</td>
-                                    <td class="px-4 py-3 text-sm font-medium text-gray-900">{{ booking.guest_name }}</td>
+                                    <td class="px-4 py-3 text-sm font-medium text-gray-900">{{ booking.guest_name }}<br>
+                                        <span class="text-xs text-gray-500">{{ booking.guest_email }}</span>      
+                                    </td>
                                     <td class="px-4 py-3 text-sm text-gray-500 text-left">
                                         {% if booking.voucher_id and booking.voucher_id.client_phone %}
                                             {{ booking.voucher_id.client_phone }}
+                                        {% elif booking.user and booking.user.profile.role == 'client' and booking.user.profile.phone %}
+                                            {{ booking.user.profile.phone }}
                                         {% else %}
                                             -
                                         {% endif %}
@@ -368,7 +372,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 Swal.fire({
                     title: 'Are you sure?',
-                    text: 'This will send the group list to the transportation company, mark the availability date as inactive, and mark this group as sent. You can still edit pickup times after sending.',
+                    html: 'This will send the group list to the transportation company, mark the availability date as inactive, and mark this group as sent. <br>No more changes can be made to the pickup times after sending.<br><br> <strong>Make sure you have sent pickup times to all the bookings in this group.</strong>',
                     icon: 'warning',
                     showCancelButton: true,
                     confirmButtonColor: '#3085d6',

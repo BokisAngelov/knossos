@@ -4,7 +4,7 @@ from django.utils import timezone
 from django.core.exceptions import ValidationError
 from .models import (
     Excursion, Feedback, Booking, Reservation, Transaction,
-    AvailabilityDays, ExcursionAvailability, PickupPoint, Hotel, Region, JCCGatewayConfig, EmailSettings
+    AvailabilityDays, ExcursionAvailability, PickupPoint, Hotel, Region, JCCGatewayConfig, EmailSettings, EmailLog
 )
 from .cyber_api import get_reservation
 from datetime import datetime, date, timedelta
@@ -460,7 +460,7 @@ class BookingService:
                     access_token = token
                     break
         
-        # Create booking
+        # Create booking (booked_guests is incremented only when payment completes)
         booking = Booking.objects.create(
             user=user if user.is_authenticated else None,
             excursion_availability=excursion_availability,
@@ -477,20 +477,56 @@ class BookingService:
             access_token=access_token,
             **pricing_data
         )
-        
-        # Update availability counts
-        day_availability = AvailabilityDays.objects.get(
-            date_day=selected_date, 
-            excursion_availability=excursion_availability
-        )
-        day_availability.booked_guests += booking_data['total_guests']
-        day_availability.save()
-        
-        excursion_availability.booked_guests += booking_data['total_guests']
-        excursion_availability.save()
-        
         return booking
-    
+
+    @staticmethod
+    def _booking_guest_count(booking):
+        """Return total guests for a booking (adults + kids + infants)."""
+        return (booking.total_adults or 0) + (booking.total_kids or 0) + (booking.total_infants or 0)
+
+    @staticmethod
+    def increment_booked_guests_for_booking(booking):
+        """
+        Add this booking's guest count to AvailabilityDays and ExcursionAvailability.
+        Call only when payment becomes completed.
+        """
+        from django.db.models import F
+        if not booking.excursion_availability_id or not booking.date:
+            return
+        count = BookingService._booking_guest_count(booking)
+        if count <= 0:
+            return
+        AvailabilityDays.objects.filter(
+            date_day=booking.date,
+            excursion_availability_id=booking.excursion_availability_id,
+        ).update(booked_guests=F('booked_guests') + count)
+        ExcursionAvailability.objects.filter(pk=booking.excursion_availability_id).update(
+            booked_guests=F('booked_guests') + count
+        )
+        logger.debug(f'Incremented booked_guests by {count} for booking #{booking.pk}')
+
+    @staticmethod
+    def decrement_booked_guests_for_booking(booking):
+        """
+        Subtract this booking's guest count from AvailabilityDays and ExcursionAvailability.
+        Call only when a completed booking is cancelled or deleted. Uses max(0, ...) to avoid negative counts.
+        """
+        from django.db.models import F
+        from django.db.models.functions import Greatest
+        if not booking.excursion_availability_id or not booking.date:
+            return
+        count = BookingService._booking_guest_count(booking)
+        if count <= 0:
+            return
+        AvailabilityDays.objects.filter(
+            date_day=booking.date,
+            excursion_availability_id=booking.excursion_availability_id,
+        ).update(booked_guests=Greatest(0, F('booked_guests') - count))
+        ExcursionAvailability.objects.filter(pk=booking.excursion_availability_id).update(
+            booked_guests=Greatest(0, F('booked_guests') - count)
+        )
+        logger.debug(f'Decremented booked_guests by {count} for booking #{booking.pk}')
+
     @staticmethod
     @transaction.atomic
     def apply_referral_code_to_booking(booking, referral_code_instance):
@@ -1920,12 +1956,13 @@ class EmailService:
             return 0
     
     @staticmethod
-    def send_dynamic_email(subject, recipient_list, email_body, email_title=None, preview_text=None, 
-                          unsubscribe_url=None, fail_silently=False):
+    def send_dynamic_email(subject, recipient_list, email_body, email_title=None, preview_text=None,
+                          unsubscribe_url=None, fail_silently=False, email_kind=''):
         """
         Send an email with dynamically built HTML content using the base template.
         Use EmailBuilder class to easily construct the email_body HTML.
-        
+        Logs each attempt to EmailLog for auditing.
+
         Args:
             subject: Email subject line
             recipient_list: List of recipient email addresses
@@ -1934,7 +1971,8 @@ class EmailService:
             preview_text: Preview text for inbox (optional)
             unsubscribe_url: URL for unsubscribe link (optional, for marketing emails)
             fail_silently: If True, suppress exceptions (default: False)
-        
+            email_kind: Optional label for logging (e.g. 'booking_confirmation', 'cancellation')
+
         Returns:
             int: Number of emails sent (1 if successful, 0 if failed)
         
@@ -1962,6 +2000,10 @@ class EmailService:
         from django.template.loader import render_to_string
         from django.utils.html import strip_tags
         
+        recipients = list(recipient_list) if isinstance(recipient_list, (list, tuple)) else [str(recipient_list)]
+        subject_slice = subject[:500]
+        kind_slice = (email_kind or '')[:64]
+        now = timezone.now()
         try:
             context = {
                 'email_title': email_title,
@@ -1969,26 +2011,82 @@ class EmailService:
                 'email_body': email_body,
                 'unsubscribe_url': unsubscribe_url,
             }
-            
+
             # Render using dynamic template
             html_message = render_to_string('emails/dynamic_email.html', context)
-            
+
             # Create plain text version
             plain_message = strip_tags(html_message)
-            
+
             # Send the email
-            return EmailService.send_email(
+            count = EmailService.send_email(
                 subject=subject,
                 message=plain_message,
                 recipient_list=recipient_list,
                 html_message=html_message,
                 fail_silently=fail_silently
             )
+            for email in recipients:
+                EmailLog.objects.create(
+                    subject=subject_slice,
+                    recipient=email[:254],
+                    email_kind=kind_slice,
+                    status='sent',
+                    sent_at=now,
+                )
+            return count
         except Exception as e:
             logger.error(f"Error sending dynamic email: {str(e)}", exc_info=True)
+            err_msg = str(e)[:10000]
+            for email in recipients:
+                EmailLog.objects.create(
+                    subject=subject_slice,
+                    recipient=email[:254],
+                    email_kind=kind_slice,
+                    status='failed',
+                    error_message=err_msg,
+                )
             if not fail_silently:
                 raise
             return 0
+
+    @staticmethod
+    def send_dynamic_email_async(
+        subject,
+        recipient_list,
+        email_body,
+        email_title=None,
+        preview_text=None,
+        unsubscribe_url=None,
+        email_kind='',
+    ):
+        """
+        Enqueue sending of a dynamic email in the background (django-q).
+        Use for non-urgent emails so the request returns without waiting for SMTP.
+        Run the cluster with: python manage.py qcluster
+
+        Args:
+            Same as send_dynamic_email (except no fail_silently).
+
+        Returns:
+            str: Task id from the queue, or None if enqueue failed.
+        """
+        try:
+            from django_q.tasks import async_task
+            task_id = async_task(
+                'main.tasks.send_dynamic_email_task',
+                subject,
+                list(recipient_list) if recipient_list else [],
+                email_body,
+                email_title=email_title,
+                preview_text=preview_text,
+                unsubscribe_url=unsubscribe_url,
+                email_kind=email_kind,
+            )
+            return task_id
+        except Exception as e:
+            logger.exception("Failed to enqueue email task: %s", e)
+            return None
 
 
 class EmailBuilder:
@@ -2132,3 +2230,114 @@ class EmailBuilder:
     def build(self):
         """Build and return the complete HTML."""
         return '\n'.join(self.parts)
+
+
+def generate_group_pdf_for_transport(group):
+    """
+    Generate a PDF with the booking list for a transport group.
+
+    Returns:
+        (filename, pdf_bytes) tuple, or (None, None) if generation fails.
+    """
+    from xhtml2pdf import pisa
+    from io import BytesIO
+    from django.template.loader import render_to_string
+    from .models import Group
+
+    try:
+        group = Group.objects.prefetch_related(
+            'bookings',
+            'bookings__pickup_point',
+            'bookings__pickup_point__pickup_group',
+            'bookings__voucher_id',
+            'bookings__voucher_id__hotel',
+            'pickup_times',
+            'pickup_times__pickup_point'
+        ).get(pk=group.pk)
+
+        pickup_times = {}
+        for gpp in group.pickup_times.all():
+            pickup_times[gpp.pickup_point.id] = gpp.pickup_time
+
+        bookings = group.bookings.all().order_by(
+            'pickup_point__pickup_group__name',
+            'pickup_point__name',
+            'guest_name'
+        )
+
+        organized_data = []
+        current_pickup_group = None
+        pickup_group_data = None
+
+        for booking in bookings:
+            if booking.pickup_point:
+                pickup_group = booking.pickup_point.pickup_group
+                pickup_point = booking.pickup_point
+            else:
+                pickup_group = None
+                pickup_point = None
+
+            if pickup_group != current_pickup_group:
+                if pickup_group_data:
+                    organized_data.append(pickup_group_data)
+                current_pickup_group = pickup_group
+                pickup_group_data = {
+                    'pickup_group': pickup_group,
+                    'pickup_points': []
+                }
+
+            pickup_point_data = None
+            for pp in pickup_group_data['pickup_points']:
+                if pp['pickup_point'] == pickup_point:
+                    pickup_point_data = pp
+                    break
+
+            if not pickup_point_data:
+                pickup_time = None
+                if pickup_point:
+                    pickup_time = pickup_times.get(pickup_point.id)
+                pickup_point_data = {
+                    'pickup_point': pickup_point,
+                    'pickup_time': pickup_time,
+                    'bookings': [],
+                    'subtotal': {'adults': 0, 'kids': 0, 'infants': 0, 'total': 0}
+                }
+                pickup_group_data['pickup_points'].append(pickup_point_data)
+
+            guest_total = (booking.total_adults or 0) + (booking.total_kids or 0) + (booking.total_infants or 0)
+            pickup_point_data['bookings'].append(booking)
+            pickup_point_data['subtotal']['adults'] += booking.total_adults or 0
+            pickup_point_data['subtotal']['kids'] += booking.total_kids or 0
+            pickup_point_data['subtotal']['infants'] += booking.total_infants or 0
+            pickup_point_data['subtotal']['total'] += guest_total
+
+        if pickup_group_data:
+            organized_data.append(pickup_group_data)
+
+        # Sort pickup points within each pickup group by pickup time (None last)
+        for pg_data in organized_data:
+            pg_data['pickup_points'].sort(
+                key=lambda pp: (pp['pickup_time'] is None, pp['pickup_time'])
+            )
+
+        html_content = render_to_string('main/groups/group_pdf.html', {
+            'group': group,
+            'bookings': bookings,
+            'organized_data': organized_data,
+        })
+
+        filename = f'transport_group_{group.name}_{group.date}.pdf'
+
+        buffer = BytesIO()
+        pisa_status = pisa.CreatePDF(html_content, dest=buffer)
+        if pisa_status.err:
+            logger.error(f'PDF generation error for group {group.pk}: {pisa_status.err}')
+            buffer.close()
+            return None, None
+
+        pdf_content = buffer.getvalue()
+        buffer.close()
+        return filename, pdf_content
+    except Exception as e:
+        logger.error(f'Error generating group PDF for group {getattr(group, "pk", "unknown")}: {str(e)}', exc_info=True)
+        return None, None

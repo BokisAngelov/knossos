@@ -844,3 +844,32 @@ class EmailSettings(models.Model):
         verbose_name_plural = 'Email Settings'
         ordering = ['created_at']
 
+
+class EmailLog(models.Model):
+    """Log of sent (or failed) emails – one row per recipient for clearer audit and filtering."""
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('sent', 'Sent'),
+        ('failed', 'Failed'),
+    ]
+    subject = models.CharField(max_length=500)
+    recipient = models.EmailField(max_length=254, db_index=True)
+    email_kind = models.CharField(
+        max_length=64,
+        blank=True,
+        db_index=True,
+        help_text='E.g. booking_confirmation, cancellation, verification, admin_report',
+    )
+    status = models.CharField(max_length=16, choices=STATUS_CHOICES, default='pending', db_index=True)
+    sent_at = models.DateTimeField(null=True, blank=True)
+    error_message = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.email_kind or 'email'} to {self.recipient} ({self.status})"
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Email log'
+        verbose_name_plural = 'Email logs'
+

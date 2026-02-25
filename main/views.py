@@ -36,7 +36,7 @@ from django.db.models import Q, Sum, Count
 logger = logging.getLogger(__name__)
 from django.apps import apps
 from .cyber_api import get_groups, get_hotels, get_pickup_points, get_excursions, get_excursion_description, get_providers, get_excursion_availabilities, get_reservation
-from .utils import FeedbackService, BookingService, ExcursionService, VoucherService, create_reservation, ExcursionAnalyticsService, RevenueAnalyticsService, JCCPaymentService, EmailService, EmailBuilder, attach_excursion_list_data
+from .utils import FeedbackService, BookingService, ExcursionService, VoucherService, create_reservation, ExcursionAnalyticsService, RevenueAnalyticsService, JCCPaymentService, EmailService, EmailBuilder, attach_excursion_list_data, generate_group_pdf_for_transport
 
 def is_staff(user):
     return user.is_staff
@@ -1153,6 +1153,9 @@ def excursion_delete(request, pk):
     if request.method == 'POST':
         excursion.delete()
         messages.success(request, 'Excursion deleted.')
+        next_url = request.POST.get('next')
+        if next_url:
+            return redirect(next_url)
         return redirect('excursion_list')
     else:
         messages.error(request, 'Excursion not deleted.')
@@ -1281,6 +1284,8 @@ def booking_delete(request, pk):
                     except Exception as e:
                         logger.error(f'Failed to send admin notification for cancellation #{booking_id}: {str(e)}')
                 
+                if booking.payment_status == 'completed':
+                    BookingService.decrement_booked_guests_for_booking(booking)
                 if request.user.is_staff:
                     booking.deleteByUser = False
                     booking.delete()
@@ -1493,9 +1498,11 @@ def booking_detail(request, pk):
 
     if payment_status == 'completed':
         try:
+            old_status = booking.payment_status
             booking.payment_status = 'completed'
             booking.save()
-            
+            if old_status != 'completed':
+                BookingService.increment_booked_guests_for_booking(booking)
             # Send booking confirmation email to customer
             send_booking_confirmation_email(booking, request)
             
@@ -1527,8 +1534,11 @@ def booking_detail(request, pk):
         
         try:
             if action_type == 'complete_payment':
+                old_status = booking.payment_status
                 booking.payment_status = 'completed'
                 booking.save()
+                if old_status != 'completed':
+                    BookingService.increment_booked_guests_for_booking(booking)
                 messages.success(request, 'Booking completed.')
 
                 # Preserve token in redirect if present
@@ -1550,16 +1560,21 @@ def booking_detail(request, pk):
                 booking_date = booking.date.strftime('%B %d, %Y') if booking.date else 'N/A'
                 total_price = booking.total_price
                 booking_id = booking.id
-                
+                if booking.payment_status == 'completed':
+                    BookingService.decrement_booked_guests_for_booking(booking)
                 booking.payment_status = 'cancelled'
                 booking.save()
-                
-                # Send cancellation email to customer
+
+                # Send cancellation email to customer (admin-initiated cancellation)
                 try:
                     if customer_email:
                         builder = EmailBuilder()
                         builder.h2(f"Hello {customer_name}!")
-                        builder.p("Your booking has been cancelled as requested.")
+                        builder.warning("Your Booking Has Been Cancelled")
+                        builder.p(
+                            "We're writing to inform you that your booking has been cancelled by our team. "
+                            "This may be due to excursion unavailability, weather conditions, or other operational reasons."
+                        )
                         
                         builder.card("Cancelled Booking", {
                             'Booking #': f'{booking_id}',
@@ -1573,7 +1588,16 @@ def booking_detail(request, pk):
                             "you can browse our available excursions below."
                         )
                         builder.button("Browse Excursions", request.build_absolute_uri(reverse('excursion_list')))
-                        builder.p("We hope to see you on another adventure soon!")
+                        builder.p(
+                            "We sincerely apologize for any inconvenience. If you've already made payment, "
+                            "a full refund will be processed within 5-7 business days."
+                        )
+                        builder.list_box("💬 Need Assistance?", [
+                            "Contact us for alternative excursion dates",
+                            "Browse similar excursions on our website",
+                            "Questions about refunds? Reach out to support",
+                            "We're here to help make your trip memorable!"
+                        ])
                         builder.p("Best regards,<br>The iTrip Knossos Team")
                         
                         EmailService.send_dynamic_email(
@@ -1587,37 +1611,7 @@ def booking_detail(request, pk):
                         
                 except Exception as e:
                     logger.error(f'Failed to send cancellation email for booking #{booking_id}: {str(e)}')
-                
-                # Send notification to admin
-                try:
-                    builder = EmailBuilder()
-                    builder.h2("Customer Booking Cancellation")
-                    builder.warning("A customer has cancelled their booking")
-                    
-                    builder.card("Cancelled Booking Details", {
-                        'Booking #': f'{booking_id}',
-                        'Customer': f'{customer_name} ({customer_email or "No email"})',
-                        'Excursion': excursion_title,
-                        'Date': booking_date,
-                        'Amount': f"€{total_price:.2f}",
-                        'Cancelled By': 'Customer'
-                    }, border_color="#ff6b35")
-                    
-                    builder.p("The customer cancelled this booking. No further action required unless refund is needed.")
-                    builder.p("Best regards,<br>Automated System")
-                    
-                    EmailService.send_dynamic_email(
-                        subject=f'[iTrip Knossos] Customer Cancelled Booking #{booking_id}',
-                        recipient_list=['bokis.angelov@innovade.eu'],
-                        email_body=builder.build(),
-                        preview_text=f'Customer cancelled booking for {excursion_title}',
-                        fail_silently=True
-                    )
-                    logger.info(f'Admin notification sent for booking cancellation #{booking_id}')
-                    
-                except Exception as e:
-                    logger.error(f'Failed to send admin notification for cancellation #{booking_id}: {str(e)}')
-                
+
                 messages.success(request, 'Booking cancelled.')
                 redirect_url_cancel = reverse('excursion_detail', kwargs={'pk': display_excursion.id}) if display_excursion else reverse('bookings_list')
                 return JsonResponse({
@@ -1627,6 +1621,8 @@ def booking_detail(request, pk):
                 })
 
             elif action_type == 'delete_booking':
+                if booking.payment_status == 'completed':
+                    BookingService.decrement_booked_guests_for_booking(booking)
                 booking.delete()
                 messages.success(request, 'Booking deleted.')
                 return JsonResponse({
@@ -1889,8 +1885,11 @@ def payment_initiate(request, booking_pk):
             # Check if payment was successful
             if JCCPaymentService.is_payment_successful(order_status):
                 # Payment is already completed, update booking status
+                old_status = booking.payment_status
                 booking.payment_status = 'completed'
                 booking.save(update_fields=['payment_status'])
+                if old_status != 'completed':
+                    BookingService.increment_booked_guests_for_booking(booking)
                 messages.success(request, 'Payment was already completed. Your booking is confirmed.')
                 redirect_url = reverse('booking_detail', kwargs={'pk': booking_pk})
                 if token:
@@ -2014,9 +2013,11 @@ def payment_success(request, booking_pk=None):
         
         if JCCPaymentService.is_payment_successful(order_status):
             # Payment is confirmed successful
+            old_status = booking.payment_status
             booking.payment_status = 'completed'
             booking.save(update_fields=['payment_status'])
-            
+            if old_status != 'completed':
+                BookingService.increment_booked_guests_for_booking(booking)
             # Send booking confirmation email to customer
             send_booking_confirmation_email(booking, request)
             # Send admin notification
@@ -2866,7 +2867,8 @@ def group_detail(request, pk):
     from .models import GroupPickupPoint
     
     group = get_object_or_404(Group.objects.prefetch_related(
-        'bookings', 
+        'bookings',
+        'bookings__user__profile',
         'bookings__pickup_point',
         'bookings__pickup_point__pickup_group',
         'bookings__voucher_id',
@@ -3090,17 +3092,24 @@ def group_send_pickup_times(request, pk):
 
 
 def send_group_to_provider(request, group):
-    """Send email notification to the transport provider when group list is sent."""
+    """Send email notification to the transport provider when group list is sent,
+    including a PDF attachment with the booking list for this group.
+    """
     from .models import GroupPickupPoint
+    from django.template.loader import render_to_string
+    from django.utils.html import strip_tags
+    from django.core.mail import EmailMultiAlternatives
+
     if not group.provider or not group.provider.email:
         return
     try:
+        filename, pdf_content = generate_group_pdf_for_transport(group)
+
         builder = EmailBuilder()
         builder.h2(f"Hello {group.provider.name}!")
-        builder.success(f"New Transport Group: {group.name}")
         builder.p(
-            f"A new transport group has been assigned to you for {group.excursion.title}. "
-            "Please review the details below."
+            f"A new transport group for {group.excursion.title}. <br>"
+            "You can find the group schedule in the PDF attachment."
         )
         builder.card("Group Information", {
             'Group Name': group.name,
@@ -3110,24 +3119,56 @@ def send_group_to_provider(request, group):
             'Bus': group.bus.name if group.bus else 'Not assigned',
             'Guide': group.guide.name if group.guide else 'Not assigned'
         })
-        pickup_points = GroupPickupPoint.objects.filter(group=group).select_related('pickup_point').order_by('pickup_time')
-        if pickup_points.exists():
-            pickup_data = [
-                (gpp.pickup_point.name, gpp.pickup_time.strftime('%I:%M %p') if gpp.pickup_time else 'Not set')
-                for gpp in pickup_points
-            ]
-            builder.card("Pickup Schedule", pickup_data, border_color="#4caf50")
-        builder.button("View Group Details", request.build_absolute_uri(reverse('group_detail', kwargs={'pk': group.pk})))
+
+
+        # group_detail_url = request.build_absolute_uri(reverse('group_detail', kwargs={'pk': group.pk}))
+        # builder.button("View Group Details", group_detail_url)
         builder.p("Please confirm receipt and prepare accordingly.")
         builder.p("Best regards,<br>The iTrip Knossos Team")
-        EmailService.send_dynamic_email(
-            subject=f'[iTrip Knossos] New Transport Group - {group.name}',
-            recipient_list=[group.provider.email],
-            email_body=builder.build(),
-            preview_text=f'New transport group for {group.excursion.title}',
-            fail_silently=True
+
+        # Build full HTML email using the same dynamic email template
+        email_body = builder.build()
+        context = {
+            'email_title': None,
+            'preview_text': f'New transport group for {group.excursion.title}',
+            'email_body': email_body,
+            'unsubscribe_url': None,
+        }
+        html_message = render_to_string('emails/dynamic_email.html', context)
+        plain_message = strip_tags(html_message)
+
+        # Use EmailService configuration/connection to send with attachment
+        config = EmailService.get_email_config()
+        if not config:
+            logger.error('Email configuration missing; cannot send provider group email with PDF.')
+            return
+
+        from_email = config.email
+        if hasattr(config, 'name_from') and config.name_from:
+            from_email = f"{config.name_from} <{config.email}>"
+
+        connection = EmailService.get_connection()
+
+        subject = f'[iTrip Knossos] New Transport Group - {group.name}'
+        message = EmailMultiAlternatives(
+            subject=subject,
+            body=plain_message,
+            from_email=from_email,
+            to=[group.provider.email],
+            connection=connection,
         )
-        logger.info(f'Group notification sent to provider {group.provider.email}')
+        message.attach_alternative(html_message, "text/html")
+
+        # Attach PDF if it was generated successfully
+        if pdf_content:
+            message.attach(filename, pdf_content, 'application/pdf')
+
+        message.send(fail_silently=True)
+
+        logger.info(
+            f'Group notification sent to provider {group.provider.email}'
+            f' with PDF attachment: {bool(pdf_content)}'
+        )
     except Exception as e:
         logger.error(f'Failed to send notification to provider for group #{group.pk}: {str(e)}')
 
@@ -3185,12 +3226,12 @@ def send_pickup_times_to_customers(request, group):
             builder.p(f'<a href="{booking_url}" style="color:#666;font-size:14px;">View your booking</a>')
             builder.p("If you have any questions, please don't hesitate to contact us.")
             builder.p("Best regards,<br>The iTrip Knossos Team")
-            EmailService.send_dynamic_email(
+            EmailService.send_dynamic_email_async(
                 subject=f'[iTrip Knossos] Your Pickup Time - {group.excursion.title}',
                 recipient_list=[customer_email],
                 email_body=builder.build(),
                 preview_text=f'Your pickup time is {pickup_time_str} at {booking.pickup_point.name}',
-                fail_silently=True
+                email_kind='pickup_time',
             )
             BookingPickupTimeNotification.objects.update_or_create(
                 booking=booking,
@@ -3357,117 +3398,13 @@ def test_simple_pdf(request):
 
 @user_passes_test(is_staff)
 def group_export_pdf(request, pk):
-    from xhtml2pdf import pisa
-    from io import BytesIO
-    from collections import defaultdict
-    from .models import GroupPickupPoint
+    group = get_object_or_404(Group, pk=pk)
+    filename, pdf_content = generate_group_pdf_for_transport(group)
+    if not filename or not pdf_content:
+        return HttpResponse('PDF generation error', status=500)
 
-    group = get_object_or_404(Group.objects.prefetch_related(
-        'bookings',
-        'bookings__pickup_point',
-        'bookings__pickup_point__pickup_group',
-        'bookings__voucher_id',
-        'bookings__voucher_id__hotel',
-        'pickup_times',
-        'pickup_times__pickup_point'
-    ), pk=pk)
-
-    # Get pickup times dictionary
-    pickup_times = {}
-    for gpp in group.pickup_times.all():
-        pickup_times[gpp.pickup_point.id] = gpp.pickup_time
-
-    # Get bookings for the group
-    bookings = group.bookings.all().order_by(
-        'pickup_point__pickup_group__name',
-        'pickup_point__name',
-        'guest_name'
-    )
-
-    # Organize bookings by pickup group and pickup point with subtotals
-    organized_data = []
-    current_pickup_group = None
-    pickup_group_data = None
-    
-    for booking in bookings:
-        # Get pickup group - handle None pickup_point case
-        if booking.pickup_point:
-            pickup_group = booking.pickup_point.pickup_group
-            pickup_point = booking.pickup_point
-        else:
-            pickup_group = None
-            pickup_point = None
-        
-        # Check if we need to start a new pickup group
-        if pickup_group != current_pickup_group:
-            if pickup_group_data:
-                organized_data.append(pickup_group_data)
-            
-            current_pickup_group = pickup_group
-            pickup_group_data = {
-                'pickup_group': pickup_group,
-                'pickup_points': []
-            }
-        
-        # Find or create pickup point in current group
-        pickup_point_data = None
-        for pp in pickup_group_data['pickup_points']:
-            if pp['pickup_point'] == pickup_point:
-                pickup_point_data = pp
-                break
-        
-        if not pickup_point_data:
-            # Get pickup time for this pickup point
-            pickup_time = None
-            if pickup_point:
-                pickup_time = pickup_times.get(pickup_point.id)
-            
-            pickup_point_data = {
-                'pickup_point': pickup_point,
-                'pickup_time': pickup_time,
-                'bookings': [],
-                'subtotal': {'adults': 0, 'kids': 0, 'infants': 0, 'total': 0}
-            }
-            pickup_group_data['pickup_points'].append(pickup_point_data)
-        
-        # Add booking and update subtotal
-        guest_total = (booking.total_adults or 0) + (booking.total_kids or 0) + (booking.total_infants or 0)
-        pickup_point_data['bookings'].append(booking)
-        pickup_point_data['subtotal']['adults'] += booking.total_adults or 0
-        pickup_point_data['subtotal']['kids'] += booking.total_kids or 0
-        pickup_point_data['subtotal']['infants'] += booking.total_infants or 0
-        pickup_point_data['subtotal']['total'] += guest_total
-    
-    # Don't forget to add the last pickup group
-    if pickup_group_data:
-        organized_data.append(pickup_group_data)
-
-    # HTML content to be converted.
-    html_content = render_to_string('main/groups/group_pdf.html', {
-        'group': group,
-        'bookings': bookings,
-        'organized_data': organized_data,
-    })
-
-    filename = f'transport_group_{group.name}_{group.date}.pdf'
-    
-    # Create a BytesIO buffer to receive PDF data
-    buffer = BytesIO()
-    
-    # Convert HTML to PDF
-    pisa_status = pisa.CreatePDF(html_content, dest=buffer)
-    
-    if pisa_status.err:
-        return HttpResponse(f'PDF generation error: {pisa_status.err}', status=500)
-    
-    # Get the PDF content from buffer
-    pdf_content = buffer.getvalue()
-    buffer.close()
-    
-    # Create the HTTP response with PDF
     response = HttpResponse(pdf_content, content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
-    
     return response
 
 
@@ -3793,10 +3730,10 @@ def manage_categories_tags(request):
 @user_passes_test(is_staff)
 def providers_list(request):
     providers = UserProfile.objects.filter(role='provider').order_by('name')
-    regions = Region.objects.all()
+    # regions = Region.objects.all()
     
     # Convert pickup groups to JSON-serializable format
-    regions_json = json.dumps([{'id': region.id, 'name': region.name} for region in regions])
+    # regions_json = json.dumps([{'id': region.id, 'name': region.name} for region in regions])
 
     # Handle search
     search_query = request.GET.get('search', '').strip()
@@ -3814,8 +3751,8 @@ def providers_list(request):
     return render(request, 'main/admin/providers.html', {
         'providers': page_obj.object_list,
         'page_obj': page_obj,
-        'regions_json': regions_json,
-        'regions_data': regions,
+        # 'regions_json': regions_json,
+        # 'regions_data': regions,
     })
 
 @user_passes_test(is_staff)
@@ -3835,7 +3772,7 @@ def manage_providers(request):
             
             if name and email:
                 try:
-                    region_instance = Region.objects.get(id=region_id)
+                    # region_instance = Region.objects.get(id=region_id)
                     # Create User first
                     user = User.objects.create_user(
                         username=email,
@@ -3848,46 +3785,46 @@ def manage_providers(request):
                         name=name,
                         email=email,
                         phone=phone,
-                        region=region_instance,
+                        # region=region_instance,
                         role='provider'
                     )
                     messages.success(request, 'Provider created successfully.')
-                    return redirect('manage_providers')
+                    return redirect('providers_list')
                 except Exception as e:
                     messages.error(request, f'Error creating provider: {str(e)}')
-                    return redirect('manage_providers')
+                    return redirect('providers_list')
 
         elif action_type == 'edit_provider':
             provider = get_object_or_404(UserProfile, pk=item_id)
             name = request.POST.get('name', '').strip()
             email = request.POST.get('email', '').strip()
             phone = request.POST.get('phone', '').strip()
-            region_id = request.POST.get('region', '').strip()
+            # region_id = request.POST.get('region', '').strip()
 
             if name:
-                try:
-                    region_instance = Region.objects.get(id=region_id)
-                    provider.name = name
-                    provider.email = email
-                    provider.phone = phone
-                    provider.region = region_instance
-                    provider.save()
-                    messages.success(request, 'Provider updated successfully.')
-                    return redirect('manage_providers')
-                except Region.DoesNotExist:
-                    messages.error(request, 'Invalid region selected.')
+                # tr:
+                    # region_instance = Region.objects.get(id=region_id)
+                provider.name = name
+                provider.email = email
+                provider.phone = phone
+                # provider.region = region_instance
+                provider.save()
+                messages.success(request, 'Provider updated successfully.')
+                return redirect('providers_list')
+                # except Region.DoesNotExist:
+                #     messages.error(request, 'Invalid region selected.')
 
         elif action_type == 'delete_provider':
             provider = get_object_or_404(UserProfile, pk=item_id)
             # Delete the associated user as well
             provider.user.delete()
             messages.success(request, 'Provider deleted successfully.')
-            return redirect('manage_providers')
+            return redirect('providers_list')
 
     return render(request, 'main/admin/providers.html', {
         'providers': UserProfile.objects.filter(role='provider'),
-        'regions_json': regions_json,
-        'regions_data': regions,
+        # 'regions_json': regions_json,
+        # 'regions_data': regions,
     })
 
 @user_passes_test(is_staff)

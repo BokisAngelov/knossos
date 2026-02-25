@@ -114,12 +114,12 @@ class Command(BaseCommand):
                 )
                 builder.p("Best regards,<br>The iTrip Knossos Team")
                 
-                EmailService.send_dynamic_email(
+                EmailService.send_dynamic_email_async(
                     subject=f'[iTrip Knossos] {len(codes)} Referral Code(s) Expired',
                     recipient_list=[agent.email],
                     email_body=builder.build(),
                     preview_text=f'{len(codes)} of your referral codes have expired',
-                    fail_silently=True
+                    email_kind='referral_codes_expired',
                 )
                 agents_notified += 1
                 logger.info(f'Sent expiration notification to agent {agent.name} ({agent.email})')
