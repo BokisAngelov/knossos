@@ -19,11 +19,24 @@
 
 </head>
 <body class="min-h-screen bg-body-light flex flex-col">
-  <header class="bg-blue-nav shadow">
-    <div class="container mx-auto px-4 py-6 flex justify-between items-center">
+  <header class="bg-blue-nav shadow relative z-40">
+    <div class="container mx-auto px-4 py-4 flex flex-row items-center justify-between">
       <a href="{% url 'homepage' %}" class="text-2xl font-bold text-white">KNOSSOS travel</a>
-      <nav class="flex items-center justify-between">
-        <ul class="flex items-center space-x-4 text-white">
+      <button
+        id="nav-toggle"
+        type="button"
+        class="lg:hidden text-white hover:text-gray-200 focus:outline-none"
+        aria-label="Toggle navigation"
+      >
+        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+        </svg>
+      </button>
+      <nav
+        id="main-nav"
+        class="hidden lg:flex lg:items-center lg:justify-end lg:space-x-4 text-white"
+      >
+        <ul class="flex flex-col space-y-2 text-white lg:flex-row lg:space-y-0 lg:space-x-4">
           <li><a href="{% url 'excursion_list' %}" class="text-white hover:text-gray-200 {% if request.path == '/excursions/' %}font-semibold{% endif %}">Excursions</a></li>
           {% if user.is_authenticated %}
             {% if user.is_staff %}
@@ -37,10 +50,53 @@
             <li><a href="{% url 'signup' %}" class="text-white hover:text-gray-200 {% if request.path == '/signup/' %}font-semibold{% endif %}">Sign Up</a></li>
           {% endif %}
           {% if user.profile.role == None %}
-            <li><a href="{% url 'booking_id_page' %}" class="py-2 text-sm px-1 rounded-md font-normal bg-white text-header-grey {% if request.path == '/booking-id' %} {% endif %}">Check Booking</a></li>
+            <li><a href="{% url 'booking_id_page' %}" class="py-2 text-sm px-1 rounded-md font-normal bg-white text-blue font-semibold {% if request.path == '/booking-id' %} {% endif %}">Check Booking</a></li>
           {% endif %}
         </ul>
       </nav>
+    </div>
+
+    <!-- Offcanvas overlay & panel for small/medium screens -->
+    <div
+      id="nav-overlay"
+      class="fixed inset-0 bg-black/50 hidden lg:hidden z-30"
+    >
+      <div
+        id="nav-panel"
+        class="absolute right-0 top-0 h-full w-64 bg-blue-nav shadow-xl transform translate-x-full transition-transform duration-200 ease-out"
+      >
+        <div class="px-4 py-4 flex items-center justify-between border-b border-white/10">
+          <button
+            id="nav-close"
+            type="button"
+            class="text-white hover:text-gray-200 focus:outline-none"
+            aria-label="Close navigation"
+          >
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+        <nav class="px-4 py-4">
+          <ul class="space-y-3 text-white">
+            <li><a href="{% url 'excursion_list' %}" class="block hover:text-gray-200 {% if request.path == '/excursions/' %}font-semibold{% endif %}">Excursions</a></li>
+            {% if user.is_authenticated %}
+              {% if user.is_staff %}
+                <li><a href="{% url 'admin_dashboard' user.profile.id %}" class="block hover:text-gray-200 {% if request.path == '/profile/admin/' %}font-semibold{% endif %}">Dashboard</a></li>
+              {% else %}
+                <li><a href="{% url 'profile' user.id %}" class="block hover:text-gray-200 {% if request.path == '/profile/' %}font-semibold{% endif %}">Profile</a></li>
+              {% endif %}
+              <li><a href="{% url 'logout' %}" class="block hover:text-gray-200 {% if request.path == '/logout/' %}font-semibold{% endif %}">Logout</a></li>
+            {% else %}
+              <li><a href="{% url 'login' %}" class="block hover:text-gray-200 {% if request.path == '/login/' %}font-semibold{% endif %}">Login</a></li>
+              <li><a href="{% url 'signup' %}" class="block hover:text-gray-200 {% if request.path == '/signup/' %}font-semibold{% endif %}">Sign Up</a></li>
+            {% endif %}
+            {% if user.profile.role == None %}
+              <li><a href="{% url 'booking_id_page' %}" class="inline-block py-2 text-sm px-3 rounded-md font-normal bg-white text-blue font-semibold {% if request.path == '/booking-id' %} {% endif %}">Check Booking</a></li>
+            {% endif %}
+          </ul>
+        </nav>
+      </div>
     </div>
   </header>
 
@@ -110,7 +166,7 @@
       }, 300);
     }
 
-    // Auto-hide notifications after 3 seconds
+    // Auto-hide notifications after 3 seconds and set up nav toggle / offcanvas
     document.addEventListener('DOMContentLoaded', function() {
       const notifications = document.querySelectorAll('[id^="notification-"]');
       notifications.forEach(notification => {
@@ -118,6 +174,54 @@
           closeNotification(notification.id);
         }, 3000);
       });
+
+      const navToggle = document.getElementById('nav-toggle');
+      const mainNav = document.getElementById('main-nav');
+      const navOverlay = document.getElementById('nav-overlay');
+      const navPanel = document.getElementById('nav-panel');
+      const navClose = document.getElementById('nav-close');
+
+      function openOffcanvas() {
+        if (!navOverlay || !navPanel) return;
+        // Show overlay first
+        navOverlay.classList.remove('hidden');
+        // Force reflow so transition runs when we change transform
+        void navPanel.offsetWidth;
+        navPanel.classList.remove('translate-x-full');
+      }
+
+      function closeOffcanvas() {
+        if (!navOverlay || !navPanel) return;
+        navPanel.classList.add('translate-x-full');
+        setTimeout(() => {
+          navOverlay.classList.add('hidden');
+        }, 200);
+      }
+
+      if (navToggle) {
+        navToggle.addEventListener('click', function() {
+          // On small/medium screens use offcanvas, on large show inline nav
+          if (window.matchMedia('(min-width: 1024px)').matches) {
+            if (mainNav) {
+              mainNav.classList.toggle('hidden');
+            }
+          } else {
+            openOffcanvas();
+          }
+        });
+      }
+
+      if (navClose) {
+        navClose.addEventListener('click', closeOffcanvas);
+      }
+
+      if (navOverlay) {
+        navOverlay.addEventListener('click', function(e) {
+          if (e.target === navOverlay) {
+            closeOffcanvas();
+          }
+        });
+      }
     });
   </script>
   

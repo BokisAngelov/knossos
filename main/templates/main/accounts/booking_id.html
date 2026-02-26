@@ -5,22 +5,17 @@
 
 {% block content %}
 <!-- Hero Section with Dark Overlay -->
-<div class="relative min-h-screen flex items-center justify-center">
+<div class="relative min-h-screen flex items-center justify-center bg-cover bg-center" style="background-image: url('{% static 'images/bookingCode_bcg.jpg' %}'); background-size: cover; background-position: center; background-repeat: no-repeat; ">
     
     <!-- Content -->
     <div class="relative z-20 text-center px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto">
         <!-- Main Heading -->
-        <h1 class="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight">
-            Explore the world to experience the beauty of nature
+        <h1 class="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 text-white" style="color: #fff;">
+            Explore Cyprus to experience the beauty of nature
         </h1>
         
-        <!-- Sub-heading -->
-        <p class="text-lg md:text-xl mb-8 max-w-2xl mx-auto">
-            Lorem ipsum dolor sit amet, consectetur adipiscing elit. Morbi lobortis maximus
-        </p>
-        
         <!-- Call to Action -->
-        <p class="text-lg mb-2">
+        <p class="text-lg mb-2 text-white">
             Ready to travel with us?
         </p>
         
@@ -30,12 +25,12 @@
             
             <!-- Form Errors -->
             {% if form.non_field_errors %}
-                <div class="bg-red-50 border-l-4 border-red-500 p-4 rounded mb-6">
+                <div class="bg-red-50 border-l-4 border-red-500 p-4 rounded mb-6 text-white">
                     <div class="flex items-center">
                         <svg class="w-5 h-5 text-red-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
                         </svg>
-                        <p class="text-sm text-red-700">{{ form.non_field_errors.0 }}</p>
+                        <p class="text-sm text-red-700 text-white">{{ form.non_field_errors.0 }}</p>
                     </div>
                 </div>
             {% endif %}
@@ -46,7 +41,7 @@
                 <div class="flex-1">
                     {{ form.booking_id }}
                     {% if form.booking_id.errors %}
-                        <p class="mt-1 text-sm text-red-300">{{ form.booking_id.errors.0 }}</p>
+                        <p class="mt-1 text-sm text-red-300 text-white">{{ form.booking_id.errors.0 }}</p>
                     {% endif %}
                 </div>
                 
@@ -66,16 +61,15 @@
         
         <!-- Additional Links -->
         <div class="mt-12 space-y-4">
-            <p class="text-sm">
+            <p class="text-sm text-white">
                 Don't have a booking yet? 
-                <a href="{% url 'excursion_list' %}" class="text-blue hover:text-blue-600 underline">
+                <a href="{% url 'excursion_list' %}" class="hover:text-blue-600 underline text-white">
                     Browse our excursions
                 </a>
             </p>
-            
-            <p class="text-sm">
+            <p class="text-sm text-white">
                 Already have an account? 
-                <a href="{% url 'login' %}" class="text-blue hover:text-blue-600 underline">
+                <a href="{% url 'login' %}" class="hover:text-blue-600 underline text-white">
                     Login here
                 </a>
             </p>
@@ -168,7 +162,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Error - show message
                 Swal.fire({
                     title: 'Booking Not Found',
-                    text: data.message || 'The booking ID you entered could not be found. Please check and try again.',
+                    text: 'The booking ID you entered could not be found. Please check and try again.',
                     icon: 'error',
                     confirmButtonText: 'OK'
                 });
