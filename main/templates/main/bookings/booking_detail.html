@@ -43,7 +43,7 @@
 
     
     <!-- Main Content -->
-    <div class="mt-8 mb-2 relative flex justify-between items-center">
+    <div class="mt-8 mb-2 relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h3 class="text-2xl font-bold page-header-color">Booking Information</h3>
         {% comment %}Proceed to Checkout button - Show when: pending payment, date not past, and (user viewing own booking OR not logged in){% endcomment %}
         {% if booking.payment_status == 'pending' and not is_date_past %}
@@ -65,7 +65,7 @@
         {% endif %}
         
         {% if user.is_staff %}
-        <div class="float-right absolute right-0 bottom-0">
+        <div class="flex flex-wrap gap-2 sm:absolute sm:right-0 sm:bottom-0 sm:justify-end">
             <!-- <a id="edit-booking" class="relative px-4 py-1 text-white bg-turquaz rounded-md font-semibold hover:opacity-80" href="{% url 'booking_edit' booking.id %}">
                 Edit</a> -->
             {% if booking.payment_status == 'pending' or booking.payment_status == 'cancelled' %}
@@ -85,7 +85,7 @@
     <div class="bg-white p-5 overflow-hidden">
         <!-- Booking Information -->
         <div class="">
-            <div class="grid grid-cols-4 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div class="">
                     <h4 class="text-lg font-bold  mb-1">Booked on</h4>
                     <p class="text-md font-semibold ">{{ booking.created_at|date:"F d, Y" }}</p>
@@ -117,7 +117,7 @@
         <h3 class="text-xl font-bold text-yellow ">Excursion Information</h3>
     </div>
     <div class="bg-white p-5">
-        <div class="grid grid-cols-4 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div class="">
                 <h4 class="text-lg font-bold  mb-1">Excursion</h4>
                 {% if booking.display_excursion %}
@@ -160,7 +160,7 @@
         <h3 class="text-xl font-bold text-green">Guest Information</h3>
     </div>
     <div class="bg-white p-5">
-        <div class="grid grid-cols-4 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div class="">
                 <h4 class="text-lg font-bold  mb-1">Contact Name</h4>
                 <p class="text-md font-semibold ">{{ booking.guest_name }}</p>

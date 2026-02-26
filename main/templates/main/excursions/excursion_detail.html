@@ -109,9 +109,9 @@
         {% endif %}
     </div>
 
-    <!-- Main content -->
+    <!-- Main content: large = details+feedback | booking (unchanged). Medium/small = details, booking, then feedback at bottom -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <!-- Left column - Main content -->
+        <!-- Left column - Excursion details; on large only, feedback is below details here -->
         <div class="lg:col-span-2 space-y-8">
             <!-- Hero section with Gallery -->
             <div class="bg-white overflow-hidden">
@@ -151,7 +151,7 @@
 
                     <div class="prose max-w-none mb-6 border-t border-gray-200 pt-4">
                         <p class="text-sm text-gray-500 mb-4">*Note: Pickup points and prices are based on the region you have selected. <span class="text-sm text-gray-500 font-normal">(Selected Region: <span id="selected-region-name" class="pickup-region font-semibold">Please select a region</span>)</span></p>
-                        <div class="grid grid-cols-2 gap-2">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                             <div class="flex flex-col gap-2">
                                 <h2 class="text-xl font-semibold text-purple">Pickup Points</h2>
                                 <p class="region-pickup-time">Pickup time: {{ excursion_availability.pickup_start_time|time:"H:i" }} - {{ excursion_availability.pickup_end_time|time:"H:i" }}</p>
@@ -161,10 +161,10 @@
                                     </div>
                                 </div>
                             </div>
-                            
+
                             <div class="flex flex-col gap-2">
                                 <h2 class="text-xl font-semibold text-purple">Price Details</h2>
-                                    <div class="space-y-2 mt-4 w-60">
+                                    <div class="space-y-3 mt-4 w-full md:w-60">
                                         <div class="flex justify-between items-center p-2 bg-gray-50 rounded-lg">
                                             <span class="text-sm font-medium text-gray-600">Adult</span>
                                             <span class="text-base font-semibold text-gray-900">€<span id="adult-price">0.00</span></span>
@@ -188,14 +188,21 @@
                 </div>
             </div>
 
-            {% include 'main/excursions/partials/_feedback_section.html' %}
-            
+            <!-- Feedback in left column: only on large screens (unchanged layout) -->
+            <div class="hidden lg:block">
+                {% include 'main/excursions/partials/_feedback_section.html' %}
+            </div>
         </div>
 
         <!-- Right column - Booking section -->
         <div class="lg:col-span-1">
             {% include 'main/excursions/partials/_book_section.html' %}
         </div>
+    </div>
+
+    <!-- Feedback/Reviews at bottom: only on medium and small screens -->
+    <div class="mt-8 lg:hidden">
+        {% include 'main/excursions/partials/_feedback_section.html' %}
     </div>
 </div>
 

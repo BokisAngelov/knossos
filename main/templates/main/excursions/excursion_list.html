@@ -142,13 +142,42 @@
 </div>
 
 <script>
+    function updateClearFiltersButtonState() {
+        const searchInput = document.querySelector('input[name="search"]');
+        const categorySelect = document.querySelector('select[name="category"]');
+        const tagSelect = document.querySelector('select[name="tag"]');
+        const dateFromInput = document.querySelector('input[name="date_from"]');
+        const dateToInput = document.querySelector('input[name="date_to"]');
+        const clearButton = document.getElementById('clear-filters-btn');
+
+        if (!clearButton) return;
+
+        const hasSearch = searchInput && searchInput.value.trim() !== '';
+        const hasCategory = categorySelect && categorySelect.value !== '';
+        const hasTag = tagSelect && tagSelect.value !== '';
+        const hasDateFrom = dateFromInput && dateFromInput.value !== '';
+        const hasDateTo = dateToInput && dateToInput.value !== '';
+
+        const hasAnyFilter = hasSearch || hasCategory || hasTag || hasDateFrom || hasDateTo;
+
+        clearButton.disabled = !hasAnyFilter;
+    }
+
     function clearAllFilters() {
         // Clear all form inputs
-        document.querySelector('input[name="search"]').value = '';
-        document.querySelector('select[name="category"]').value = '';
-        document.querySelector('select[name="tag"]').value = '';
-        document.querySelector('input[name="date_from"]').value = '';
-        document.querySelector('input[name="date_to"]').value = '';
+        const searchInput = document.querySelector('input[name="search"]');
+        const categorySelect = document.querySelector('select[name="category"]');
+        const tagSelect = document.querySelector('select[name="tag"]');
+        const dateFromInput = document.querySelector('input[name="date_from"]');
+        const dateToInput = document.querySelector('input[name="date_to"]');
+
+        if (searchInput) searchInput.value = '';
+        if (categorySelect) categorySelect.value = '';
+        if (tagSelect) tagSelect.value = '';
+        if (dateFromInput) dateFromInput.value = '';
+        if (dateToInput) dateToInput.value = '';
+
+        updateClearFiltersButtonState();
         
         // Fetch and update the list without filters
         fetch('{% url "excursion_list" %}', {
@@ -164,6 +193,26 @@
             console.error('Error clearing filters:', error);
         });
     }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchInput = document.querySelector('input[name="search"]');
+        const categorySelect = document.querySelector('select[name="category"]');
+        const tagSelect = document.querySelector('select[name="tag"]');
+        const dateFromInput = document.querySelector('input[name="date_from"]');
+        const dateToInput = document.querySelector('input[name="date_to"]');
+
+        if (searchInput) {
+            searchInput.addEventListener('input', updateClearFiltersButtonState);
+            searchInput.addEventListener('change', updateClearFiltersButtonState);
+        }
+        if (categorySelect) categorySelect.addEventListener('change', updateClearFiltersButtonState);
+        if (tagSelect) tagSelect.addEventListener('change', updateClearFiltersButtonState);
+        if (dateFromInput) dateFromInput.addEventListener('change', updateClearFiltersButtonState);
+        if (dateToInput) dateToInput.addEventListener('change', updateClearFiltersButtonState);
+
+        // Initial state on page load
+        updateClearFiltersButtonState();
+    });
 </script>
 
 {% endblock %}

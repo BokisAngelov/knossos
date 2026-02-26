@@ -4,7 +4,7 @@
 {% block content %}
 <div class="container mx-auto px-4 py-8">
     <!-- Header Section -->
-    <div class="flex justify-between items-center mb-6">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-2">
         <div>
             {% if booking.display_excursion %}
             <a href="{% url 'excursion_detail' booking.display_excursion.id %}" class="inline-flex items-center text-blue font-semibold text-sm hover:opacity-80">
@@ -65,7 +65,7 @@
             <h3 class="text-lg leading-6 font-bold mb-2">Excursion Information</h3>
             <div class="bg-white overflow-hidden ">
                 <div class="">
-                    <div class="grid grid-cols-2 gap-4 p-6">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 p-6">
                         <div class="">
                             <h4 class="text-sm font-medium mb-1">Excursion</h4>
                             {% if booking.display_excursion %}
