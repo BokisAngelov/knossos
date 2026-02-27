@@ -29,6 +29,10 @@ class ExcursionForm(forms.ModelForm):
             'full_day', 'on_request', 'status', 'provider'
         ]
         widgets = {
+            'intro_image': forms.FileInput(attrs={
+                'class': 'hidden intro-image-input',
+                'accept': 'image/*'
+            }),
             # 'description': forms.Textarea(attrs={
             #     'rows': 4,
             #     'class': 'editor',
