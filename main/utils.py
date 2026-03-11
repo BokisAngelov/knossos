@@ -278,9 +278,9 @@ class BookingService:
         total_price = int(request_data.get('total_price', '0') or '0')
         partial_price = int(request_data.get('partial_payment', '0') or '0')
         
-        # Validate at least one participant
-        if adults + children + infants == 0:
-            raise ValidationError('Please select at least one participant.')
+        # Validate at least one adult (no child/infant-only bookings)
+        if adults <= 0:
+            raise ValidationError('Please select at least one adult.')
         
         return {
             'adults': adults,

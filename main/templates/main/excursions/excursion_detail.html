@@ -505,6 +505,13 @@
         const bookingForm = document.getElementById('booking-form');
         const formErrors = document.getElementById('form-errors');
         const voucherCode = getCookie('voucher_code');
+        const guestNameInput = document.querySelector('#guest-name');
+        const guestEmailInput = document.querySelector('#guest-email');
+
+        function markGuestFieldsAsSystemAutofilled() {
+            if (guestNameInput) guestNameInput.dataset.systemAutofilled = 'true';
+            if (guestEmailInput) guestEmailInput.dataset.systemAutofilled = 'true';
+        }
         
         // console.log('voucherCode: ' + voucherCode);
         
@@ -531,6 +538,7 @@
                     document.querySelector('#guest-email').value = data.user_profile.email;
                     document.querySelector('#guest-email').disabled = true;
                     document.querySelector('#guest-email-disabled').classList.remove('hidden');
+                    markGuestFieldsAsSystemAutofilled();
                 })
                 .catch(error => {
                     console.error('Error:', error);
@@ -571,6 +579,7 @@
                             
                             document.querySelector('#guest-name').value = data.return_data.client_name;
                             document.querySelector('#guest-email').value = data.return_data.client_email;
+                            markGuestFieldsAsSystemAutofilled();
 
                             // Pre-select pickup point if available from voucher
                             if (data.return_data.pickup_point_id) {
@@ -642,9 +651,40 @@
 
             document.querySelector('#clear-numbers').addEventListener('click', function(e) {
                 e.preventDefault();
-                document.querySelectorAll('input[type="number"]').forEach(input => {
+
+                const keepGuestName = guestNameInput && guestNameInput.dataset.systemAutofilled === 'true';
+                const keepGuestEmail = guestEmailInput && guestEmailInput.dataset.systemAutofilled === 'true';
+                const preservedGuestName = keepGuestName ? guestNameInput.value : '';
+                const preservedGuestEmail = keepGuestEmail ? guestEmailInput.value : '';
+
+                // Reset dynamic booking state
+                if (regionSelect) regionSelect.value = '';
+                displayRegionDetails('');
+                updatePickupPoints('');
+                updateDatePicker('');
+                if (pickupPointSelect) pickupPointSelect.value = '';
+                if (availabilityIdInput) availabilityIdInput.value = '';
+
+                // Reset all number inputs to 0
+                bookingForm.querySelectorAll('input[type="number"]').forEach(input => {
                     input.value = 0;
                 });
+
+                // Reset remaining editable fields
+                bookingForm.querySelectorAll('input[type="text"], input[type="email"], textarea').forEach(input => {
+                    if ((keepGuestName && input.id === 'guest-name') || (keepGuestEmail && input.id === 'guest-email')) {
+                        return;
+                    }
+                    input.value = '';
+                });
+                bookingForm.querySelectorAll('select').forEach(select => {
+                    select.selectedIndex = 0;
+                });
+
+                // Restore system-autofilled guest fields
+                if (keepGuestName && guestNameInput) guestNameInput.value = preservedGuestName;
+                if (keepGuestEmail && guestEmailInput) guestEmailInput.value = preservedGuestEmail;
+
                 calculateTotal();
             });
         
@@ -748,19 +788,17 @@
                     datePickerInput.parentNode.appendChild(errorDiv);
                 }
 
-                if (adults + children + infants === 0) {
-                    errors.push({ field: 'participants', message: 'Please select at least one participant (adult, child, or infant).' });
-                    ['adults', 'children', 'infants'].forEach(field => {
-                        const input = document.querySelector(`input[name="${field}"]`);
-                        if (input) {
-                            input.classList.add('border-red-500');
-                        }
-                    });
+                if (adults <= 0) {
+                    errors.push({ field: 'adults', message: 'Please select at least one adult.' });
+                    const adultsOnlyInput = document.querySelector('input[name="adults"]');
+                    if (adultsOnlyInput) {
+                        adultsOnlyInput.classList.add('border-red-500');
+                    }
                     const adultsInput = document.querySelector('input[name="adults"]');
                     if (adultsInput) {
                         const errorDiv = document.createElement('p');
                         errorDiv.className = 'mt-1 text-sm text-red-600';
-                        errorDiv.textContent = 'Please select at least one participant.';
+                        errorDiv.textContent = 'Please select at least one adult.';
                         adultsInput.parentNode.appendChild(errorDiv);
                     }
                 }
