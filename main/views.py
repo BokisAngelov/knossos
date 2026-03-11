@@ -1008,15 +1008,28 @@ def excursion_create(request):
                 # Format form errors for display
                 error_messages = []
                 for field, errors in form.errors.items():
-                    field_name = form.fields[field].label if field in form.fields else field
+                    if field in form.fields:
+                        field_name = form.fields[field].label or field.replace('_', ' ').title()
+                    elif field in ('__all__', None):
+                        field_name = 'General'
+                    else:
+                        field_name = str(field).replace('_', ' ').title()
                     for error in errors:
                         error_messages.append(f"{field_name}: {error}")
                 
                 # Add formset errors
                 for i, form_errors in enumerate(formset.errors):
                     for field, errors in form_errors.items():
+                        if field in ('__all__', None):
+                            field_name = 'General'
+                        else:
+                            field_name = str(field).replace('_', ' ').title()
                         for error in errors:
-                            error_messages.append(f"Image {i+1} {field}: {error}")
+                            error_messages.append(f"Image {i+1} {field_name}: {error}")
+
+                # Add formset-level non-form errors
+                for error in formset.non_form_errors():
+                    error_messages.append(f"Gallery: {error}")
                 
                 return JsonResponse({
                     'success': False,
@@ -1065,15 +1078,28 @@ def excursion_update(request, pk):
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 error_messages = []
                 for field, errors in form.errors.items():
-                    field_name = form.fields[field].label if field in form.fields else field
+                    if field in form.fields:
+                        field_name = form.fields[field].label or field.replace('_', ' ').title()
+                    elif field in ('__all__', None):
+                        field_name = 'General'
+                    else:
+                        field_name = str(field).replace('_', ' ').title()
                     for error in errors:
                         error_messages.append(f"{field_name}: {error}")
                 
                 # Add formset errors
                 for i, form_errors in enumerate(formset.errors):
                     for field, errors in form_errors.items():
+                        if field in ('__all__', None):
+                            field_name = 'General'
+                        else:
+                            field_name = str(field).replace('_', ' ').title()
                         for error in errors:
-                            error_messages.append(f"Image {i+1} {field}: {error}")
+                            error_messages.append(f"Image {i+1} {field_name}: {error}")
+
+                # Add formset-level non-form errors
+                for error in formset.non_form_errors():
+                    error_messages.append(f"Gallery: {error}")
                 
                 return JsonResponse({
                     'success': False,
