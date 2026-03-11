@@ -372,7 +372,7 @@
                   </span>
                 </td> 
                 <td class="px-4 py-4 whitespace-nowrap text-sm table-text font-normal">
-                  €{{ booking.total_price }}
+                  €{{ booking.get_base_price }}
                 </td>
                 <td class="px-4 py-4 whitespace-nowrap flex justify-end">
                   <a href="{% url 'booking_detail' booking.id %}" class="text-turquaz hover:opacity-80 font-normal">

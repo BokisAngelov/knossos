@@ -10,17 +10,17 @@
     <!-- Content -->
     <div class="relative z-20 text-center px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto">
         <!-- Main Heading -->
-        <h1 class="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 text-white" style="color: #fff;">
-            Explore Cyprus to experience the beauty of nature
+        <h1 class="text-4xl md:text-5xl lg:text-6xl font-bold mb-3 text-white" style="color: #fff;">
+            Your Cyprus Journey, Simplified.
         </h1>
         
         <!-- Call to Action -->
-        <p class="text-lg mb-2 text-white">
-            Ready to travel with us?
+        <p class="text-lg mb-6 text-white">
+            Manage your transfers, explore hidden gems, and stay updated in real-time
         </p>
         
         <!-- Form -->
-        <form id="booking-id-form" method="post" class="max-w-xl mx-auto">
+        <form id="booking-id-form" method="post" class="max-w-xl mx-auto ">
             {% csrf_token %}
             
             <!-- Form Errors -->
@@ -63,13 +63,13 @@
         <div class="mt-12 space-y-4">
             <p class="text-sm text-white">
                 Don't have a booking yet? 
-                <a href="{% url 'excursion_list' %}" class="hover:text-blue-600 underline text-white">
+                <a href="{% url 'excursion_list' %}" class="text-blue underline text-white hover:opacity-80">
                     Browse our excursions
                 </a>
             </p>
             <p class="text-sm text-white">
                 Already have an account? 
-                <a href="{% url 'login' %}" class="hover:text-blue-600 underline text-white">
+                <a href="{% url 'login' %}" class="text-blue underline text-white hover:opacity-80">
                     Login here
                 </a>
             </p>
