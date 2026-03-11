@@ -19,7 +19,8 @@ User = get_user_model()
 
 # ----- Excursion Forms -----
 class ExcursionForm(forms.ModelForm):
-    description = RichTextFormField(config_name='default')
+    # Keep description optional to match Excursion.description (blank=True, null=True).
+    description = RichTextFormField(config_name='default', required=False, label='Description')
     
     class Meta:
         model = Excursion
