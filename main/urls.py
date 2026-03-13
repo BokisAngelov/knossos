@@ -1,11 +1,13 @@
 from django.urls import path
 from . import views
+from django.views.generic import TemplateView
 
 urlpatterns = [
 
     path('', views.homepage, name='homepage'),
 
     path('testmodels/', views.testmodels, name='testmodels'),
+    path('terms-and-conditions/', TemplateView.as_view(template_name='main/terms_and_cond.html'),name='terms_and_conditions'),
 
     # Excursion URLs
     path('excursions/', views.excursion_list, name='excursion_list'),
