@@ -1,5 +1,6 @@
 from django.db import models
 from django.conf import settings
+from django.utils import timezone
 from datetime import datetime
 
 
@@ -292,6 +293,30 @@ class Excursion(models.Model):
     def __str__(self):
         return self.title
 
+    def has_active_availability(self):
+        today = timezone.now().date()
+        return self.availabilities.filter(
+            status='active',
+            is_active=True,
+            end_date__gte=today
+        ).exists()
+
+    def sync_status_from_availabilities(self, save=True):
+        derived_status = 'active' if self.has_active_availability() else 'inactive'
+        self.status = derived_status
+        if save and self.pk:
+            Excursion.objects.filter(pk=self.pk).update(status=derived_status)
+        return self.status
+
+    def save(self, *args, **kwargs):
+        # Excursion status is derived from its availabilities, not manually set.
+        if not self.pk:
+            self.status = 'inactive'
+            return super().save(*args, **kwargs)
+
+        self.sync_status_from_availabilities(save=False)
+        return super().save(*args, **kwargs)
+
 class ExcursionImage(models.Model):
     excursion = models.ForeignKey(Excursion, on_delete=models.CASCADE, related_name='images')
     image = models.ImageField(upload_to=excursion_image_path)
@@ -363,6 +388,11 @@ class ExcursionAvailability(models.Model):
                 )
             except ValidationError as e:
                 raise ValidationError({'end_date': e.message})
+
+        # Active availability cannot end in the past.
+        today = timezone.now().date()
+        if self.end_date and self.end_date < today and self.status == 'active':
+            raise ValidationError({'status': 'Past availabilities cannot be active.'})
         
         # Note: We can't validate M2M relationships here because they don't exist yet
         # until after save(). M2M validation should be done in the form or after save.
@@ -399,6 +429,33 @@ class ExcursionAvailability(models.Model):
         if self.end_date < datetime.now().date():
             self.is_active = False
             self.save()
+
+    def sync_activity_state(self):
+        """
+        Keep status and is_active aligned, and force inactive when expired.
+        """
+        today = timezone.now().date()
+        is_expired = self.end_date and self.end_date < today
+
+        if is_expired:
+            self.status = 'inactive'
+            self.is_active = False
+            return
+
+        self.is_active = (self.status == 'active')
+
+    def save(self, *args, **kwargs):
+        self.sync_activity_state()
+        super().save(*args, **kwargs)
+
+        if self.excursion_id:
+            self.excursion.sync_status_from_availabilities(save=True)
+
+    def delete(self, *args, **kwargs):
+        excursion = self.excursion
+        super().delete(*args, **kwargs)
+        if excursion:
+            excursion.sync_status_from_availabilities(save=True)
 
 class AvailabilityDays(models.Model):
     STATUS_CHOICES = [

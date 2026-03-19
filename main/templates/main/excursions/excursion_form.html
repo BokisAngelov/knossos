@@ -89,19 +89,13 @@
     <form method="post" enctype="multipart/form-data" class="space-y-4" id="excursion-form" action="{% if excursion %}{% url 'excursion_update' excursion.id %}{% else %}{% url 'excursion_create' %}{% endif %}">
       {% csrf_token %}
       
-      <!-- Title & Status -->
+      <!-- Title -->
       <div class="flex gap-4">
-        <div class="flex-[4_4_0%] space-y-1">
+        <div class="flex-1 space-y-1">
           <label for="{{ form.title.id_for_label }}" class="block text-md font-semibold text-header-grey">{{ form.title.label }}</label>
           <div class="w-full auth-input-field rounded-lg border form-fields-border">{{ form.title }}</div>
           {% if form.title.errors %}<div class="text-red-500 text-xs mt-1">{{ form.title.errors }}</div>{% endif %}
         </div>
-        <div class="flex-[1_1_0%] space-y-1">
-          <label for="{{ form.status.id_for_label }}" class="block text-md font-semibold text-header-grey">{{ form.status.label }}</label>
-          <div class="w-full auth-input-field rounded-lg border form-fields-border">{{ form.status }}</div>
-          {% if form.status.errors %}<div class="text-red-500 text-xs mt-1">{{ form.status.errors }}</div>{% endif %}
-        </div>
-        
       </div>
       <!-- Provider -->
       <div class="flex gap-4">

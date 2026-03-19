@@ -531,7 +531,13 @@ def excursion_list(request):
     date_from_query_date, date_from_query = _parse_filter_date(date_from_query_raw)
     date_to_query_date, date_to_query = _parse_filter_date(date_to_query_raw)
 
-    availability_filter = Q(availabilities__isnull=False, availabilities__status='active')
+    today = timezone.now().date()
+    availability_filter = Q(
+        availabilities__isnull=False,
+        availabilities__status='active',
+        availabilities__is_active=True,
+        availabilities__end_date__gte=today,
+    )
     
     # Date range filtering: only excursions that have at least one active AvailabilityDay in the selected range
     if date_from_query_date and date_to_query_date:
@@ -589,7 +595,12 @@ def excursion_detail(request, pk):
     excursion = get_object_or_404(Excursion, pk=pk)
     feedbacks = excursion.feedback_entries.all()
     feedback_form, booking_form = None, None
-    excursion_availabilities = ExcursionAvailability.objects.filter(excursion=excursion)
+    excursion_availabilities = ExcursionAvailability.objects.filter(
+        excursion=excursion,
+        status='active',
+        is_active=True,
+        end_date__gte=timezone.now().date(),
+    )
     excursion_availability = excursion_availabilities.first()
     
     # Check if user has already submitted feedback for this excursion
@@ -4595,11 +4606,6 @@ def availability_form(request, pk=None):
                 availability.pickup_points.set(pickup_point_ids)
                 availability.regions.set(region_ids)
                 
-                # Activate excursion if it's not already active
-                if availability.excursion.status != 'active':
-                    availability.excursion.status = 'active'
-                    availability.excursion.save()
-
                 # Regenerate AvailabilityDays entries
                 AvailabilityDays.objects.filter(excursion_availability=availability).delete()
                 
@@ -4675,18 +4681,9 @@ def availability_detail(request, pk):
 def availability_delete(request, pk):
     availability = get_object_or_404(ExcursionAvailability, pk=pk)
     if request.method == 'POST':
-        excursion = availability.excursion
-
-        # Delete all AvailabilityDays entries for this availability
-        # AvailabilityDays.objects.filter(excursion=excursion).delete()
+        # Excursion status is recalculated in ExcursionAvailability.delete()
         availability.delete()
-        
-        # Check if there are any remaining availabilities for this excursion
-        remaining_availabilities = ExcursionAvailability.objects.filter(excursion=excursion).exists()
-        if not remaining_availabilities:
-            excursion.status = 'inactive'
-            excursion.save()
-            
+
         messages.success(request, 'Availability deleted successfully.')
         return redirect('availability_list')
     else:

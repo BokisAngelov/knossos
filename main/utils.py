@@ -23,10 +23,15 @@ def _format_hours_value(hours):
 
 
 def attach_excursion_list_data(excursions):
+    today = timezone.now().date()
     for excursion in excursions:
         active_availabilities = [
             availability for availability in excursion.availabilities.all()
-            if availability.is_active
+            if (
+                availability.status == 'active'
+                and availability.is_active
+                and availability.end_date >= today
+            )
         ]
 
         region_names = []
@@ -587,7 +592,15 @@ class ExcursionService:
         pickup_points_by_region = {}
         region_availability_map = {}
         
+        today = timezone.now().date()
         for availability in excursion_availabilities:
+            if (
+                availability.status != 'active'
+                or not availability.is_active
+                or availability.end_date < today
+            ):
+                continue
+
             # Get all regions for this availability
             regions = availability.regions.all()
             

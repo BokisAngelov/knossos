@@ -6,7 +6,7 @@
   <div class="">
     <h1 class="text-3xl font-bold page-header-color mb-1">Welcome {{ user_profile.name|title }},</h1>
     <p class="text-md font-semibold text-purple mb-4">System Overview and Management</p>
-    
+    <a href="#" class="inline-flex justify-center items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:cursor-pointer hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-80 disabled:cursor-not-allowed">Admin Manual</a>
     <!-- Analytics Cards -->
     <div class="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-8 bg-white">
       <div class="bg-white p-4">
@@ -340,6 +340,7 @@
               <th scope="col" class="px-4 py-1 text-left font-semibold text-header-grey tracking-wider text-lg">Date</th>
               <th scope="col" class="px-4 py-1 text-left font-semibold text-header-grey tracking-wider text-lg">Excursion</th>
               <th scope="col" class="px-4 py-1 text-left font-semibold text-header-grey tracking-wider text-lg">Client</th>
+              <th scope="col" class="px-4 py-1 text-left font-semibold text-header-grey tracking-wider text-lg">Phone</th>
               <th scope="col" class="px-4 py-1 text-left font-semibold text-header-grey tracking-wider text-lg">Status</th>
               <th scope="col" class="px-4 py-1 text-left font-semibold text-header-grey tracking-wider text-lg">Amount</th>
               <th scope="col" class="px-4 py-1 text-left font-semibold text-header-grey tracking-wider text-lg text-right">Actions</th>
@@ -359,6 +360,9 @@
                 </td>
                 <td class="px-4 py-4 whitespace-nowrap">
                   <div class="text-sm table-text font-normal">{{ booking.guest_name }}</div>
+                </td>
+                <td class="px-4 py-4 whitespace-nowrap">
+                  <div class="text-sm table-text font-normal">{{ booking.guest_phone }}</div>
                 </td>
                 <td class="px-4 py-4 whitespace-nowrap">
                   <span class="px-2 inline-flex text-xs leading-5 font-normal rounded-full  text-white

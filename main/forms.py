@@ -38,7 +38,7 @@ class ExcursionForm(forms.ModelForm):
         fields = [
             'title', 'description', 'intro_image',
             'category', 'tags',
-            'full_day', 'on_request', 'status', 'provider'
+            'full_day', 'on_request', 'provider'
         ]
         widgets = {
             'intro_image': forms.FileInput(attrs={

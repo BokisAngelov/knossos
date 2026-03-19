@@ -362,7 +362,23 @@ document.addEventListener('DOMContentLoaded', function() {
     const excursionSelect = document.querySelector('#id_excursion');
     const startDateInput = document.querySelector('#id_start_date');
     const endDateInput = document.querySelector('#id_end_date');
+    const statusSelect = document.querySelector('#id_status');
     const availabilityId = {{ availability.id|default:"null" }};
+
+    function autoMarkActiveForFutureEndDate() {
+        if (!statusSelect || !endDateInput || !endDateInput.value) {
+            return;
+        }
+
+        const endDate = new Date(endDateInput.value + 'T00:00:00');
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        // Suggest active for non-expired date ranges; admin can still change to inactive.
+        if (endDate >= today) {
+            statusSelect.value = 'active';
+        }
+    }
 
     // Function to update available regions based on excursion and date range
     function updateAvailableRegions() {
@@ -421,12 +437,14 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     if (endDateInput) {
         endDateInput.addEventListener('change', updateAvailableRegions);
+        endDateInput.addEventListener('change', autoMarkActiveForFutureEndDate);
     }
 
     // Initial call if editing an existing availability
     if (availabilityId) {
         updateAvailableRegions();
     }
+    autoMarkActiveForFutureEndDate();
 
   
     // Form submission handling
