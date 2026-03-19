@@ -8,6 +8,7 @@ urlpatterns = [
 
     path('testmodels/', views.testmodels, name='testmodels'),
     path('terms-and-conditions/', TemplateView.as_view(template_name='main/terms_and_cond.html'),name='terms_and_conditions'),
+    path('privacy-policy/', TemplateView.as_view(template_name='main/privacy_policy.html'),name='privacy_policy'),
 
     # Excursion URLs
     path('excursions/', views.excursion_list, name='excursion_list'),
