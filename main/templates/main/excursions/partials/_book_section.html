@@ -15,15 +15,15 @@
         {% endfor %}
         <input type="hidden" name="availability_id" id="availability-id" value="">
         <div class="flex flex-col gap-2">
-            <label class="block text-md font-semibold text-header-grey">Region</label>
-            <select name="regions" id="regions" class="mt-1 block w-full pl-3 pr-2 py-2 text-base form-fields-border focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md {% if form.regions.errors %}border-red-500{% endif %}">
+            <label class="block text-md font-semibold text-header-grey required-label">Region</label>
+            <select name="regions" id="regions" class="mt-1 block w-full pl-3 pr-2 py-2 text-base form-fields-border focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md {% if booking_form.regions.errors %}border-red-500{% endif %}">
                 <option value="">Select a region</option>
                 {% for region in regions %}
                     <option value="{{ region.id }}">{{ region.name }}</option>
                 {% endfor %}
             </select>
-            {% if form.regions.errors %}
-            <p class="mt-1 text-sm text-red-600">{{ form.regions.errors.0 }}</p>
+            {% if booking_form.regions.errors %}
+            <p class="mt-1 text-sm text-red-600">{{ booking_form.regions.errors.0 }}</p>
             {% endif %}
         </div>
         
@@ -34,63 +34,79 @@
 <input type="hidden" id="user-region-id" value="{{ user_region_id|default:'' }}">
 
         <div class="flex flex-col gap-2">
-            <label class="block text-md font-semibold text-header-grey">Pickup Point</label>
-            <select name="pickup_point" id="pickup-point" class="mt-1 block w-full pl-3 pr-2 py-2 text-base form-fields-border focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md {% if form.pickup_point.errors %}border-red-500{% endif %}" disabled>
+            <label class="block text-md font-semibold text-header-grey required-label">Pickup Point</label>
+            <select name="pickup_point" id="pickup-point" class="mt-1 block w-full pl-3 pr-2 py-2 text-base form-fields-border focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md {% if booking_form.pickup_point.errors %}border-red-500{% endif %}" disabled>
                 <option value="">Select a region first</option>
             </select>
-            {% if form.pickup_point.errors %}
-                <p class="mt-1 text-sm text-red-600">{{ form.pickup_point.errors.0 }}</p>
+            {% if booking_form.pickup_point.errors %}
+                <p class="mt-1 text-sm text-red-600">{{ booking_form.pickup_point.errors.0 }}</p>
             {% endif %}
         </div>
 
         <div>
-            <label class="block text-md font-semibold text-header-grey">Date</label>
-            <input type="text" id="date-picker" class="mt-1 block w-full form-fields-border rounded-md px-3 py-2 {% if form.date.errors %}border-red-500{% endif %}" placeholder="Select a region first" readonly>
+            <label class="block text-md font-semibold text-header-grey required-label">Date</label>
+            <input type="text" id="date-picker" class="mt-1 block w-full form-fields-border rounded-md px-3 py-2 {% if booking_form.date.errors %}border-red-500{% endif %}" placeholder="Select a region first" readonly>
             <!-- <span id="remaining-seats" class="text-sm text-gray-500">Remaining seats: <span id="remaining-seats-count">{{ remaining_seats }}</span></span> -->
             
-            {% if form.date.errors %}
-            <p class="mt-1 text-sm text-red-600">{{ form.date.errors.0 }}</p>
+            {% if booking_form.date.errors %}
+            <p class="mt-1 text-sm text-red-600">{{ booking_form.date.errors.0 }}</p>
             {% endif %}
         </div>
 
         <div class="grid grid-cols-3 gap-4 py-4">
             <div>
-                <label class="block text-md font-semibold text-header-grey">Adults</label>
-                <input type="number" name="adults" min="0" value="0" class="mt-1 block w-full pl-3 pr-2 py-2 text-base form-fields-border focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md {% if form.adults.errors %}border-red-500{% endif %}">
-                {% if form.adults.errors %}
-                <p class="mt-1 text-sm text-red-600">{{ form.adults.errors.0 }}</p>
+                <label class="block text-md font-semibold text-header-grey required-label">Adults</label>
+                <input type="number" name="adults" min="0" value="0" class="mt-1 block w-full pl-3 pr-2 py-2 text-base form-fields-border focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md {% if booking_form.adults.errors %}border-red-500{% endif %}">
+                {% if booking_form.adults.errors %}
+                <p class="mt-1 text-sm text-red-600">{{ booking_form.adults.errors.0 }}</p>
                 {% endif %}
             </div>
             <div>
                 <label class="block text-md font-semibold text-header-grey">Children</label>
-                <input type="number" name="children" min="0" value="0" class="mt-1 block w-full pl-3 pr-2 py-2 text-base form-fields-border focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md {% if form.children.errors %}border-red-500{% endif %}">
-                {% if form.children.errors %}
-                <p class="mt-1 text-sm text-red-600">{{ form.children.errors.0 }}</p>
+                <input type="number" name="children" min="0" value="0" class="mt-1 block w-full pl-3 pr-2 py-2 text-base form-fields-border focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md {% if booking_form.children.errors %}border-red-500{% endif %}">
+                {% if booking_form.children.errors %}
+                <p class="mt-1 text-sm text-red-600">{{ booking_form.children.errors.0 }}</p>
                 {% endif %}
             </div>
             <div>
                 <label class="block text-md font-semibold text-header-grey">Infants</label>
-                <input type="number" name="infants" min="0" value="0" class="mt-1 block w-full pl-3 pr-2 py-2 text-base form-fields-border focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md {% if form.infants.errors %}border-red-500{% endif %}">
-                {% if form.infants.errors %}
-                <p class="mt-1 text-sm text-red-600">{{ form.infants.errors.0 }}</p>
+                <input type="number" name="infants" min="0" value="0" class="mt-1 block w-full pl-3 pr-2 py-2 text-base form-fields-border focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md {% if booking_form.infants.errors %}border-red-500{% endif %}">
+                {% if booking_form.infants.errors %}
+                <p class="mt-1 text-sm text-red-600">{{ booking_form.infants.errors.0 }}</p>
                 {% endif %}
             </div>
             
         </div>
         {% comment %} {% if user.is_staff or user.userprofile.role == 'representative' %} {% endcomment %}
         <div class="flex flex-col gap-2">
-            <label class="block text-md font-semibold text-header-grey">Guest Name</label>
-            <input type="text" name="guest_name" id="guest-name" class="mt-1 block w-full pl-3 pr-2 py-2 text-base form-fields-border focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md {% if form.guest_name.errors %}border-red-500{% endif %}" value="{% if return_data.client_name is not None %}{{ return_data.client_name }}{% endif %}">
-            {% if form.guest_name.errors %}
-            <p class="mt-1 text-sm text-red-600">{{ form.guest_name.errors.0 }}</p>
+            <label class="block text-md font-semibold text-header-grey required-label">Guest Name</label>
+            <input type="text" name="guest_name" id="guest-name" class="mt-1 block w-full pl-3 pr-2 py-2 text-base form-fields-border focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md {% if booking_form.guest_name.errors %}border-red-500{% endif %}" value="{% if return_data.client_name is not None %}{{ return_data.client_name }}{% endif %}">
+            {% if booking_form.guest_name.errors %}
+            <p class="mt-1 text-sm text-red-600">{{ booking_form.guest_name.errors.0 }}</p>
             {% endif %}
 
-            <label class="block text-md font-semibold text-header-grey">Guest Email</label>
-            <input type="email" name="guest_email" id="guest-email" class="mt-1 block w-full pl-3 pr-2 py-2 text-base form-fields-border focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md {% if form.guest_email.errors %}border-red-500{% endif %}">
+            <label class="block text-md font-semibold text-header-grey required-label">Guest Email</label>
+            <input type="email" name="guest_email" id="guest-email" class="mt-1 block w-full pl-3 pr-2 py-2 text-base form-fields-border focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md {% if booking_form.guest_email.errors %}border-red-500{% endif %}">
             <span  id="guest-email-disabled" class="hidden text-sm text-gray-500">Your email is automatically filled in based on your profile. You cannot change it.</span>
-            {% if form.guest_email.errors %}
-            <p class="mt-1 text-sm text-red-600">{{ form.guest_email.errors.0 }}</p>
+            {% if booking_form.guest_email.errors %}
+            <p class="mt-1 text-sm text-red-600">{{ booking_form.guest_email.errors.0 }}</p>
             {% endif %}
+
+            <label class="block text-md font-semibold text-header-grey required-label">Guest Phone</label>
+            <div class="grid grid-cols-3 gap-2">
+                <div>
+                    {{ booking_form.phone_country }}
+                    {% if booking_form.phone_country.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ booking_form.phone_country.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                <div class="col-span-2">
+                    {{ booking_form.phone_number }}
+                    {% if booking_form.phone_number.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ booking_form.phone_number.errors.0 }}</p>
+                    {% endif %}
+                </div>
+            </div>
 
         {% comment %} {% endif %} {% endcomment %}
 
@@ -121,7 +137,7 @@
             </div>
             <div class="flex flex-col gap-2 hidden" id="partial-paid-method-div">
                 <label class="block text-md font-semibold text-header-grey">Payment Method</label>
-                <select name="partial_paid_method" id="partial-paid-method" class="mt-1 block w-full pl-3 pr-2 py-2 text-base form-fields-border focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md {% if form.partial_paid_method.errors %}border-red-500{% endif %}">
+                <select name="partial_paid_method" id="partial-paid-method" class="mt-1 block w-full pl-3 pr-2 py-2 text-base form-fields-border focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md {% if booking_form.partial_paid_method.errors %}border-red-500{% endif %}">
                     <option value="" selected>Select a payment method</option>
                     <option value="cash">Cash</option>
                     <option value="card">Card</option>

@@ -15,9 +15,10 @@ logger = logging.getLogger(__name__)
 @receiver(post_save, sender=ExcursionAvailability)
 def update_excursion_status_on_availability_save(sender, instance, created, **kwargs):
     """Update excursion status when availability is saved."""
-    if instance.excursion.status != 'active' and instance.is_active:
+    availability_is_active = instance.is_active or instance.status == 'active'
+    if instance.excursion.status != 'active' and availability_is_active:
         instance.excursion.status = 'active'
-        instance.excursion.save()
+        instance.excursion.save(update_fields=['status'])
 
 @receiver(post_save, sender=Feedback)
 def update_excursion_rating_on_save(sender, instance, created, **kwargs):

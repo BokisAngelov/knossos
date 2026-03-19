@@ -8,6 +8,7 @@ from django.utils.html import format_html, mark_safe
 from django.utils.dateparse import parse_time
 from django.contrib.auth.forms import UserCreationForm
 from ckeditor.fields import RichTextFormField
+import phonenumbers
 
 from .models import (
     Category, Tag, Excursion, ExcursionImage, Feedback,
@@ -16,6 +17,16 @@ from .models import (
 )
 
 User = get_user_model()
+
+
+def _build_phone_country_choices():
+    """Return all supported phone regions with dialing code labels."""
+    choices = []
+    for region_code in sorted(phonenumbers.SUPPORTED_REGIONS):
+        dial_code = phonenumbers.country_code_for_region(region_code)
+        if dial_code:
+            choices.append((region_code, f"{region_code} (+{dial_code})"))
+    return choices
 
 # ----- Excursion Forms -----
 class ExcursionForm(forms.ModelForm):
@@ -425,10 +436,13 @@ class ExcursionAvailabilityForm(forms.ModelForm):
 
 # ----- Booking & Pricing Forms -----
 class BookingForm(forms.ModelForm):
+    phone_country = forms.ChoiceField(choices=_build_phone_country_choices(), required=True)
+    phone_number = forms.CharField(max_length=20, required=True)
+
     class Meta:
         model = Booking
         fields = [
-            'guest_name', 'guest_email',
+            'guest_name', 'guest_email', 'guest_phone',
             'total_price', 'partial_paid',
             'total_adults', 'total_kids', 'total_infants',
             'price', 'user', 'voucher_id', 'date', 'pickup_point',
@@ -443,13 +457,14 @@ class BookingForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
-        
+
         # For editing existing bookings, we only want to show certain fields
         if kwargs.get('instance'):
             # Only show fields that should be editable
             editable_fields = {
                 'guest_name': self.fields['guest_name'],
                 'guest_email': self.fields['guest_email'],
+                'guest_phone': self.fields['guest_phone'],
                 'price': self.fields['price'],
                 'partial_paid': self.fields['partial_paid'],
                 'partial_paid_method': self.fields['partial_paid_method'],
@@ -463,9 +478,25 @@ class BookingForm(forms.ModelForm):
             # Make all fields optional for editing
             for field in editable_fields.values():
                 field.required = False
-            
+
             self.fields = editable_fields
         else:
+            self.fields['guest_phone'].required = False
+            self.fields['guest_phone'].widget = forms.HiddenInput()
+
+            self.fields['phone_country'].initial = 'CY'
+            self.fields['phone_country'].widget.attrs.update({
+                'id': 'phone-country',
+                'class': 'mt-1 block w-full pl-3 pr-2 py-2 text-base form-fields-border focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md',
+            })
+            self.fields['phone_number'].widget.attrs.update({
+                'id': 'phone-number',
+                'placeholder': 'Phone number',
+                'class': 'mt-1 block w-full pl-3 pr-2 py-2 text-base form-fields-border focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md',
+                'inputmode': 'tel',
+                'autocomplete': 'tel-national',
+            })
+
             # For new bookings, handle partial_paid_method field for clients
             if not user or not user.is_authenticated or not (user.is_staff or getattr(user, 'profile', None) and getattr(user.profile, 'role', None) == 'representative'):
                 if 'partial_paid_method' in self.fields:
@@ -478,6 +509,31 @@ class BookingForm(forms.ModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
+
+        # Validate and normalize guest phone on new bookings.
+        if not self.instance.pk:
+            phone_country = (cleaned_data.get('phone_country') or '').strip().upper()
+            phone_number = (cleaned_data.get('phone_number') or '').strip()
+
+            if not phone_country:
+                self.add_error('phone_country', 'Please select a country code.')
+            if not phone_number:
+                self.add_error('phone_number', 'Please enter your phone number.')
+
+            if phone_country and phone_number:
+                try:
+                    parsed_number = phonenumbers.parse(phone_number, phone_country)
+                except phonenumbers.NumberParseException:
+                    self.add_error('phone_number', 'Please enter a valid phone number for the selected country.')
+                else:
+                    if not phonenumbers.is_valid_number_for_region(parsed_number, phone_country):
+                        self.add_error('phone_number', 'Please enter a valid phone number for the selected country.')
+                    else:
+                        cleaned_data['guest_phone'] = phonenumbers.format_number(
+                            parsed_number,
+                            phonenumbers.PhoneNumberFormat.E164,
+                        )
+
         # Handle partial_paid_method field
         if 'partial_paid_method' in self.fields:
             # If the field is a hidden input (for clients), set it to empty string
@@ -493,6 +549,10 @@ class BookingForm(forms.ModelForm):
 
     def save(self, commit=True):
         instance = super().save(commit=False)
+
+        if not self.instance.pk:
+            instance.guest_phone = self.cleaned_data.get('guest_phone', '')
+
         # Handle partial_paid_method field if it's a hidden input
         if 'partial_paid_method' in self.fields and isinstance(self.fields['partial_paid_method'].widget, forms.HiddenInput):
             instance.partial_paid_method = ''
@@ -518,14 +578,34 @@ class SignupForm(UserCreationForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Set email as username field
-        self.fields['username'] = forms.CharField(
+        self.fields['username'] = forms.EmailField(
             label='Email',
             max_length=254,
-            widget=forms.EmailInput(attrs={'autofocus': True})
+            widget=forms.EmailInput(attrs={'autofocus': True}),
+            error_messages={'invalid': 'Enter a valid email address (e.g. name@example.com).'}
         )
         # Make email field hidden since we're using it as username
         # self.fields['email'].widget = forms.HiddenInput()
         # self.fields['email'].label = ''
+        self.fields['password1'].help_text = ''
+        self.fields['password2'].help_text = ''
+
+    def clean_username(self):
+        # Keep UserCreationForm's existing username validation/uniqueness checks.
+        username = super().clean_username().strip()
+
+        # Enforce domain structure after @, e.g. example@example.com.
+        local_part, separator, domain_part = username.rpartition('@')
+        if not separator or not local_part or not domain_part:
+            raise ValidationError('Enter a valid email address (e.g. name@example.com).')
+        if '.' not in domain_part or domain_part.startswith('.') or domain_part.endswith('.'):
+            raise ValidationError('Enter a valid email domain after @ (e.g. example.com).')
+
+        domain_labels = domain_part.split('.')
+        if any(not label for label in domain_labels) or len(domain_labels[-1]) < 2:
+            raise ValidationError('Enter a valid email domain after @ (e.g. example.com).')
+
+        return username
     
     def clean(self):
         cleaned_data = super().clean()
@@ -533,6 +613,40 @@ class SignupForm(UserCreationForm):
         if email:
             cleaned_data['email'] = email
         return cleaned_data
+
+    def clean_password2(self):
+        password1 = self.cleaned_data.get('password1')
+        password2 = self.cleaned_data.get('password2')
+
+        if password1 and password2 and password1 != password2:
+            raise ValidationError("Passwords do not match.")
+
+        return password2
+
+    def add_error(self, field, error):
+        """
+        Keep password2 strictly for mismatch errors.
+        Redirect password-strength validator details to one concise password1 error.
+        """
+        if field == 'password2':
+            validation_error = error if isinstance(error, ValidationError) else ValidationError(error)
+            messages = validation_error.messages
+            mismatch_messages = {
+                "Passwords do not match.",
+                "The two password fields didn’t match.",
+                "The two password fields didn't match.",
+            }
+
+            if any(message in mismatch_messages for message in messages):
+                return super().add_error(field, error)
+
+            concise_message = 'Password must be at least 8 characters, include a number, and not be too common.'
+            existing_password1_errors = [str(e) for e in self.errors.get('password1', [])]
+            if concise_message not in existing_password1_errors:
+                return super().add_error('password1', concise_message)
+            return
+
+        return super().add_error(field, error)
     
     def save(self, commit=True):
         user = super().save(commit=False)
