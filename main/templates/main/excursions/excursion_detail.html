@@ -512,6 +512,15 @@
             if (guestNameInput) guestNameInput.dataset.systemAutofilled = 'true';
             if (guestEmailInput) guestEmailInput.dataset.systemAutofilled = 'true';
         }
+
+        function showInlineError(inputEl, message) {
+            if (!inputEl) return;
+            inputEl.classList.add('border-red-500');
+            const errorDiv = document.createElement('p');
+            errorDiv.className = 'mt-1 text-sm text-red-600';
+            errorDiv.textContent = message;
+            inputEl.insertAdjacentElement('afterend', errorDiv);
+        }
         
         // console.log('voucherCode: ' + voucherCode);
         
@@ -749,6 +758,8 @@
                 const infants = parseInt(document.querySelector('input[name="infants"]').value) || 0;
                 const guestEmail = document.querySelector('#guest-email').value.trim();
                 const guestName = document.querySelector('#guest-name').value.trim();
+                const phoneCountry = document.querySelector('#phone-country').value.trim();
+                const phoneNumber = document.querySelector('#phone-number').value.trim();
                 const voucherInput = document.querySelector('#voucher_code');
                 const voucherCode = (voucherInput && voucherInput.value) ? voucherInput.value.trim() : "";
                 const partialPaymentInput = document.querySelector('#partial-payment');
@@ -757,97 +768,58 @@
                 const partialPaidMethod = (partialPaidMethodInput && partialPaidMethodInput.value) ? partialPaidMethodInput.value.trim() : '';
                 // Validate form
                 let errors = [];
+                const addValidationError = (field, inputEl, message) => {
+                    errors.push({ field, message });
+                    showInlineError(inputEl, message);
+                };
 
                 // Validate region
                 if (!regionId) {
-                    errors.push({ field: 'regions', message: 'Please select a region.' });
-                    regionSelect.classList.add('border-red-500');
-                    const errorDiv = document.createElement('p');
-                    errorDiv.className = 'mt-1 text-sm text-red-600';
-                    errorDiv.textContent = 'Please select a region.';
-                    regionSelect.parentNode.appendChild(errorDiv);
+                    addValidationError('regions', regionSelect, 'Please select a region.');
                 }
 
                 // Validate pickup point
                 if (!pickupPointId) {
-                    errors.push({ field: 'pickup_point', message: 'Please select a pickup point.' });
-                    pickupPointSelect.classList.add('border-red-500');
-                    const errorDiv = document.createElement('p');
-                    errorDiv.className = 'mt-1 text-sm text-red-600';
-                    errorDiv.textContent = 'Please select a pickup point.';
-                    pickupPointSelect.parentNode.appendChild(errorDiv);
+                    addValidationError('pickup_point', pickupPointSelect, 'Please select a pickup point.');
                 }
 
                 // Validate date
                 if (!selectedDate || !availabilityId) {
-                    errors.push({ field: 'date', message: 'Please select a date.' });
-                    datePickerInput.classList.add('border-red-500');
-                    const errorDiv = document.createElement('p');
-                    errorDiv.className = 'mt-1 text-sm text-red-600';
-                    errorDiv.textContent = 'Please select a date.';
-                    datePickerInput.parentNode.appendChild(errorDiv);
+                    addValidationError('date', datePickerInput, 'Please select a date.');
                 }
 
                 if (adults <= 0) {
-                    errors.push({ field: 'adults', message: 'Please select at least one adult.' });
-                    const adultsOnlyInput = document.querySelector('input[name="adults"]');
-                    if (adultsOnlyInput) {
-                        adultsOnlyInput.classList.add('border-red-500');
-                    }
                     const adultsInput = document.querySelector('input[name="adults"]');
-                    if (adultsInput) {
-                        const errorDiv = document.createElement('p');
-                        errorDiv.className = 'mt-1 text-sm text-red-600';
-                        errorDiv.textContent = 'Please select at least one adult.';
-                        adultsInput.parentNode.appendChild(errorDiv);
-                    }
+                    addValidationError('adults', adultsInput, 'Please select at least one adult.');
                 }
 
                 if (!guestName) {
-                    errors.push({ field: 'guest-name', message: 'Please enter your name.' });
                     const guestNameInput = document.querySelector('#guest-name');
-                    if (guestNameInput) {
-                        guestNameInput.classList.add('border-red-500');
-                        const errorDiv = document.createElement('p');
-                        errorDiv.className = 'mt-1 text-sm text-red-600';
-                        errorDiv.textContent = 'Please enter your name.';
-                        guestNameInput.parentNode.appendChild(errorDiv);
-                    }
+                    addValidationError('guest_name', guestNameInput, 'Please enter your name.');
                 }
 
                 if (!guestEmail) {
-                    errors.push({ field: 'guest-email', message: 'Please enter your email.' });
                     const guestEmailInput = document.querySelector('#guest-email');
-                    if (guestEmailInput) {
-                        guestEmailInput.classList.add('border-red-500');
-                        const errorDiv = document.createElement('p');
-                        errorDiv.className = 'mt-1 text-sm text-red-600';
-                        errorDiv.textContent = 'Please enter your email.';
-                        guestEmailInput.parentNode.appendChild(errorDiv);
-                    }
+                    addValidationError('guest_email', guestEmailInput, 'Please enter your email.');
                 } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guestEmail)) {
-                    errors.push({ field: 'guest-email', message: 'Please enter a valid email address.' });
                     const guestEmailInput = document.querySelector('#guest-email');
-                    if (guestEmailInput) {
-                        guestEmailInput.classList.add('border-red-500');
-                        const errorDiv = document.createElement('p');
-                        errorDiv.className = 'mt-1 text-sm text-red-600';
-                        errorDiv.textContent = 'Please enter a valid email address.';
-                        guestEmailInput.parentNode.appendChild(errorDiv);
-                    }
+                    addValidationError('guest_email', guestEmailInput, 'Please enter a valid email address.');
+                }
+
+                if (!phoneCountry) {
+                    const phoneCountryInput = document.querySelector('#phone-country');
+                    addValidationError('phone_country', phoneCountryInput, 'Please select a country code.');
+                }
+
+                if (!phoneNumber) {
+                    const phoneNumberInput = document.querySelector('#phone-number');
+                    addValidationError('phone_number', phoneNumberInput, 'Please enter your phone number.');
                 }
 
                 // Validate partial payment for admin/staff
                 if ((userRole === 'admin' || userRole === 'representative') && partialPayment && parseFloat(partialPayment) > 0 && !partialPaidMethod) {
-                    errors.push({ field: 'partial-paid-method', message: 'Please select a payment method for partial payment.' });
                     const partialPaidMethodInput = document.querySelector('#partial-paid-method');
-                    if (partialPaidMethodInput) {
-                        partialPaidMethodInput.classList.add('border-red-500');
-                        const errorDiv = document.createElement('p');
-                        errorDiv.className = 'mt-1 text-sm text-red-600';
-                        errorDiv.textContent = 'Please select a payment method for partial payment.';
-                        partialPaidMethodInput.parentNode.appendChild(errorDiv);
-                    }
+                    addValidationError('partial_paid_method', partialPaidMethodInput, 'Please select a payment method for partial payment.');
                 }
 
                 if (errors.length > 0) {
@@ -901,6 +873,8 @@
                             'date': '#date-picker',
                             'guest_name': '#guest-name',
                             'guest_email': '#guest-email',
+                            'phone_country': '#phone-country',
+                            'phone_number': '#phone-number',
                             'adults': 'input[name="adults"]',
                             'children': 'input[name="children"]',
                             'infants': 'input[name="infants"]',
@@ -914,11 +888,8 @@
                                 const input = document.querySelector(selector);
                                 
                                 if (input) {
-                                    input.classList.add('border-red-500');
-                                    const errorDiv = document.createElement('p');
-                                    errorDiv.className = 'mt-1 text-sm text-red-600';
-                                    errorDiv.textContent = Array.isArray(data.errors[field]) ? data.errors[field][0] : data.errors[field];
-                                    input.parentNode.appendChild(errorDiv);
+                                    const errorText = Array.isArray(data.errors[field]) ? data.errors[field][0] : data.errors[field];
+                                    showInlineError(input, errorText);
                                 }
                             });
                         }
@@ -948,13 +919,12 @@
                         formErrors.classList.remove('hidden');
                         const errorList = formErrors.querySelector('ul');
                         if (errorList) {
+                            errorList.innerHTML = '';
                             const errorItem = document.createElement('li');
                             errorItem.textContent = 'An error occurred while processing your booking. Please try again.';
                             errorList.appendChild(errorItem);
                         }
                     }
-                    // document.getElementById('form-errors').removeAttribute('class', 'hidden');
-                    document.getElementById('form-errors').textContent = error;
                     console.log('error.message:', error.message);
                 });
             });

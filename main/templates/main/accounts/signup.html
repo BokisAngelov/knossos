@@ -76,12 +76,12 @@
 
             <div class="space-y-1">
               <label for="{{ form.password1.id_for_label }}" class="block text-sm font-semibold text-gray-700">Password</label>
-              <div class="w-full auth-input-field">{{ form.password1 }}</div>
               {% if form.password1.errors %}
                 {% for error in form.password1.errors %}
                   <p class="error-message">{{ error }}</p>
                 {% endfor %}
               {% endif %}
+              <div class="w-full auth-input-field">{{ form.password1 }}</div>
             </div>
 
             <div class="space-y-1">

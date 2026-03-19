@@ -54,8 +54,8 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <!-- Name -->
                     <div class="space-y-1">
-                        <label for="{{ form.name.id_for_label }}" class="block text-md font-semibold text-header-grey">
-                            Group Name <span class="text-red-500">*</span>
+                        <label for="{{ form.name.id_for_label }}" class="block text-md font-semibold text-header-grey required-label">
+                            Group Name
                         </label>
                         <div class="w-full auth-input-field rounded-lg border form-fields-border">
                             {{ form.name }}
@@ -67,8 +67,8 @@
 
                     <!-- Excursion -->
                     <div class="space-y-1">
-                        <label for="{{ form.excursion.id_for_label }}" class="block text-md font-semibold text-header-grey">
-                            Excursion <span class="text-red-500">*</span>
+                        <label for="{{ form.excursion.id_for_label }}" class="block text-md font-semibold text-header-grey required-label">
+                            Excursion
                         </label>
                         <div class="w-full auth-input-field rounded-lg border form-fields-border">
                             <select name="excursion" id="id_excursion" class="w-full"
@@ -90,8 +90,8 @@
 
                     <!-- Date -->
                     <div class="space-y-1">
-                        <label for="{{ form.date.id_for_label }}" class="block text-md font-semibold text-header-grey">
-                            Date <span class="text-red-500">*</span>
+                        <label for="{{ form.date.id_for_label }}" class="block text-md font-semibold text-header-grey required-label">
+                            Date
                         </label>
                         <div class="w-full auth-input-field rounded-lg border form-fields-border">
                             <input type="date" name="date" id="id_date" class="w-full"
@@ -109,8 +109,8 @@
 
                     <!-- Bus -->
                     <div class="space-y-1">
-                        <label for="{{ form.bus.id_for_label }}" class="block text-md font-semibold text-header-grey">
-                            Bus <span class="text-red-500">*</span>
+                        <label for="{{ form.bus.id_for_label }}" class="block text-md font-semibold text-header-grey required-label">
+                            Bus
                         </label>
                         <div class="w-full auth-input-field rounded-lg border form-fields-border">
                             <select name="bus" id="id_bus" class="w-full">
@@ -127,8 +127,8 @@
 
                     <!-- Guide -->
                     <div class="space-y-1">
-                        <label for="{{ form.guide.id_for_label }}" class="block text-md font-semibold text-header-grey">
-                            Guide <span class="text-red-500">*</span>
+                        <label for="{{ form.guide.id_for_label }}" class="block text-md font-semibold text-header-grey required-label">
+                            Guide
                         </label>
                         <div class="w-full auth-input-field rounded-lg border form-fields-border">
                             {{ form.guide }}
@@ -140,8 +140,8 @@
 
                     <!-- Provider -->
                     <div class="space-y-1">
-                        <label for="{{ form.provider.id_for_label }}" class="block text-md font-semibold text-header-grey">
-                            Supplier <span class="text-red-500">*</span>
+                        <label for="{{ form.provider.id_for_label }}" class="block text-md font-semibold text-header-grey required-label">
+                            Supplier
                         </label>
                         <div class="w-full auth-input-field rounded-lg border form-fields-border">
                             {{ form.provider }}

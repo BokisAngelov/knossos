@@ -86,7 +86,7 @@
       <!-- Guest Information (Editable) -->
       <div class="p-4 rounded-lg m-0">
         <h3 class="text-lg font-bold mb-2">Guest Information</h3>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div class="space-y-1">
             <label for="{{ form.guest_name.id_for_label }}" class="block text-md font-semibold text-brown-light">{{ form.guest_name.label }}</label>
             <div class="w-full auth-input-field rounded-lg border border-brown text-brown font-semibold">{{ form.guest_name }}</div>
@@ -96,6 +96,11 @@
             <label for="{{ form.guest_email.id_for_label }}" class="block text-md font-semibold text-brown-light">{{ form.guest_email.label }}</label>
             <div class="w-full auth-input-field rounded-lg border border-brown text-brown font-semibold">{{ form.guest_email }}</div>
             {% if form.guest_email.errors %}<div class="text-red-500 text-xs mt-1">{{ form.guest_email.errors }}</div>{% endif %}
+          </div>
+          <div class="space-y-1">
+            <label for="{{ form.guest_phone.id_for_label }}" class="block text-md font-semibold text-brown-light">{{ form.guest_phone.label }}</label>
+            <div class="w-full auth-input-field rounded-lg border border-brown text-brown font-semibold">{{ form.guest_phone }}</div>
+            {% if form.guest_phone.errors %}<div class="text-red-500 text-xs mt-1">{{ form.guest_phone.errors }}</div>{% endif %}
           </div>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">

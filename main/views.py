@@ -503,6 +503,21 @@ def excursion_list(request):
 
     from django.db.models import Q
 
+    def _parse_filter_date(value):
+        raw_value = (value or '').strip()
+        if not raw_value:
+            return None, ''
+
+        for date_format in ('%d/%m/%Y', '%Y-%m-%d'):
+            try:
+                parsed_date = datetime.strptime(raw_value, date_format).date()
+                return parsed_date, parsed_date.strftime('%Y-%m-%d')
+            except ValueError:
+                continue
+
+        # Keep date input empty if invalid, but skip filtering.
+        return None, ''
+
     excursions = Excursion.objects.filter(status='active')
 
     categories = Category.objects.all()
@@ -511,27 +526,28 @@ def excursion_list(request):
     search_query = request.GET.get('search', '')
     category_query = request.GET.get('category', '')
     tag_query = request.GET.get('tag', '')
-    date_from_query = request.GET.get('date_from', '')
-    date_to_query = request.GET.get('date_to', '')
+    date_from_query_raw = request.GET.get('date_from', '')
+    date_to_query_raw = request.GET.get('date_to', '')
+    date_from_query_date, date_from_query = _parse_filter_date(date_from_query_raw)
+    date_to_query_date, date_to_query = _parse_filter_date(date_to_query_raw)
 
-    # Build availability filter
-    availability_filter = Q(availabilities__isnull=False, availabilities__is_active=True)
+    availability_filter = Q(availabilities__isnull=False, availabilities__status='active')
     
     # Date range filtering: only excursions that have at least one active AvailabilityDay in the selected range
-    if date_from_query and date_to_query:
+    if date_from_query_date and date_to_query_date:
         availability_filter &= Q(
-            availabilities__availability_days__date_day__gte=date_from_query,
-            availabilities__availability_days__date_day__lte=date_to_query,
+            availabilities__availability_days__date_day__gte=date_from_query_date,
+            availabilities__availability_days__date_day__lte=date_to_query_date,
             availabilities__availability_days__status='active'
         )
-    elif date_from_query:
+    elif date_from_query_date:
         availability_filter &= Q(
-            availabilities__availability_days__date_day__gte=date_from_query,
+            availabilities__availability_days__date_day__gte=date_from_query_date,
             availabilities__availability_days__status='active'
         )
-    elif date_to_query:
+    elif date_to_query_date:
         availability_filter &= Q(
-            availabilities__availability_days__date_day__lte=date_to_query,
+            availabilities__availability_days__date_day__lte=date_to_query_date,
             availabilities__availability_days__status='active'
         )
     
@@ -548,12 +564,8 @@ def excursion_list(request):
     excursions = excursions.distinct().prefetch_related('tags', 'category', 'availabilities__regions')
     excursions = attach_excursion_list_data(excursions)
 
-    print('excursions: ' + str(excursions))
-
     excursions_with_availability = {}
 
-    # for excursion in excursions:
-        # excursion = 
     
     # If this is an HTMX request, return only the partial content
     if request.headers.get("HX-Request"):
@@ -776,6 +788,7 @@ def _handle_ajax_booking_submission(request, excursion_availability):
                 'success': False,
                 'errors': booking_form.errors
             })
+        cleaned_form_data = booking_form.cleaned_data
         
         # Validate booking data
         booking_data = BookingService.validate_booking_data(request.POST)
@@ -786,8 +799,9 @@ def _handle_ajax_booking_submission(request, excursion_availability):
         
         # Get guest data
         guest_data = {
-            'guest_email': request.POST.get('guest_email'),
-            'guest_name': request.POST.get('guest_name'),
+            'guest_email': cleaned_form_data.get('guest_email'),
+            'guest_name': cleaned_form_data.get('guest_name'),
+            'guest_phone': cleaned_form_data.get('guest_phone'),
         }
         
         # Get partial payment method for staff/representatives

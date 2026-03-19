@@ -468,6 +468,7 @@ class BookingService:
             voucher_id=voucher_instance,
             guest_name=guest_data.get('guest_name'),
             guest_email=guest_data.get('guest_email'),
+            guest_phone=guest_data.get('guest_phone', ''),
             total_adults=booking_data['adults'],
             total_kids=booking_data['children'],
             total_infants=booking_data['infants'],
