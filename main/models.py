@@ -43,7 +43,6 @@ class Region(models.Model):
 class PickupGroup(models.Model):
     name = models.CharField(max_length=255)
     code = models.CharField(max_length=255, unique=True, null=True, blank=True)
-    priority = models.PositiveIntegerField(default=0)
     # cl_id = models.IntegerField(null=True, blank=True, unique=True)
     # region = models.ForeignKey(Region, on_delete=models.SET_NULL, null=True, related_name='pickup_groups')
     def __str__(self):

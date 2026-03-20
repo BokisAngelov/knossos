@@ -4628,7 +4628,7 @@ def availability_form(request, pk=None):
 @user_passes_test(is_staff)
 def availability_detail(request, pk):
     availability = get_object_or_404(ExcursionAvailability, pk=pk)
-    pickup_points = availability.pickup_points.all().select_related('pickup_group').order_by('pickup_group__priority', 'priority', 'name')
+    pickup_points = availability.pickup_points.all().select_related('pickup_group').order_by('pickup_group__name', 'priority', 'name')
     regions = availability.regions.all().order_by('name')
     return render(request, 'main/availabilities/availability_detail.html', {
         'availability': availability,
@@ -4650,11 +4650,10 @@ def availability_delete(request, pk):
     
 @user_passes_test(is_staff)
 def pickup_points_list(request):
-    pickup_points = PickupPoint.objects.all().select_related('pickup_group').order_by('-pickup_group__priority', 'name')
-    pickup_groups = PickupGroup.objects.all().order_by('priority')
+    pickup_points = PickupPoint.objects.all().select_related('pickup_group').order_by('pickup_group__name', 'priority', 'name')
+    pickup_groups = PickupGroup.objects.all().order_by('name')
     
-    # Convert pickup groups to JSON-serializable format
-    pickup_groups_json = json.dumps([{'id': group.id, 'name': group.name, 'priority': group.priority} for group in pickup_groups])
+    pickup_groups_json = json.dumps([{'id': group.id, 'name': group.name} for group in pickup_groups])
     
     # Handle search
     search_query = request.GET.get('search', '').strip()
@@ -5110,7 +5109,7 @@ def manage_regions(request):
                      
 @user_passes_test(is_staff)
 def pickup_groups_list(request):
-    pickup_groups = PickupGroup.objects.all().order_by('priority')
+    pickup_groups = PickupGroup.objects.all().order_by('name')
     regions = Region.objects.all()
     # Convert regions to JSON-serializable format
     regions_json = json.dumps([{'id': region.id, 'name': region.name} for region in regions])
@@ -5140,14 +5139,12 @@ def manage_pickup_groups(request):
             if action_type == 'add_group':
                 name = request.POST.get('name', '').strip()
                 code = request.POST.get('code', '').strip()
-                priority = request.POST.get('priority', '').strip()
 
-                if name and code and priority:
+                if name and code:
                     try:
                         PickupGroup.objects.create(
                             name=name,
                             code=code,
-                            priority=priority,
                         )
                         messages.success(request, 'Pickup group created successfully.')
                         return redirect('pickup_groups_list')
@@ -5159,13 +5156,10 @@ def manage_pickup_groups(request):
                 group = get_object_or_404(PickupGroup, pk=item_id)
                 name = request.POST.get('name', '').strip()
                 code = request.POST.get('code', '').strip()
-                priority = request.POST.get('priority', '').strip()
                 if name:    
                     group.name = name
                     if code:
                         group.code = code
-                    if priority:
-                        group.priority = priority
                     group.save()
                     messages.success(request, 'Pickup group updated successfully.')
                     return redirect('pickup_groups_list')
@@ -5181,6 +5175,6 @@ def manage_pickup_groups(request):
             return redirect('pickup_groups_list')
         
     return render(request, 'main/admin/pickup_groups_list.html', {
-        'pickup_groups': PickupGroup.objects.all(),
+        'pickup_groups': PickupGroup.objects.all().order_by('name'),
     })
 
