@@ -112,10 +112,10 @@ class Command(BaseCommand):
                     "If you need new referral codes, please contact your administrator "
                     "or request them through the admin panel."
                 )
-                builder.p("Best regards,<br>The iTrip Knossos Team")
+                builder.p("Best regards,<br>The iGoCyprus Team")
                 
                 EmailService.send_dynamic_email_async(
-                    subject=f'[iTrip Knossos] {len(codes)} Referral Code(s) Expired',
+                    subject=f'[iGoCyprus] {len(codes)} Referral Code(s) Expired',
                     recipient_list=[agent.email],
                     email_body=builder.build(),
                     preview_text=f'{len(codes)} of your referral codes have expired',
@@ -163,7 +163,7 @@ class Command(BaseCommand):
             builder.p("Best regards,<br>Automated System")
             
             EmailService.send_dynamic_email(
-                subject=f'[iTrip Knossos] {len(expired_codes)} Referral Code(s) Expired',
+                subject=f'[iGoCyprus] {len(expired_codes)} Referral Code(s) Expired',
                 recipient_list=['bokis.angelov@innovade.eu'],
                 email_body=builder.build(),
                 preview_text=f'{len(expired_codes)} referral codes have expired',

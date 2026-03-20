@@ -78,10 +78,10 @@ class Command(BaseCommand):
                 'Amount': f"€{booking.total_price or booking.price or 0}"
             }, border_color="#e53935")
             builder.p("If this is a mistake or you still want to attend, please create a new booking or contact our support team.")
-            builder.p("Best regards,<br>The iTrip Knossos Team")
+            builder.p("Best regards,<br>The iGoCyprus Team")
 
             emails_sent = EmailService.send_dynamic_email(
-                subject='[iTrip Knossos] Your Pending Booking Was cancelled',
+                subject='[iGoCyprus] Your Pending Booking Was cancelled',
                 recipient_list=[customer_email],
                 email_body=builder.build(),
                 preview_text='Your pending booking was cancelled due to incomplete payment.',
@@ -146,7 +146,7 @@ class Command(BaseCommand):
             
             # Send email
             emails_sent = EmailService.send_dynamic_email(
-                subject=f'[iTrip Knossos] {count} Booking(s) Expired',
+                subject=f'[iGoCyprus] {count} Booking(s) Expired',
                 recipient_list=['bokis.angelov@innovade.eu'],
                 email_body=builder.build(),
                 preview_text=f'{count} bookings expired due to incomplete payment',

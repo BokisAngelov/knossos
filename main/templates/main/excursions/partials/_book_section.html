@@ -1,4 +1,4 @@
-<div class="bg-white p-6 sticky top-6">
+<div class="bg-white p-6 sticky top-6 rounded-lg shadow-sm">
     <h2 class="text-2xl font-bold text-purple mb-4">Book this Excursion</h2>
     {% if not excursion.availabilities.exists %}
         <p class="text-gray-500 text-center py-4 not-availability">The excursion is currently not available.</p>
@@ -79,20 +79,20 @@
         </div>
         {% comment %} {% if user.is_staff or user.userprofile.role == 'representative' %} {% endcomment %}
         <div class="flex flex-col gap-2">
-            <label class="block text-md font-semibold text-header-grey required-label">Guest Name</label>
+            <label class="block text-md font-semibold text-header-grey required-label">Full Name</label>
             <input type="text" name="guest_name" id="guest-name" class="mt-1 block w-full pl-3 pr-2 py-2 text-base form-fields-border focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md {% if booking_form.guest_name.errors %}border-red-500{% endif %}" value="{% if return_data.client_name is not None %}{{ return_data.client_name }}{% endif %}">
             {% if booking_form.guest_name.errors %}
             <p class="mt-1 text-sm text-red-600">{{ booking_form.guest_name.errors.0 }}</p>
             {% endif %}
 
-            <label class="block text-md font-semibold text-header-grey required-label">Guest Email</label>
+            <label class="block text-md font-semibold text-header-grey required-label">Email</label>
             <input type="email" name="guest_email" id="guest-email" class="mt-1 block w-full pl-3 pr-2 py-2 text-base form-fields-border focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md {% if booking_form.guest_email.errors %}border-red-500{% endif %}">
             <span  id="guest-email-disabled" class="hidden text-sm text-gray-500">Your email is automatically filled in based on your profile. You cannot change it.</span>
             {% if booking_form.guest_email.errors %}
             <p class="mt-1 text-sm text-red-600">{{ booking_form.guest_email.errors.0 }}</p>
             {% endif %}
 
-            <label class="block text-md font-semibold text-header-grey required-label">Guest Phone</label>
+            <label class="block text-md font-semibold text-header-grey required-label">Phone Number</label>
             <div class="grid grid-cols-3 gap-2">
                 <div>
                     {{ booking_form.phone_country }}

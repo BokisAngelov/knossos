@@ -1288,10 +1288,10 @@ def booking_delete(request, pk):
                         if not request.user.is_staff:
                             builder.p("We hope to see you on another adventure soon!")
                         
-                        builder.p("Best regards,<br>The iTrip Knossos Team")
+                        builder.p("Best regards,<br>The iGoCyprus Team")
                         
                         EmailService.send_dynamic_email(
-                            subject='[iTrip Knossos] Booking Cancelled',
+                            subject='[iGoCyprus] Booking Cancelled',
                             recipient_list=[customer_email],
                             email_body=builder.build(),
                             preview_text='Your booking has been cancelled',
@@ -1322,7 +1322,7 @@ def booking_delete(request, pk):
                         builder.p("Best regards,<br>Automated System")
                         
                         EmailService.send_dynamic_email(
-                            subject=f'[iTrip Knossos] Customer Cancelled Booking #{booking_id}',
+                            subject=f'[iGoCyprus] Customer Cancelled Booking #{booking_id}',
                             recipient_list=['bokis.angelov@innovade.eu'],
                             email_body=builder.build(),
                             preview_text=f'Customer cancelled booking for {excursion_title}',
@@ -1396,7 +1396,7 @@ def send_booking_confirmation_email(booking, request):
         builder = EmailBuilder()
         builder.h2(f"Hello {customer_name}!")
         builder.success("Your booking has been confirmed!")
-        builder.p("Thank you for choosing iTrip Knossos. We're excited to have you join us for an unforgettable experience!")
+        builder.p("Thank you for choosing iGoCyprus. We're excited to have you join us for an unforgettable experience!")
         
         # Booking details
         display_excursion = booking.get_display_excursion()
@@ -1420,10 +1420,10 @@ def send_booking_confirmation_email(booking, request):
         ])
         
         builder.p("If you have any questions, please don't hesitate to contact us.")
-        builder.p("Best regards,<br>The iTrip Knossos Team")
+        builder.p("Best regards,<br>The iGoCyprus Team")
         
         EmailService.send_dynamic_email(
-            subject=f'[iTrip Knossos] Booking Confirmed - {display_excursion.title if display_excursion else "Excursion"}',
+            subject=f'[iGoCyprus] Booking Confirmed - {display_excursion.title if display_excursion else "Excursion"}',
             recipient_list=[customer_email],
             email_body=builder.build(),
             preview_text=f'Your booking for {display_excursion.title if display_excursion else "Excursion"} is confirmed!',
@@ -1465,7 +1465,7 @@ def send_admin_payment_notification(booking, request, status, order_status=None)
             booking_url += f'?token={booking.access_token}'
         
         subject_status = 'Successful' if status == 'success' else 'Failed'
-        subject = f'[iTrip Knossos] Payment {subject_status} - Booking #{booking.id}'
+        subject = f'[iGoCyprus] Payment {subject_status} - Booking #{booking.id}'
         
         builder = EmailBuilder()
         builder.h2(f"Payment {subject_status}")
@@ -1647,10 +1647,10 @@ def booking_detail(request, pk):
                             "Questions about refunds? Reach out to support",
                             "We're here to help make your trip memorable!"
                         ])
-                        builder.p("Best regards,<br>The iTrip Knossos Team")
+                        builder.p("Best regards,<br>The iGoCyprus Team")
                         
                         EmailService.send_dynamic_email(
-                            subject='[iTrip Knossos] Booking Cancelled',
+                            subject='[iGoCyprus] Booking Cancelled',
                             recipient_list=[customer_email],
                             email_body=builder.build(),
                             preview_text='Your booking has been cancelled',
@@ -2196,10 +2196,10 @@ def payment_fail(request, booking_pk=None):
                 "If you continue to experience issues, please check with your bank or "
                 "reach out to our support team for assistance."
             )
-            builder.p("Best regards,<br>The iTrip Knossos Team")
+            builder.p("Best regards,<br>The iGoCyprus Team")
             
             EmailService.send_dynamic_email(
-                subject='[iTrip Knossos] Payment Failed - Action Required',
+                subject='[iGoCyprus] Payment Failed - Action Required',
                 recipient_list=[customer_email],
                 email_body=builder.build(),
                 preview_text='Payment failed for your booking. Please retry.',
@@ -2273,7 +2273,7 @@ def signup(request):
                 # Build verification email
                 builder = EmailBuilder()
                 builder.h2(f"Hello {form.cleaned_data['name']}!")
-                builder.p("Thank you for signing up for iTrip Knossos!")
+                builder.p("Thank you for signing up for iGoCyprus!")
                 builder.p("Please verify your email address to activate your account.")
                 builder.button("Verify Email Address", verification_url)
                 builder.p(
@@ -2285,11 +2285,11 @@ def signup(request):
                     "This link will expire in 24 hours",
                     "If you did not create an account, please ignore this email"
                 ])
-                builder.p("Best regards,<br>The iTrip Knossos Team")
+                builder.p("Best regards,<br>The iGoCyprus Team")
                 
                 try:
                     EmailService.send_dynamic_email(
-                        subject='[iTrip Knossos] Verify Your Email Address',
+                        subject='[iGoCyprus] Verify Your Email Address',
                         recipient_list=[email],
                         email_body=builder.build(),
                         preview_text='Verify your email to activate your account',
@@ -2430,7 +2430,7 @@ def resend_verification_email(request):
     name = user_profile.name or user.get_full_name() or 'User'
     builder = EmailBuilder()
     builder.h2(f"Hello {name}!")
-    builder.p("You requested a new verification email for your iTrip Knossos account.")
+    builder.p("You requested a new verification email for your iGoCyprus account.")
     builder.p("Please verify your email address to activate your account.")
     builder.button("Verify Email Address", verification_url)
     builder.p(
@@ -2442,10 +2442,10 @@ def resend_verification_email(request):
         "This link will expire in 24 hours",
         "If you did not request this, please ignore this email"
     ])
-    builder.p("Best regards,<br>The iTrip Knossos Team")
+    builder.p("Best regards,<br>The iGoCyprus Team")
     try:
         EmailService.send_dynamic_email(
-            subject='[iTrip Knossos] Verify Your Email Address',
+            subject='[iGoCyprus] Verify Your Email Address',
             recipient_list=[email],
             email_body=builder.build(),
             preview_text='Verify your email to activate your account',
@@ -2498,7 +2498,7 @@ def password_reset_form(request):
             builder = EmailBuilder()
             builder.h2(f"Hello {user_name}!")
             builder.p(
-                "We received a request to reset your password for your iTrip Knossos account. "
+                "We received a request to reset your password for your iGoCyprus account. "
                 "If you didn't make this request, you can safely ignore this email."
             )
             builder.button("Reset Password", reset_url)
@@ -2507,14 +2507,14 @@ def password_reset_form(request):
                 f'<a href="{reset_url}" style="color: #2196f3; word-break: break-all;">{reset_url}</a>',
                 size="14px"
             )
-            builder.p("Best regards,<br>The iTrip Knossos Team")
+            builder.p("Best regards,<br>The iGoCyprus Team")
             
             # Send email
             EmailService.send_dynamic_email(
-                subject='[iTrip Knossos] Password Reset Request',
+                subject='[iGoCyprus] Password Reset Request',
                 recipient_list=[email],
                 email_body=builder.build(),
-                preview_text='Reset your password for iTrip Knossos',
+                preview_text='Reset your password for iGoCyprus',
                 fail_silently=True
             )
             
@@ -2625,7 +2625,7 @@ def verify_email(request, uidb64, token):
     
     messages.success(
         request, 
-        'Email verified successfully! Your account is now active. Welcome to iTrip Knossos!'
+        'Email verified successfully! Your account is now active. Welcome to iGoCyprus!'
     )
     
     # Redirect based on user role
@@ -3198,7 +3198,7 @@ def send_group_to_provider(request, group):
         # group_detail_url = request.build_absolute_uri(reverse('group_detail', kwargs={'pk': group.pk}))
         # builder.button("View Group Details", group_detail_url)
         builder.p("Please confirm receipt and prepare accordingly.")
-        builder.p("Best regards,<br>The iTrip Knossos Team")
+        builder.p("Best regards,<br>The iGoCyprus Team")
 
         # Build full HTML email using the same dynamic email template
         email_body = builder.build()
@@ -3223,7 +3223,7 @@ def send_group_to_provider(request, group):
 
         connection = EmailService.get_connection()
 
-        subject = f'[iTrip Knossos] New Transport Group - {group.name}'
+        subject = f'[iGoCyprus] New Transport Group - {group.name}'
         message = EmailMultiAlternatives(
             subject=subject,
             body=plain_message,
@@ -3299,9 +3299,9 @@ def send_pickup_times_to_customers(request, group):
                 booking_url += f'?token={booking.access_token}'
             builder.p(f'<a href="{booking_url}" style="color:#666;font-size:14px;">View your booking</a>')
             builder.p("If you have any questions, please don't hesitate to contact us.")
-            builder.p("Best regards,<br>The iTrip Knossos Team")
+            builder.p("Best regards,<br>The iGoCyprus Team")
             EmailService.send_dynamic_email_async(
-                subject=f'[iTrip Knossos] Your Pickup Time - {group.excursion.title}',
+                subject=f'[iGoCyprus] Your Pickup Time - {group.excursion.title}',
                 recipient_list=[customer_email],
                 email_body=builder.build(),
                 preview_text=f'Your pickup time is {pickup_time_str} at {booking.pickup_point.name}',

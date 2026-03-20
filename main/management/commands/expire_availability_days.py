@@ -102,7 +102,7 @@ class Command(BaseCommand):
             builder.p("Best regards,<br>Automated System")
             
             EmailService.send_dynamic_email(
-                subject=f'[iTrip Knossos] ⚠️ {total_count} Availability Days Expired',
+                subject=f'[iGoCyprus] ⚠️ {total_count} Availability Days Expired',
                 recipient_list=['bokis.angelov@innovade.eu'],
                 email_body=builder.build(),
                 preview_text=f'{total_count} past availability days were expired',

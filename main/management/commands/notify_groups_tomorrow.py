@@ -65,7 +65,7 @@ class Command(BaseCommand):
         if total_unconfirmed > 0:
             try:
                 subject = (
-                    f'[iTrip Knossos] Tomorrow\'s groups – {total_unconfirmed} booking(s) have not confirmed pickup time'
+                    f'[iGoCyprus] Tomorrow\'s groups – {total_unconfirmed} booking(s) have not confirmed pickup time'
                 )
 
                 builder = EmailBuilder()
