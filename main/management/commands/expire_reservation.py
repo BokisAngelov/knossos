@@ -71,10 +71,10 @@ class Command(BaseCommand):
                         "We hope you enjoyed your excursions with us! "
                         "For future bookings, please visit our website or contact us directly."
                     )
-                    builder.p("Best regards,<br>The iTrip Knossos Team")
+                    builder.p("Best regards,<br>The iGoCyprus Team")
                     
                     EmailService.send_dynamic_email_async(
-                        subject='[iTrip Knossos] Thank You for Choosing Us!',
+                        subject='[iGoCyprus] Thank You for Choosing Us!',
                         recipient_list=[reservation.client_email],
                         email_body=builder.build(),
                         preview_text='Your reservation code has expired - Thank you!',
@@ -113,7 +113,7 @@ class Command(BaseCommand):
             builder.p("Best regards,<br>Automated System")
             
             emails_sent = EmailService.send_dynamic_email(
-                subject=f'[iTrip Knossos] {len(expired_reservations)} Reservation(s) Expired',
+                subject=f'[iGoCyprus] {len(expired_reservations)} Reservation(s) Expired',
                 recipient_list=['bokis.angelov@innovade.eu'],
                 email_body=builder.build(),
                 preview_text=f'{len(expired_reservations)} reservations expired',

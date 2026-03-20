@@ -892,7 +892,7 @@ class BookingPickupTimeNotification(models.Model):
 
 class EmailSettings(models.Model):
     email = models.EmailField(max_length=255)
-    name_from = models.CharField(max_length=255, default='iTrip Knossos')
+    name_from = models.CharField(max_length=255, default='iGoCyprus')
     password = models.CharField(max_length=255)
     host = models.CharField(max_length=255, default='smtp.gmail.com')
     port = models.IntegerField(default=587)

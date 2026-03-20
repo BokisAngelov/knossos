@@ -2170,7 +2170,7 @@ class EmailService:
             subject: Email subject line
             recipient_list: List of recipient email addresses
             email_body: HTML content for the email body (use EmailBuilder to create)
-            email_title: Page title (optional, defaults to "iTrip Knossos")
+            email_title: Page title (optional, defaults to "iGoCyprus")
             preview_text: Preview text for inbox (optional)
             unsubscribe_url: URL for unsubscribe link (optional, for marketing emails)
             fail_silently: If True, suppress exceptions (default: False)

@@ -192,13 +192,19 @@ select option {
     background-image: url("../images/iGoCyprus-SignUp1.jpg");
     background-size: cover;
     background-position: center;
+    background-repeat: no-repeat; 
 }
 .home-hero-section{
-    background-image: url('../images/LefkaraVillage-jpeg.jpeg'); 
+    background-image: url('../images/LefkaraVillage-opt.jpg'); 
     margin-left: calc(50% - 50vw); 
     margin-right: calc(50% - 50vw);
 }
-
+.bid-hero-section{
+    background-image: url('../images/iGoCyprus-bookingID_60_opt.jpg'); 
+    background-size: cover;
+    background-position: top center; 
+    background-repeat: no-repeat; 
+}
 .required-label::after {
     content: " *";
     color: #ef4444;

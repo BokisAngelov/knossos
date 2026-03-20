@@ -317,10 +317,10 @@ def detect_departure_time_change(sender, instance, **kwargs):
                     except UserProfile.DoesNotExist:
                         pass
                 builder.p("Please make note of this change and plan accordingly.")
-                builder.p("Best regards,<br>The iTrip Knossos Team")
+                builder.p("Best regards,<br>The iGoCyprus Team")
 
                 EmailService.send_dynamic_email(
-                    subject='[iTrip Knossos] Departure Time Changed',
+                    subject='[iGoCyprus] Departure Time Changed',
                     recipient_list=[instance.client_email],
                     email_body=builder.build(),
                     preview_text='Your departure time has been updated',
