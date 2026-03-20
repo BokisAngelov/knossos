@@ -4,6 +4,8 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.password_validation import validate_password
 from django.views.decorators.csrf import ensure_csrf_cookie
+from django.views.decorators.http import require_POST
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.contrib import messages
@@ -36,7 +38,7 @@ from django.db.models import Q, Sum, Count
 logger = logging.getLogger(__name__)
 from django.apps import apps
 from .cyber_api import get_groups, get_hotels, get_pickup_points, get_excursions, get_excursion_description, get_providers, get_excursion_availabilities, get_reservation
-from .utils import FeedbackService, BookingService, ExcursionService, VoucherService, create_reservation, ExcursionAnalyticsService, RevenueAnalyticsService, JCCPaymentService, EmailService, EmailBuilder, attach_excursion_list_data, generate_group_pdf_for_transport
+from .utils import FeedbackService, BookingService, ExcursionService, VoucherService, create_reservation, ExcursionAnalyticsService, RevenueAnalyticsService, JCCPaymentService, EmailService, EmailBuilder, attach_excursion_list_data, excursions_with_active_availability, generate_group_pdf_for_transport
 
 def is_staff(user):
     return user.is_staff
@@ -58,10 +60,7 @@ def testmodels(request):
 @ensure_csrf_cookie
 def homepage(request):
     excursions = (
-        Excursion.objects.all()
-        .filter(availabilities__isnull=False)
-        .filter(status='active')
-        .distinct()
+        excursions_with_active_availability()
         .prefetch_related('tags', 'category', 'availabilities__regions')
     )
     excursions = attach_excursion_list_data(excursions)
@@ -518,7 +517,7 @@ def excursion_list(request):
         # Keep date input empty if invalid, but skip filtering.
         return None, ''
 
-    excursions = Excursion.objects.filter(status='active')
+    excursions = excursions_with_active_availability()
 
     categories = Category.objects.all()
     tags = Tag.objects.all()
@@ -532,32 +531,33 @@ def excursion_list(request):
     date_to_query_date, date_to_query = _parse_filter_date(date_to_query_raw)
 
     today = timezone.now().date()
-    availability_filter = Q(
-        availabilities__isnull=False,
-        availabilities__status='active',
-        availabilities__is_active=True,
-        availabilities__end_date__gte=today,
-    )
-    
-    # Date range filtering: only excursions that have at least one active AvailabilityDay in the selected range
+    # Tie days to the same active ExcursionAvailability row (not an inactive/expired one)
+    _active_av = {
+        'availabilities__status': 'active',
+        'availabilities__is_active': True,
+        'availabilities__end_date__gte': today,
+    }
+
+    # Optional: restrict to excursions with an active AvailabilityDay in the selected range
     if date_from_query_date and date_to_query_date:
-        availability_filter &= Q(
+        excursions = excursions.filter(
+            **_active_av,
             availabilities__availability_days__date_day__gte=date_from_query_date,
             availabilities__availability_days__date_day__lte=date_to_query_date,
-            availabilities__availability_days__status='active'
+            availabilities__availability_days__status='active',
         )
     elif date_from_query_date:
-        availability_filter &= Q(
+        excursions = excursions.filter(
+            **_active_av,
             availabilities__availability_days__date_day__gte=date_from_query_date,
-            availabilities__availability_days__status='active'
+            availabilities__availability_days__status='active',
         )
     elif date_to_query_date:
-        availability_filter &= Q(
+        excursions = excursions.filter(
+            **_active_av,
             availabilities__availability_days__date_day__lte=date_to_query_date,
-            availabilities__availability_days__status='active'
+            availabilities__availability_days__status='active',
         )
-    
-    excursions = excursions.filter(availability_filter)
 
     if search_query:
         excursions = excursions.filter(Q(title__icontains=search_query) | Q(description__icontains=search_query))
@@ -570,9 +570,6 @@ def excursion_list(request):
     excursions = excursions.distinct().prefetch_related('tags', 'category', 'availabilities__regions')
     excursions = attach_excursion_list_data(excursions)
 
-    excursions_with_availability = {}
-
-    
     # If this is an HTMX request, return only the partial content
     if request.headers.get("HX-Request"):
         return render(request, "main/excursions/partials/_excursion_list_content.html", {
@@ -2370,6 +2367,27 @@ def login_view(request):
     else:
         form = AuthenticationForm()
     return render(request, 'main/accounts/login.html', {'form': form})
+
+
+@login_required
+@require_POST
+def dismiss_client_welcome(request):
+    """Client clicks OK on one-time welcome; persist so it never shows again."""
+    try:
+        profile = request.user.profile
+    except UserProfile.DoesNotExist:
+        return redirect('homepage')
+    if profile.role == 'client' and not profile.client_welcome_dismissed:
+        profile.client_welcome_dismissed = True
+        profile.save(update_fields=['client_welcome_dismissed'])
+    next_url = (request.POST.get('next') or '').strip()
+    if next_url and url_has_allowed_host_and_scheme(
+        next_url,
+        allowed_hosts=None,
+        require_https=request.is_secure(),
+    ):
+        return redirect(next_url)
+    return redirect('homepage')
 
 
 def resend_verification_email(request):

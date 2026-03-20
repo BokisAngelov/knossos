@@ -80,6 +80,10 @@ class UserProfile(models.Model):
     email_verification_token = models.CharField(max_length=255, null=True, blank=True)
     is_superadmin = models.BooleanField(default=False)
     email_verified = models.BooleanField(default=False)
+    client_welcome_dismissed = models.BooleanField(
+        default=False,
+        help_text="Client has acknowledged the one-time welcome notification; do not show again.",
+    )
 
     def __str__(self):
         return self.name

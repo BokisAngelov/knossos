@@ -33,7 +33,7 @@
                     </div>
                     <button
                         type="submit"
-                        class="px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                        class="px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-orange hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-offset-2"
                     >
                         Explore excursions
                     </button>
@@ -45,17 +45,17 @@
     <!-- Excursions -->
     <section id="excursions">
         <div class="container mx-auto px-4 py-8">
-            <h2 class="text-center font-semibold">
+            <h1 class="text-center font-semibold">
                 Excursions
-            </h2>
+            </h1>
 
-            <div class="mt-6">
+            <div class="mt-8 mb-8">
                 {% include 'main/excursions/partials/_excursion_list_content.html' %}
+            </div>
+
+            <div class="text-center">
+                <a href="{% url 'excursion_list' %}" class="bg-orange text-white px-4 py-2 rounded-md hover:opacity-80">View all excursions</a>
             </div>
         </div>
     </section>
-</div>
-
 {% endblock %}
-
-

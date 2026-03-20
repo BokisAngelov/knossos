@@ -1,5 +1,6 @@
 from django.contrib.auth.models import User
 from django.db import transaction
+from django.db.models import Exists, OuterRef
 from django.utils import timezone
 from django.core.exceptions import ValidationError
 from .models import (
@@ -66,6 +67,24 @@ def attach_excursion_list_data(excursions):
         excursion.duration_range = duration_range
 
     return excursions
+
+
+def excursions_with_active_availability():
+    """
+    Same rule as Excursion.has_active_availability(): at least one ExcursionAvailability
+    with status 'active', is_active True, and end_date >= today.
+
+    Implemented with EXISTS (not Excursion.status + JOINs) so listings stay correct
+    if excursion.status is stale, and without duplicate rows from deep joins.
+    """
+    today = timezone.now().date()
+    active_window = ExcursionAvailability.objects.filter(
+        excursion_id=OuterRef('pk'),
+        status='active',
+        is_active=True,
+        end_date__gte=today,
+    )
+    return Excursion.objects.filter(Exists(active_window))
 
 
 class AvailabilityValidationService:
