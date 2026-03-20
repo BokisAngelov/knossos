@@ -5,7 +5,7 @@
 
 {% block content %}
 <!-- Hero Section with Dark Overlay -->
-<div class="relative min-h-screen flex items-center justify-center bg-cover bg-center" style="background-image: url('{% static 'images/bookingCode_bcg.jpg' %}'); background-size: cover; background-position: center; background-repeat: no-repeat; ">
+<div class="relative min-h-screen flex items-center justify-center bg-cover bg-center" style="background-image: url('{% static 'images/iGoCyprus-bookingID_60.jpg' %}'); background-size: cover; background-position: top center; background-repeat: no-repeat; ">
     
     <!-- Content -->
     <div class="relative z-20 text-center px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto">
@@ -16,7 +16,7 @@
         
         <!-- Call to Action -->
         <p class="text-lg mb-6 text-white">
-            Manage your transfers, explore hidden gems, and stay updated in real-time
+            Enter your Booking ID to manage your transfers, track your journey in real-time, and discover hand-picked local excursions.
         </p>
         
         <!-- Form -->
@@ -49,7 +49,7 @@
                 <button 
                     type="submit" 
                     id="submit-booking-id"
-                    class="px-8 py-3 bg-blue hover:opacity-90 text-white font-semibold rounded-lg transition-colors duration-200 flex items-center justify-center min-w-[140px]">
+                    class="px-8 py-3 bg-orange hover:opacity-90 text-white font-semibold rounded-lg transition-colors duration-200 flex items-center justify-center min-w-[140px]">
                     <span id="button-text">Get started</span>
                     <svg id="loading-spinner" class="hidden animate-spin ml-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -63,13 +63,13 @@
         <div class="mt-12 space-y-4">
             <p class="text-sm text-white">
                 Don't have a booking yet? 
-                <a href="{% url 'excursion_list' %}" class="text-blue underline text-white hover:opacity-80">
+                <a href="{% url 'excursion_list' %}" class="text-white underline hover:opacity-80">
                     Browse our excursions
                 </a>
             </p>
             <p class="text-sm text-white">
                 Already have an account? 
-                <a href="{% url 'login' %}" class="text-blue underline text-white hover:opacity-80">
+                <a href="{% url 'login' %}" class="underline text-white hover:opacity-80">
                     Login here
                 </a>
             </p>

@@ -29,6 +29,12 @@ h6{
 .text-header-grey{
     color: #4d4d4d;
 }
+.bg-grey{
+    background-color: #635d58;
+}
+.text-grey{
+    color: #635d58;
+}
 .page-header-color{
     color: #333333;
 }
@@ -72,13 +78,13 @@ h6{
     color: #c6b09d;
 }
 .bg-orange {
-    background-color: #ff6b35;
+    background-color: #fd4f00;
 }
 .text-orange {
-    color: #ff6b35;
+    color: #fd4f00;
 }
 .border-orange {
-    border-color: #ff6b35;
+    border-color: #fd4f00;
     border-width: 2px;
 }
 .bg-orange-light {
@@ -183,12 +189,12 @@ select option {
     color: #facc15;
 }
 .signup-hero {
-    background-image: url("../images/signup-hero.png");
+    background-image: url("../images/iGoCyprus-SignUp1.jpg");
     background-size: cover;
     background-position: center;
 }
 .home-hero-section{
-    background-image: url('../images/home-intro-img.png'); 
+    background-image: url('../images/LefkaraVillage-jpeg.jpeg'); 
     margin-left: calc(50% - 50vw); 
     margin-right: calc(50% - 50vw);
 }

@@ -9,7 +9,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 class Command(BaseCommand):
-    help = 'Send warnings for pending bookings with excursions happening in 1 day'
+    help = 'Send warnings for pending bookings with excursions happening in 3 days'
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -22,12 +22,12 @@ class Command(BaseCommand):
         send_emails = options.get('send_emails', False)
         now = timezone.now()
         today = now.date()
-        tomorrow = today + timedelta(days=1)
+        target_date = today + timedelta(days=3)
         
-        # Find pending bookings where excursion date is exactly 1 day ahead (tomorrow)
+        # Find pending bookings where excursion date is exactly 3 days ahead
         pending_bookings = Booking.objects.filter(
             payment_status='pending',
-            date=tomorrow
+            date=target_date
         ).select_related(
             'excursion_availability',
             'excursion_availability__excursion',
@@ -40,13 +40,13 @@ class Command(BaseCommand):
         
         if count == 0:
             self.stdout.write(
-                self.style.SUCCESS('✅ No pending bookings found for tomorrow')
+                self.style.SUCCESS('✅ No pending bookings found for 3 days from now')
             )
-            logger.info('No pending bookings found for tomorrow')
+            logger.info('No pending bookings found for 3 days from now')
             return
         
         self.stdout.write(
-            self.style.WARNING(f'⚠️  Found {count} pending booking(s) for tomorrow')
+            self.style.WARNING(f'⚠️  Found {count} pending booking(s) for 3 days from now')
         )
         
         # Group bookings for reporting
@@ -91,10 +91,10 @@ class Command(BaseCommand):
                         # Build email content
                         builder = EmailBuilder()
                         builder.h2(f"Hello {guest_name}!")
-                        builder.warning("Payment Reminder - Excursion Tomorrow!")
+                        builder.warning("Payment Reminder - Excursion in 3 Days!")
                         builder.p(
-                            "This is a friendly reminder that you have a pending booking for an excursion tomorrow. "
-                            "Please complete your payment to confirm your spot."
+                            "This is a friendly reminder that you have a pending booking for an excursion in 3 days. "
+                            "Please complete your payment to confirm your spot otherwise it will be cancelled."
                         )
                         builder.card("Booking Details", {
                             'Booking #': f'{booking.id}',
@@ -111,10 +111,10 @@ class Command(BaseCommand):
                         
                         # Send email (background)
                         EmailService.send_dynamic_email_async(
-                            subject='[iTrip Knossos] ⚠️ Payment Reminder - Excursion Tomorrow',
+                            subject='[iTrip Knossos] ⚠️ Payment Reminder - Excursion in 3 Days',
                             recipient_list=[customer_email],
                             email_body=builder.build(),
-                            preview_text='Please complete your payment for tomorrow\'s excursion',
+                            preview_text='Please complete your payment for your upcoming excursion',
                             email_kind='payment_reminder',
                         )
                         warned_customers += 1
@@ -130,7 +130,7 @@ class Command(BaseCommand):
             if admin_bookings_list:
                 try:
                     admin_message_lines = [
-                        f'⚠️  URGENT: {count} pending booking(s) require payment for excursions happening tomorrow.',
+                        f'⚠️  URGENT: {count} pending booking(s) require payment for excursions happening in 3 days.',
                         '',
                         'Pending Bookings:',
                         '-' * 80,
@@ -152,7 +152,7 @@ class Command(BaseCommand):
                     admin_message = '\n'.join(admin_message_lines)
                     
                     emails_sent = EmailService.send_email(
-                        subject=f'[iTrip Knossos] ⚠️  {count} Pending Booking(s) for Tomorrow',
+                        subject=f'[iTrip Knossos] ⚠️  {count} Pending Booking(s) in 3 Days',
                         message=admin_message,
                         recipient_list=['bokis.angelov@innovade.eu'],
                         fail_silently=True

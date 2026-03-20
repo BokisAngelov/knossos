@@ -38,7 +38,7 @@ class ExcursionForm(forms.ModelForm):
         fields = [
             'title', 'description', 'intro_image',
             'category', 'tags',
-            'full_day', 'on_request', 'status', 'provider'
+            'full_day', 'on_request', 'provider'
         ]
         widgets = {
             'intro_image': forms.FileInput(attrs={
@@ -203,7 +203,7 @@ class PickupGroupWidget(forms.CheckboxSelectMultiple):
             value = [value]
         final_attrs = self.build_attrs(attrs)
         output = []
-        pickup_groups = list(PickupGroup.objects.all())
+        pickup_groups = list(PickupGroup.objects.all().order_by('name'))
         groups_per_col = 7
         num_cols = (len(pickup_groups) + groups_per_col - 1) // groups_per_col
         output.append('<div class="pickupgroup-grid">')
@@ -249,7 +249,7 @@ class PickupPointWidget(forms.CheckboxSelectMultiple):
         output = []
         
         # Group pickup points by their pickup_group
-        pickup_groups = PickupGroup.objects.prefetch_related('pickup_points').order_by('priority', 'name')
+        pickup_groups = PickupGroup.objects.prefetch_related('pickup_points').order_by('name')
         
         output.append('<div class="pickup-points-container">')
         

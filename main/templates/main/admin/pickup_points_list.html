@@ -74,20 +74,20 @@
                         <tr data-id="{{ point.id }}">
                             <td class="px-4 py-4 whitespace-nowrap">
                                 <span class="editable-name text-sm font-normal">{{ point.name }}</span>
-                                <input type="text" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ point.name }}">
+                                <input type="text" data-field="name" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ point.name }}">
                             </td>
                             
                             <td class="px-4 py-4 whitespace-nowrap">
-                                <span class="editable-group text-sm font-normal">{% if point.pickup_group %}{{ point.pickup_group.name }} ({{ point.pickup_group.priority }}){% endif %}</span>
-                                <select class="edit-input hidden w-full border rounded px-2 py-1 bg-white">
+                                <span class="editable-group text-sm font-normal">{% if point.pickup_group %}{{ point.pickup_group.name }} {% endif %}</span>
+                                <select data-field="pickup_group" class="edit-input hidden w-full border rounded px-2 py-1 bg-white">
                                     {% for group in pickup_groups %}
-                                        <option value="{{ group.id }}" {% if point.pickup_group and point.pickup_group.id == group.id %}selected{% endif %}>{{ group.name }} ({{ group.priority }})</option>
+                                        <option value="{{ group.id }}" {% if point.pickup_group and point.pickup_group.id == group.id %}selected{% endif %}>{{ group.name }}</option>
                                     {% endfor %}
                                 </select>
                             </td>
                             <td class="px-4 py-4 whitespace-nowrap">
                                 <span class="editable-priority text-sm font-normal">{{ point.priority }}</span>
-                                <input type="number" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ point.priority }}">
+                                <input type="number" min="0" step="1" data-field="priority" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ point.priority }}">
                             </td>
                             <td class="px-4 py-4 whitespace-nowrap">
                                 <span class="editable-link text-sm font-normal">
@@ -95,7 +95,7 @@
                                         <a href="{{ point.google_maps_link }}" target="_blank" class="text-blue-600 hover:text-blue-800">View on map</a>
                                     {% endif %}
                                 </span>
-                                <input type="url" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ point.google_maps_link }}" placeholder="Google Maps link">
+                                <input type="url" data-field="google_maps_link" class="edit-input hidden w-full border rounded px-2 py-1" value="{{ point.google_maps_link|default:'' }}" placeholder="Google Maps link">
                             </td>
                             <td class="px-4 py-4 whitespace-nowrap flex justify-end">
                                 <button type="button" class="edit-btn text-blue hover:opacity-80 font-semibold mr-2">
@@ -298,9 +298,13 @@
                     const row = this.closest('tr');
                     const spans = row.querySelectorAll('.editable-name, .editable-group, .editable-link, .editable-priority');
                     const inputs = row.querySelectorAll('.edit-input');
+                    inputs.forEach(input => {
+                        input.dataset.beforeEdit = input.value;
+                    });
                     spans.forEach(span => span.classList.add('hidden'));
                     inputs.forEach(input => input.classList.remove('hidden'));
-                    inputs[3].focus();
+                    const pri = row.querySelector('.edit-input[data-field="priority"]');
+                    if (pri) pri.focus();
                     row.querySelectorAll('.edit-btn, .delete-btn').forEach(el => el.classList.add('hidden'));
                     row.querySelectorAll('.save-btn, .cancel-btn').forEach(el => el.classList.remove('hidden'));
                 });
@@ -311,12 +315,15 @@
                     e.preventDefault();
                     const row = this.closest('tr');
                     const itemId = row.dataset.id;
-                    const inputs = row.querySelectorAll('.edit-input');
+                    const v = (field) => {
+                        const el = row.querySelector(`.edit-input[data-field="${field}"]`);
+                        return el ? String(el.value).trim() : '';
+                    };
                     document.getElementById('edit-point-id').value = itemId;
-                    document.getElementById('edit-point-name').value = inputs[0].value.trim();
-                    document.getElementById('edit-point-group').value = inputs[1].value.trim();
-                    document.getElementById('edit-point-priority').value = inputs[2].value.trim();
-                    document.getElementById('edit-point-google-maps-link').value = inputs[3].value.trim();
+                    document.getElementById('edit-point-name').value = v('name');
+                    document.getElementById('edit-point-group').value = v('pickup_group');
+                    document.getElementById('edit-point-priority').value = v('priority');
+                    document.getElementById('edit-point-google-maps-link').value = v('google_maps_link');
                     document.getElementById('edit-point-form').submit();
                 });
             });
@@ -327,18 +334,9 @@
                     const row = this.closest('tr');
                     const spans = row.querySelectorAll('.editable-name, .editable-group, .editable-link, .editable-priority');
                     const inputs = row.querySelectorAll('.edit-input');
-                    inputs.forEach((input, index) => {
-                        if (input.tagName === 'SELECT') {
-                            // Reset select to original value
-                            const originalText = spans[index].textContent.trim();
-                            for (let i = 0; i < input.options.length; i++) {
-                                if (input.options[i].text === originalText) {
-                                    input.selectedIndex = i;
-                                    break;
-                                }
-                            }
-                        } else {
-                            input.value = spans[index].textContent;
+                    inputs.forEach((input) => {
+                        if (input.dataset.beforeEdit !== undefined) {
+                            input.value = input.dataset.beforeEdit;
                         }
                     });
                     spans.forEach(span => span.classList.remove('hidden'));
