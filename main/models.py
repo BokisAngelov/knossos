@@ -268,7 +268,10 @@ class PickupPoint(models.Model):
     # type = models.CharField(max_length=15, choices=TYPE_CHOICES, default='other')
     pickup_group = models.ForeignKey(PickupGroup, on_delete=models.SET_NULL, null=True, related_name='pickup_points')
     google_maps_link = models.CharField(max_length=255, blank=True, null=True)
-    priority = models.PositiveIntegerField(default=0)    
+    priority = models.PositiveIntegerField(
+        default=0,
+        help_text='Lower value = earlier in the route. Used to order pickup stops on transport group detail, PDF, and CSV.',
+    )
 
     def __str__(self):
         return self.name
@@ -867,7 +870,7 @@ class GroupPickupPoint(models.Model):
 
     class Meta:
         unique_together = ['group', 'pickup_point']
-        ordering = ['pickup_point__pickup_group__priority', 'pickup_point__priority', 'pickup_point__name']
+        ordering = ['pickup_point__priority', 'pickup_point__name']
 
     def __str__(self):
         return f"{self.group.name} - {self.pickup_point.name} @ {self.pickup_time or 'Not Set'}"

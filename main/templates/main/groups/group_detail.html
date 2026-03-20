@@ -125,51 +125,44 @@
                 {% endif %}
         </div>
         
-        {% if pickup_groups %}
-        <div class="px-6 py-6">
-            {% for pickup_group in pickup_groups %}
-            <!-- Pickup Group Header -->
-            <div class="mb-6">
-                <div class="flex items-center mb-3">
-                    <h3 class="text-base font-semibold text-gray-900">{{ pickup_group.pickup_group_name }}</h3>
-                    <span class="ml-3 text-sm text-gray-500">({{ pickup_group.total_guests }} guests)</span>
+        {% if pickup_point_rows %}
+        <div class="px-6 py-6 space-y-6">
+            {% for row in pickup_point_rows %}
+            <div class="mb-4 pb-6 {% if not forloop.last %}border-b border-gray-200{% endif %}">
+                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{{ row.pickup_group_name }}</p>
+                <div class="flex items-center mb-2 justify-between flex-wrap gap-2">
+                    <div class="flex items-center">
+                        <svg class="w-4 h-4 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                        <h4 class="text-sm font-medium text-gray-900">{{ row.pickup_point_name }}</h4>
+                        <span class="ml-2 text-xs text-gray-400">({{ row.booking_count }} bookings)</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <label class="text-xs font-medium text-gray-600">Pickup Time:</label>
+                        {% if row.pickup_point %}
+                        <input type="time"
+                               class="pickup-time-input border-gray-300 rounded-md shadow-sm text-sm focus:ring-blue-500 focus:border-blue-500 px-2 py-1"
+                               data-pickup-point-id="{{ row.pickup_point.id }}"
+                               value="{% if row.pickup_time %}{{ row.pickup_time|time:'H:i' }}{% endif %}">
+                        <span class="time-status-icon ml-1">
+                            {% if row.pickup_time %}
+                                <svg class="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                </svg>
+                            {% else %}
+                                <svg class="w-5 h-5 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                </svg>
+                            {% endif %}
+                        </span>
+                        {% else %}
+                        <span class="text-xs text-gray-500">—</span>
+                        {% endif %}
+                    </div>
                 </div>
 
-                {% for pickup_point in pickup_group.pickup_point_summaries %}
-                <!-- Pickup Point -->
-                <div class="ml-7 mb-4">
-                    <div class="flex items-center mb-2 justify-between">
-                        <div class="flex items-center">
-                            <svg class="w-4 h-4 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                            </svg>
-                            <h4 class="text-sm font-medium text-gray-700">{{ pickup_point.pickup_point_name }}</h4>
-                            <span class="ml-2 text-xs text-gray-400">({{ pickup_point.booking_count }} bookings)</span>
-                        </div>
-                        
-                        <!-- Pickup Time Input -->
-                        <div class="flex items-center space-x-2">
-                            <label class="text-xs font-medium text-gray-600">Pickup Time:</label>
-                            <input type="time" 
-                                   class="pickup-time-input border-gray-300 rounded-md shadow-sm text-sm focus:ring-blue-500 focus:border-blue-500 px-2 py-1"
-                                   data-pickup-point-id="{{ pickup_point.pickup_point.id }}"
-                                   value="{% if pickup_point.pickup_time %}{{ pickup_point.pickup_time|time:'H:i' }}{% endif %}">
-                            <span class="time-status-icon ml-1">
-                                {% if pickup_point.pickup_time %}
-                                    <svg class="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                                    </svg>
-                                {% else %}
-                                    <svg class="w-5 h-5 text-red-600" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
-                                    </svg>
-                                {% endif %}
-                            </span>
-                        </div>
-                    </div>
-
-                    <!-- Bookings Table -->
-                    <div class="ml-6 overflow-x-auto">
+                <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200">
                             <thead class="bg-gray-50">
                                 <tr>
@@ -184,7 +177,7 @@
                                 </tr>
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-100">
-                                {% for booking in pickup_point.bookings %}
+                                {% for booking in row.bookings %}
                                 <tr class="{% cycle 'bg-white' 'bg-gray-50' %}">
                                     <td class="px-4 py-3 text-sm text-gray-500">{{ forloop.counter }}</td>
                                     <td class="px-4 py-3 text-sm font-medium text-gray-900">{{ booking.guest_name }}<br>
@@ -216,11 +209,8 @@
                                 {% endfor %}
                             </tbody>
                         </table>
-                    </div>
                 </div>
-                {% endfor %}
             </div>
-            {% if not forloop.last %}<hr class="my-6 border-gray-200">{% endif %}
             {% endfor %}
 
             <!-- Total Footer -->

@@ -34,6 +34,7 @@ import re
 import json
 import logging
 from django.db.models import Q, Sum, Count
+from django.db.models.functions import Lower
 
 logger = logging.getLogger(__name__)
 from django.apps import apps
@@ -2935,27 +2936,30 @@ def group_create(request):
 def group_detail(request, pk):
     from .models import GroupPickupPoint
     
-    group = get_object_or_404(Group.objects.prefetch_related(
-        'bookings',
-        'bookings__user__profile',
-        'bookings__pickup_point',
-        'bookings__pickup_point__pickup_group',
-        'bookings__voucher_id',
-        'pickup_times',
-        'pickup_times__pickup_point'
-    ), pk=pk)
-    
-    # Group bookings by pickup point for display
-    from .utils import TransportGroupService
-    bookings = group.bookings.all().order_by(
-        'pickup_point__pickup_group__name',
-        'pickup_point__name'
+    group = get_object_or_404(
+        Group.objects.select_related('excursion', 'bus', 'guide', 'provider').prefetch_related(
+            'pickup_times',
+            'pickup_times__pickup_point',
+        ),
+        pk=pk,
     )
     
-    # Get pickup group summary (hierarchical structure)
-    pickup_summary = TransportGroupService.get_pickup_group_summary(bookings)
+    # Explicit queryset: prefetched group.bookings ignores order_by() and can attach stale
+    # pickup_point instances; transport order must follow current PickupPoint.priority in DB.
+    from .utils import TransportGroupService
+    bookings = list(
+        Booking.objects.filter(transport_groups=group)
+        .select_related(
+            'user__profile',
+            'pickup_point',
+            'pickup_point__pickup_group',
+            'voucher_id',
+        )
+        .order_by('pickup_point__priority', Lower('pickup_point__name'), 'guest_name')
+    )
     
-    # Get all unique pickup points from bookings
+    pickup_point_rows = TransportGroupService.get_pickup_point_rows_for_transport(bookings)
+    
     unique_pickup_points = set()
     for booking in bookings:
         if booking.pickup_point:
@@ -2970,12 +2974,13 @@ def group_detail(request, pk):
         )
         pickup_times_dict[pickup_point.id] = gpp.pickup_time
     
-    # Add pickup times to the pickup summary structure
-    for pickup_group in pickup_summary:
-        for pickup_point_summary in pickup_group['pickup_point_summaries']:
-            if pickup_point_summary['pickup_point']:
-                pickup_point_id = pickup_point_summary['pickup_point'].id
-                pickup_point_summary['pickup_time'] = pickup_times_dict.get(pickup_point_id)
+    TransportGroupService.apply_default_pickup_times_for_group(
+        group, bookings, pickup_point_rows, pickup_times_dict
+    )
+    
+    for row in pickup_point_rows:
+        if row['pickup_point']:
+            row['pickup_time'] = pickup_times_dict.get(row['pickup_point'].id)
     
     # Check if all pickup times are set
     all_times_set = all(time is not None for time in pickup_times_dict.values()) and len(pickup_times_dict) > 0
@@ -2983,7 +2988,7 @@ def group_detail(request, pk):
     return render(request, 'main/groups/group_detail.html', {
         'group': group,
         'bookings': bookings,
-        'pickup_groups': pickup_summary,
+        'pickup_point_rows': pickup_point_rows,
         'all_times_set': all_times_set,
     })
 
@@ -3400,7 +3405,6 @@ def get_bookings_for_group(request):
             except Group.DoesNotExist:
                 pass
         
-        # Get pickup group summary
         pickup_summary = TransportGroupService.get_pickup_group_summary(bookings)
         
         if not pickup_summary:
@@ -3481,7 +3485,7 @@ def group_export_pdf(request, pk):
 def group_export_csv(request, pk):
     import csv
     from io import StringIO
-    from .models import GroupPickupPoint
+    from .utils import TransportGroupService
     
     group = get_object_or_404(Group.objects.prefetch_related(
         'bookings',
@@ -3498,70 +3502,10 @@ def group_export_csv(request, pk):
     for gpp in group.pickup_times.all():
         pickup_times[gpp.pickup_point.id] = gpp.pickup_time
     
-    # Get bookings for the group
-    bookings = group.bookings.all().order_by(
-        'pickup_point__pickup_group__name',
-        'pickup_point__name',
-        'guest_name'
+    bookings = group.bookings.all()
+    manifest_blocks = TransportGroupService.build_transport_manifest_blocks(
+        bookings, pickup_times
     )
-    
-    # Organize bookings by pickup group and pickup point with subtotals
-    organized_data = []
-    current_pickup_group = None
-    pickup_group_data = None
-    
-    for booking in bookings:
-        # Get pickup group - handle None pickup_point case
-        if booking.pickup_point:
-            pickup_group = booking.pickup_point.pickup_group
-            pickup_point = booking.pickup_point
-        else:
-            pickup_group = None
-            pickup_point = None
-        
-        # Check if we need to start a new pickup group
-        if pickup_group != current_pickup_group:
-            if pickup_group_data:
-                organized_data.append(pickup_group_data)
-            
-            current_pickup_group = pickup_group
-            pickup_group_data = {
-                'pickup_group': pickup_group,
-                'pickup_points': []
-            }
-        
-        # Find or create pickup point in current group
-        pickup_point_data = None
-        for pp in pickup_group_data['pickup_points']:
-            if pp['pickup_point'] == pickup_point:
-                pickup_point_data = pp
-                break
-        
-        if not pickup_point_data:
-            # Get pickup time for this pickup point
-            pickup_time = None
-            if pickup_point:
-                pickup_time = pickup_times.get(pickup_point.id)
-            
-            pickup_point_data = {
-                'pickup_point': pickup_point,
-                'pickup_time': pickup_time,
-                'bookings': [],
-                'subtotal': {'adults': 0, 'kids': 0, 'infants': 0, 'total': 0}
-            }
-            pickup_group_data['pickup_points'].append(pickup_point_data)
-        
-        # Add booking and update subtotal
-        guest_total = (booking.total_adults or 0) + (booking.total_kids or 0) + (booking.total_infants or 0)
-        pickup_point_data['bookings'].append(booking)
-        pickup_point_data['subtotal']['adults'] += booking.total_adults or 0
-        pickup_point_data['subtotal']['kids'] += booking.total_kids or 0
-        pickup_point_data['subtotal']['infants'] += booking.total_infants or 0
-        pickup_point_data['subtotal']['total'] += guest_total
-    
-    # Don't forget to add the last pickup group
-    if pickup_group_data:
-        organized_data.append(pickup_group_data)
     
     # Create CSV content
     output = StringIO()
@@ -3574,7 +3518,7 @@ def group_export_csv(request, pk):
     writer.writerow(['Group:', group.name])
     writer.writerow(['Date:', group.date.strftime('%A, %B %d, %Y')])
     writer.writerow(['Total Guests:', group.total_guests])
-    writer.writerow(['Total Bookings:', bookings.count()])
+    writer.writerow(['Total Bookings:', sum(len(b['bookings']) for b in manifest_blocks)])
     writer.writerow([])
     writer.writerow([])
     
@@ -3584,57 +3528,54 @@ def group_export_csv(request, pk):
     
     # Data rows
     row_number = 1
-    for pg_data in organized_data:
-        pickup_group_name = pg_data['pickup_group'].name if pg_data['pickup_group'] else 'No Pickup Group'
+    for block in manifest_blocks:
+        pickup_group_name = block['pickup_group_name']
+        pickup_point_name = block['pickup_point_name']
+        pickup_time_str = block['pickup_time'].strftime('%H:%M') if block['pickup_time'] else 'Not Set'
         
-        for pp_data in pg_data['pickup_points']:
-            pickup_point_name = pp_data['pickup_point'].name if pp_data['pickup_point'] else 'No Pickup Point'
-            pickup_time_str = pp_data['pickup_time'].strftime('%H:%M') if pp_data['pickup_time'] else 'Not Set'
+        for booking in block['bookings']:
+            phone = ''
+            if booking.voucher_id and booking.voucher_id.client_phone:
+                phone = booking.voucher_id.client_phone
             
-            for booking in pp_data['bookings']:
-                phone = ''
-                if booking.voucher_id and booking.voucher_id.client_phone:
-                    phone = booking.voucher_id.client_phone
-                
-                hotel = ''
-                if booking.voucher_id and booking.voucher_id.hotel:
-                    hotel = booking.voucher_id.hotel.name
-                
-                adults = booking.total_adults or 0
-                kids = booking.total_kids or 0
-                infants = booking.total_infants or 0
-                total = adults + kids + infants
-                
-                writer.writerow([
-                    row_number,
-                    pickup_group_name,
-                    pickup_point_name,
-                    pickup_time_str,
-                    booking.guest_name,
-                    phone,
-                    hotel,
-                    adults,
-                    kids,
-                    infants,
-                    total
-                ])
-                row_number += 1
+            hotel = ''
+            if booking.voucher_id and booking.voucher_id.hotel:
+                hotel = booking.voucher_id.hotel.name
             
-            # Subtotal row
+            adults = booking.total_adults or 0
+            kids = booking.total_kids or 0
+            infants = booking.total_infants or 0
+            total = adults + kids + infants
+            
             writer.writerow([
-                '',
-                '',
-                f'SUBTOTAL - {pickup_point_name}',
-                '',
-                f'{len(pp_data["bookings"])} booking(s)',
-                '',
-                '',
-                pp_data['subtotal']['adults'],
-                pp_data['subtotal']['kids'],
-                pp_data['subtotal']['infants'],
-                pp_data['subtotal']['total']
+                row_number,
+                pickup_group_name,
+                pickup_point_name,
+                pickup_time_str,
+                booking.guest_name,
+                phone,
+                hotel,
+                adults,
+                kids,
+                infants,
+                total
             ])
-            writer.writerow([])  # Empty row for spacing
+            row_number += 1
+        
+        writer.writerow([
+            '',
+            '',
+            f'SUBTOTAL - {pickup_point_name}',
+            '',
+            f'{len(block["bookings"])} booking(s)',
+            '',
+            '',
+            block['subtotal']['adults'],
+            block['subtotal']['kids'],
+            block['subtotal']['infants'],
+            block['subtotal']['total']
+        ])
+        writer.writerow([])
     
     # Grand total
     writer.writerow([])
@@ -4747,12 +4688,20 @@ def manage_pickup_points(request):
         if action_type == 'add_point':
             name = request.POST.get('name', '').strip()
             # address = request.POST.get('address', '').strip()
-            priority = request.POST.get('priority', '').strip()
+            priority_raw = request.POST.get('priority', '').strip()
             pickup_group_id = request.POST.get('pickup_group')
             google_maps_link = request.POST.get('google_maps_link', '').strip()
 
-            if not all([name, pickup_group_id, priority]):
+            if not all([name, pickup_group_id, priority_raw]):
                 messages.error(request, 'Please fill in all required fields')
+                return redirect('pickup_points_list')
+            try:
+                priority = int(priority_raw)
+            except (TypeError, ValueError):
+                messages.error(request, 'Priority must be a whole number.')
+                return redirect('pickup_points_list')
+            if priority < 0:
+                messages.error(request, 'Priority cannot be negative.')
                 return redirect('pickup_points_list')
             
             try:
@@ -4773,12 +4722,20 @@ def manage_pickup_points(request):
             item_id = request.POST.get('item_id')
             name = request.POST.get('name', '').strip()
             # address = request.POST.get('address', '').strip()
-            priority = request.POST.get('priority', '').strip()
+            priority_raw = request.POST.get('priority', '').strip()
             pickup_group_id = request.POST.get('pickup_group')
             google_maps_link = request.POST.get('google_maps_link', '').strip()
 
-            if not all([item_id, name, pickup_group_id, priority]):
+            if not all([item_id, name, pickup_group_id, priority_raw]):
                 messages.error(request, 'Please fill in all required fields')
+                return redirect('pickup_points_list')
+            try:
+                priority = int(priority_raw)
+            except (TypeError, ValueError):
+                messages.error(request, 'Priority must be a whole number.')
+                return redirect('pickup_points_list')
+            if priority < 0:
+                messages.error(request, 'Priority cannot be negative.')
                 return redirect('pickup_points_list')
             
             try:
@@ -4792,7 +4749,7 @@ def manage_pickup_points(request):
             point.priority = priority
             point.pickup_group = pickup_group
             point.google_maps_link = google_maps_link if google_maps_link else None
-            point.save()
+            point.save(update_fields=['name', 'priority', 'pickup_group', 'google_maps_link'])
             messages.success(request, 'Pickup point updated successfully')
             
         elif action_type == 'delete_point':

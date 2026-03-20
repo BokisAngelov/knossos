@@ -5,7 +5,8 @@ from django.utils import timezone
 from django.core.exceptions import ValidationError
 from .models import (
     Excursion, Feedback, Booking, Reservation, Transaction,
-    AvailabilityDays, ExcursionAvailability, PickupPoint, Hotel, Region, JCCGatewayConfig, EmailSettings, EmailLog
+    AvailabilityDays, ExcursionAvailability, PickupPoint, Hotel, Region, JCCGatewayConfig, EmailSettings, EmailLog,
+    GroupPickupPoint,
 )
 from .cyber_api import get_reservation
 from datetime import datetime, date, timedelta
@@ -970,7 +971,7 @@ class TransportGroupService:
             'excursion'
         ).order_by(
             'pickup_point__pickup_group__name',
-            'pickup_point__name'
+            'pickup_point__name',
         )
         
         if excursion:
@@ -990,32 +991,6 @@ class TransportGroupService:
         return bookings
     
     @staticmethod
-    def group_bookings_by_pickup(bookings):
-        """
-        Group bookings by pickup group and pickup point.
-        
-        Args:
-            bookings: QuerySet of Booking objects
-            
-        Returns:
-            dict: Nested structure {pickup_group: {pickup_point: [bookings]}}
-        """
-        from collections import defaultdict
-        
-        grouped = defaultdict(lambda: defaultdict(list))
-        
-        for booking in bookings:
-            pickup_group = booking.pickup_point.pickup_group if booking.pickup_point else None
-            pickup_point = booking.pickup_point
-            
-            group_key = pickup_group.name if pickup_group else 'No Pickup Group'
-            point_key = pickup_point.name if pickup_point else 'No Pickup Point'
-            
-            grouped[group_key][point_key].append(booking)
-        
-        return dict(grouped)
-    
-    @staticmethod
     def calculate_booking_guests(booking):
         """Calculate total guests for a booking."""
         return (booking.total_adults or 0) + (booking.total_kids or 0) + (booking.total_infants or 0)
@@ -1030,64 +1005,259 @@ class TransportGroupService:
         return total
     
     @staticmethod
+    def group_bookings_by_pickup(bookings):
+        """
+        Group bookings by pickup group and pickup point (for create/edit booking picker only).
+        """
+        from collections import defaultdict
+
+        grouped = defaultdict(lambda: defaultdict(list))
+        for booking in bookings:
+            pickup_group = booking.pickup_point.pickup_group if booking.pickup_point else None
+            pickup_point = booking.pickup_point
+            group_key = pickup_group.name if pickup_group else 'No Pickup Group'
+            point_key = pickup_point.name if pickup_point else 'No Pickup Point'
+            grouped[group_key][point_key].append(booking)
+        return dict(grouped)
+    
+    @staticmethod
+    def _picker_point_sort_key(item):
+        """Booking picker: order points by name only (not priority)."""
+        return item['pickup_point_name'].lower()
+    
+    @staticmethod
+    def _picker_group_sort_key(item):
+        return item['pickup_group_name'].lower()
+    
+    @staticmethod
     def get_pickup_group_summary(bookings):
         """
-        Get summary of bookings grouped by pickup group with totals.
-        
-        Returns:
-            list: [{
-                'pickup_group': PickupGroup instance,
-                'pickup_point_summaries': [{
-                    'pickup_point': PickupPoint instance,
-                    'bookings': [Booking instances],
-                    'total_guests': int,
-                    'booking_count': int
-                }],
-                'total_guests': int,
-                'booking_count': int
-            }]
+        Nested structure for group create/edit — select excursion & bookings (HTMX).
+        Sorted by pickup group name, then pickup point name. Does not use priority.
         """
         grouped = TransportGroupService.group_bookings_by_pickup(bookings)
         summary = []
-        
         for group_name, points in grouped.items():
             group_total_guests = 0
             group_booking_count = 0
             point_summaries = []
-            
             for point_name, point_bookings in points.items():
                 point_total = sum(
-                    TransportGroupService.calculate_booking_guests(b) 
-                    for b in point_bookings
+                    TransportGroupService.calculate_booking_guests(b) for b in point_bookings
                 )
-                
                 point_summaries.append({
                     'pickup_point_name': point_name,
                     'pickup_point': point_bookings[0].pickup_point if point_bookings else None,
                     'bookings': point_bookings,
                     'total_guests': point_total,
-                    'booking_count': len(point_bookings)
+                    'booking_count': len(point_bookings),
                 })
-                
                 group_total_guests += point_total
                 group_booking_count += len(point_bookings)
-            
-            # Get the actual pickup_group instance from first booking
+            point_summaries.sort(key=TransportGroupService._picker_point_sort_key)
             first_booking = next(
-                (b for points in points.values() for b in points if b.pickup_point), 
-                None
+                (b for pb in points.values() for b in pb if b.pickup_point),
+                None,
             )
-            pickup_group = first_booking.pickup_point.pickup_group if first_booking and first_booking.pickup_point else None
-            
+            pickup_group = (
+                first_booking.pickup_point.pickup_group
+                if first_booking and first_booking.pickup_point
+                else None
+            )
             summary.append({
                 'pickup_group_name': group_name,
                 'pickup_group': pickup_group,
                 'pickup_point_summaries': point_summaries,
                 'total_guests': group_total_guests,
-                'booking_count': group_booking_count
+                'booking_count': group_booking_count,
             })
-        
+        summary.sort(key=TransportGroupService._picker_group_sort_key)
         return summary
+    
+    @staticmethod
+    def _resolve_shared_pickup_window(bookings):
+        """
+        If every booking with an excursion_availability agrees on the same
+        pickup_start_time / pickup_end_time pair, return (start, end); else None.
+        """
+        windows = []
+        for b in bookings:
+            ea = getattr(b, 'excursion_availability', None)
+            if not ea:
+                continue
+            ps = ea.pickup_start_time
+            pe = ea.pickup_end_time
+            if ps is not None and pe is not None:
+                windows.append((ps, pe))
+        if not windows:
+            return None
+        first = windows[0]
+        if all(w == first for w in windows):
+            return first
+        return None
+    
+    @staticmethod
+    def _evenly_spread_pickup_times(pickup_start, pickup_end, count):
+        """
+        Spread `count` pickup times evenly from pickup_start through pickup_end (inclusive).
+        First stop at start, last at end; N>1 uses (N-1) equal steps.
+        """
+        if count <= 0:
+            return []
+        if count == 1:
+            return [pickup_start.replace(microsecond=0)]
+        anchor = date(2000, 1, 1)
+        t0 = datetime.combine(anchor, pickup_start)
+        t1 = datetime.combine(anchor, pickup_end)
+        if t1 <= t0:
+            t1 += timedelta(days=1)
+        total_seconds = (t1 - t0).total_seconds()
+        out = []
+        for i in range(count):
+            if i == count - 1:
+                out.append(t1.time().replace(microsecond=0))
+            else:
+                frac = i / (count - 1)
+                ti = t0 + timedelta(seconds=round(frac * total_seconds))
+                out.append(ti.time().replace(microsecond=0))
+        return out
+    
+    @staticmethod
+    def pickup_points_in_transport_row_order(pickup_point_rows):
+        """PickupPoint instances in display order (transport rows, excluding null point)."""
+        return [
+            r['pickup_point'] for r in pickup_point_rows
+            if r.get('pickup_point') is not None
+        ]
+    
+    @staticmethod
+    def apply_default_pickup_times_for_group(group, bookings, pickup_point_rows, pickup_times_dict):
+        """
+        For GroupPickupPoint rows with null pickup_time, assign evenly spaced times
+        from the shared excursion availability pickup window (bookings must all
+        share the same start/end). Does not overwrite admin-set times.
+        Updates DB and pickup_times_dict for assigned slots.
+        """
+        window = TransportGroupService._resolve_shared_pickup_window(bookings)
+        if not window:
+            return
+        start_t, end_t = window
+        ordered_points = TransportGroupService.pickup_points_in_transport_row_order(pickup_point_rows)
+        if not ordered_points:
+            return
+        spread = TransportGroupService._evenly_spread_pickup_times(start_t, end_t, len(ordered_points))
+        to_update = []
+        for i, pp in enumerate(ordered_points):
+            if pickup_times_dict.get(pp.id) is not None:
+                continue
+            gpp = GroupPickupPoint.objects.filter(group=group, pickup_point=pp).first()
+            if not gpp or gpp.pickup_time is not None:
+                continue
+            gpp.pickup_time = spread[i]
+            to_update.append(gpp)
+            pickup_times_dict[pp.id] = spread[i]
+        if to_update:
+            GroupPickupPoint.objects.bulk_update(to_update, ['pickup_time'])
+    
+    @staticmethod
+    def get_pickup_point_rows_for_transport(bookings):
+        """
+        One row per distinct pickup point. Order and displayed priority come only from
+        PickupPoint.priority and PickupPoint.name (fresh DB query), not from booking FK caches.
+
+        Returns:
+            list[dict]: {
+                'pickup_point', 'pickup_point_id', 'pickup_point_name', 'pickup_point_priority',
+                'pickup_group', 'pickup_group_name',
+                'bookings', 'total_guests', 'booking_count',
+            }
+            Ordered by pickup_point_priority ASC, then name (case-insensitive).
+        """
+        from collections import defaultdict
+        from django.db.models.functions import Lower
+
+        # Group by FK id only (not booking.pickup_point), so grouping does not depend on cached related rows.
+        by_point_id = defaultdict(list)
+        for booking in bookings:
+            pid = getattr(booking, 'pickup_point_id', None)
+            by_point_id[pid if pid else None].append(booking)
+
+        rows = []
+        point_ids = [k for k in by_point_id.keys() if k is not None]
+        if point_ids:
+            qs = (
+                PickupPoint.objects.filter(id__in=point_ids)
+                .select_related('pickup_group')
+                .order_by('priority', Lower('name'))
+            )
+            for pp in qs:
+                point_bookings = by_point_id[pp.id]
+                pg = pp.pickup_group
+                rows.append({
+                    'pickup_point': pp,
+                    'pickup_point_id': pp.id,
+                    'pickup_point_name': pp.name,
+                    'pickup_point_priority': int(pp.priority if pp.priority is not None else 0),
+                    'pickup_group': pg,
+                    'pickup_group_name': pg.name if pg else 'No Pickup Group',
+                    'bookings': point_bookings,
+                    'total_guests': sum(
+                        TransportGroupService.calculate_booking_guests(b) for b in point_bookings
+                    ),
+                    'booking_count': len(point_bookings),
+                })
+            rows.sort(
+                key=lambda r: (
+                    r['pickup_point_priority'],
+                    (r['pickup_point_name'] or '').lower(),
+                )
+            )
+
+        tail = []
+        if None in by_point_id:
+            nb = by_point_id[None]
+            tail.append({
+                'pickup_point': None,
+                'pickup_point_id': None,
+                'pickup_point_name': 'No Pickup Point',
+                'pickup_point_priority': None,
+                'pickup_group': None,
+                'pickup_group_name': 'No Pickup Group',
+                'bookings': nb,
+                'total_guests': sum(
+                    TransportGroupService.calculate_booking_guests(b) for b in nb
+                ),
+                'booking_count': len(nb),
+            })
+
+        return rows + tail
+    
+    @staticmethod
+    def build_transport_manifest_blocks(bookings, pickup_times_by_point_id):
+        """
+        Flat manifest sections in pickup-point priority order (for PDF/CSV).
+        pickup_times_by_point_id: dict[point_id] -> time or None
+        """
+        rows = TransportGroupService.get_pickup_point_rows_for_transport(bookings)
+        blocks = []
+        for row in rows:
+            pp = row['pickup_point']
+            pickup_time = pickup_times_by_point_id.get(pp.id) if pp else None
+            subtotal = {'adults': 0, 'kids': 0, 'infants': 0, 'total': 0}
+            for b in row['bookings']:
+                subtotal['adults'] += b.total_adults or 0
+                subtotal['kids'] += b.total_kids or 0
+                subtotal['infants'] += b.total_infants or 0
+                subtotal['total'] += TransportGroupService.calculate_booking_guests(b)
+            blocks.append({
+                'pickup_group_name': row['pickup_group_name'],
+                'pickup_point_name': row['pickup_point_name'],
+                'pickup_point': pp,
+                'pickup_time': pickup_time,
+                'bookings': row['bookings'],
+                'subtotal': subtotal,
+            })
+        return blocks
 
 
 class RevenueAnalyticsService:
@@ -2292,71 +2462,15 @@ def generate_group_pdf_for_transport(group):
         for gpp in group.pickup_times.all():
             pickup_times[gpp.pickup_point.id] = gpp.pickup_time
 
-        bookings = group.bookings.all().order_by(
-            'pickup_point__pickup_group__name',
-            'pickup_point__name',
-            'guest_name'
+        bookings = group.bookings.all()
+        manifest_blocks = TransportGroupService.build_transport_manifest_blocks(
+            bookings, pickup_times
         )
-
-        organized_data = []
-        current_pickup_group = None
-        pickup_group_data = None
-
-        for booking in bookings:
-            if booking.pickup_point:
-                pickup_group = booking.pickup_point.pickup_group
-                pickup_point = booking.pickup_point
-            else:
-                pickup_group = None
-                pickup_point = None
-
-            if pickup_group != current_pickup_group:
-                if pickup_group_data:
-                    organized_data.append(pickup_group_data)
-                current_pickup_group = pickup_group
-                pickup_group_data = {
-                    'pickup_group': pickup_group,
-                    'pickup_points': []
-                }
-
-            pickup_point_data = None
-            for pp in pickup_group_data['pickup_points']:
-                if pp['pickup_point'] == pickup_point:
-                    pickup_point_data = pp
-                    break
-
-            if not pickup_point_data:
-                pickup_time = None
-                if pickup_point:
-                    pickup_time = pickup_times.get(pickup_point.id)
-                pickup_point_data = {
-                    'pickup_point': pickup_point,
-                    'pickup_time': pickup_time,
-                    'bookings': [],
-                    'subtotal': {'adults': 0, 'kids': 0, 'infants': 0, 'total': 0}
-                }
-                pickup_group_data['pickup_points'].append(pickup_point_data)
-
-            guest_total = (booking.total_adults or 0) + (booking.total_kids or 0) + (booking.total_infants or 0)
-            pickup_point_data['bookings'].append(booking)
-            pickup_point_data['subtotal']['adults'] += booking.total_adults or 0
-            pickup_point_data['subtotal']['kids'] += booking.total_kids or 0
-            pickup_point_data['subtotal']['infants'] += booking.total_infants or 0
-            pickup_point_data['subtotal']['total'] += guest_total
-
-        if pickup_group_data:
-            organized_data.append(pickup_group_data)
-
-        # Sort pickup points within each pickup group by pickup time (None last)
-        for pg_data in organized_data:
-            pg_data['pickup_points'].sort(
-                key=lambda pp: (pp['pickup_time'] is None, pp['pickup_time'])
-            )
 
         html_content = render_to_string('main/groups/group_pdf.html', {
             'group': group,
             'bookings': bookings,
-            'organized_data': organized_data,
+            'manifest_blocks': manifest_blocks,
         })
 
         filename = f'transport_group_{group.name}_{group.date}.pdf'
