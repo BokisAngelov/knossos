@@ -3099,7 +3099,7 @@ def set_pickup_time(request, pk):
 
 @user_passes_test(is_staff)
 def group_send(request, pk):
-    """Send group list to transportation company (supplier only) and mark availability as inactive."""
+    """Send group list to transportation company (supplier only)."""
     if request.method != 'POST':
         messages.error(request, 'Invalid request method')
         return redirect('group_detail', pk=pk)

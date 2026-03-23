@@ -3,7 +3,7 @@ from django.db.models.signals import post_save, post_delete, pre_save
 from django.db import transaction
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from .models import Feedback, Excursion, ExcursionImage, ExcursionAvailability, Reservation, UserProfile, Group, AvailabilityDays, ReferralCode
+from .models import Feedback, Excursion, ExcursionImage, ExcursionAvailability, Reservation, UserProfile, Group, ReferralCode
 import os
 import shutil
 import logging
@@ -366,100 +366,6 @@ def track_group_status_change(sender, instance, **kwargs):
             instance._old_status = None
     else:
         instance._old_status = None
-
-
-@receiver(post_save, sender=Group)
-def handle_group_status_change(sender, instance, created, **kwargs):
-    """
-    When a Group's status changes to 'sent', mark the corresponding AvailabilityDays as inactive.
-    This ensures that the specific date becomes unavailable for new bookings.
-    """
-    if not instance.excursion or not instance.date:
-        logger.warning(f"Group {instance.name} has no excursion or date set. Skipping availability update.")
-        return
-    
-    # Only proceed if status changed to 'sent'
-    if instance.status != 'sent':
-        return
-    
-    # Check if this is actually a status change (not already sent)
-    old_status = getattr(instance, '_old_status', None)
-    if not created and old_status == 'sent':
-        # Status was already 'sent', no need to update
-        return
-    
-    try:
-        # Find all AvailabilityDays for this excursion and date
-        availability_days = AvailabilityDays.objects.filter(
-            excursion_availability__excursion=instance.excursion,
-            date_day=instance.date,
-            status='active'
-        )
-        
-        logger.info(f"Signal triggered: Marking AvailabilityDays as inactive for Group '{instance.name}'")
-        logger.info(f"  - Excursion: {instance.excursion.title} (ID: {instance.excursion.id})")
-        logger.info(f"  - Date: {instance.date}")
-        logger.info(f"  - Found {availability_days.count()} active AvailabilityDays")
-        
-        updated_count = availability_days.update(status='inactive')
-        
-        if updated_count > 0:
-            logger.info(
-                f"✓ Group '{instance.name}' marked as sent. "
-                f"Disabled {updated_count} AvailabilityDays for {instance.excursion.title} on {instance.date}"
-            )
-        else:
-            logger.warning(
-                f"✗ Group '{instance.name}' marked as sent but no active AvailabilityDays found "
-                f"for {instance.excursion.title} on {instance.date}"
-            )
-    except Exception as e:
-        logger.error(f"Error updating AvailabilityDays for group {instance.name}: {str(e)}")
-
-
-@receiver(post_delete, sender=Group)
-def handle_group_deletion(sender, instance, **kwargs):
-    """
-    When a Group is deleted, reactivate the corresponding AvailabilityDays
-    (but only if there are no other 'sent' groups for the same excursion and date).
-    """
-    if not instance.excursion or not instance.date:
-        return
-    
-    # Only reactivate if the deleted group was 'sent'
-    if instance.status != 'sent':
-        return
-    
-    try:
-        # Check if there are other 'sent' groups for the same excursion and date
-        other_sent_groups = Group.objects.filter(
-            excursion=instance.excursion,
-            date=instance.date,
-            status='sent'
-        ).exists()
-        
-        if not other_sent_groups:
-            # No other sent groups for this date, so reactivate
-            availability_days = AvailabilityDays.objects.filter(
-                excursion_availability__excursion=instance.excursion,
-                date_day=instance.date,
-                status='inactive'
-            )
-            
-            reactivated_count = availability_days.update(status='active')
-            
-            if reactivated_count > 0:
-                logger.info(
-                    f"Group '{instance.name}' deleted. "
-                    f"Reactivated {reactivated_count} AvailabilityDays for {instance.excursion.title} on {instance.date}"
-                )
-        else:
-            logger.info(
-                f"Group '{instance.name}' deleted but other sent groups exist for "
-                f"{instance.excursion.title} on {instance.date}. Not reactivating dates."
-            )
-    except Exception as e:
-        logger.error(f"Error reactivating AvailabilityDays after deleting group {instance.name}: {str(e)}")
 
 
 @receiver(post_save, sender=ReferralCode)

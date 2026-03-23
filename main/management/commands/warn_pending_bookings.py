@@ -107,11 +107,11 @@ class Command(BaseCommand):
                             "If you have already made the payment, please ignore this email. "
                             "If you need to cancel, please contact us as soon as possible."
                         )
-                        builder.p("Best regards,<br>The iTrip Knossos Team")
+                        builder.p("Best regards,<br>The iGoCyprus Team")
                         
                         # Send email (background)
                         EmailService.send_dynamic_email_async(
-                            subject='[iTrip Knossos] ⚠️ Payment Reminder - Excursion in 3 Days',
+                            subject='[iGoCyprus] ⚠️ Payment Reminder - Excursion in 3 Days',
                             recipient_list=[customer_email],
                             email_body=builder.build(),
                             preview_text='Please complete your payment for your upcoming excursion',
@@ -152,7 +152,7 @@ class Command(BaseCommand):
                     admin_message = '\n'.join(admin_message_lines)
                     
                     emails_sent = EmailService.send_email(
-                        subject=f'[iTrip Knossos] ⚠️  {count} Pending Booking(s) in 3 Days',
+                        subject=f'[iGoCyprus] ⚠️  {count} Pending Booking(s) in 3 Days',
                         message=admin_message,
                         recipient_list=['bokis.angelov@innovade.eu'],
                         fail_silently=True
