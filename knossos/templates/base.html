@@ -207,7 +207,7 @@
   </footer>
 
   {% not_accepted_or_declined_cookie_groups request as undecided_cookie_groups %}
-  {% if undecided_cookie_groups %}
+  {% if undecided_cookie_groups or not request.COOKIES.cookie_consent %}
   <!-- Cookie Consent Banner (left notification) -->
   <div id="cookie-consent-banner" class="fixed bottom-4 right-50 z-50 w-full max-w-lg bg-white border border-gray-200 rounded-lg shadow-lg p-4 transform transition-transform duration-300 -translate-x-full">
     <div class="text-gray-600 text-sm mb-3 [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:space-y-1">
