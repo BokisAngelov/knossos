@@ -295,7 +295,7 @@ def detect_departure_time_change(sender, instance, **kwargs):
 
             if instance.client_email:
                 from django.urls import reverse
-                base_url = getattr(settings, 'SITE_URL', 'http://127.0.0.1:8000').rstrip('/')
+                base_url = getattr(settings, 'SITE_URL', 'https://www.igocyprus.com.cy').rstrip('/')
                 confirm_path = reverse('confirm_reservation_departure_time', kwargs={'pk': instance.pk})
                 confirm_url = f"{base_url}{confirm_path}?token={instance.departure_confirm_token}"
 

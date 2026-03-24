@@ -1,5 +1,6 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.urls import reverse
+from django.conf import settings
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.password_validation import validate_password
@@ -43,6 +44,20 @@ from .utils import FeedbackService, BookingService, ExcursionService, VoucherSer
 
 def is_staff(user):
     return user.is_staff
+
+
+def build_email_absolute_url(request, path):
+    """
+    Build stable absolute URL for emails.
+    Prefers SITE_URL to avoid localhost/proxy host leaks in outgoing links.
+    """
+    if path.startswith('http://') or path.startswith('https://'):
+        return path
+
+    base_url = (getattr(settings, 'SITE_URL', '') or '').rstrip('/')
+    if base_url:
+        return f"{base_url}{path}"
+    return request.build_absolute_uri(path)
 
 
 def testmodels(request):
@@ -1283,7 +1298,7 @@ def booking_delete(request, pk):
                                 "you can browse our available excursions below."
                             )
                         
-                        builder.button("Browse Excursions", request.build_absolute_uri(reverse('excursion_list')))
+                        builder.button("Browse Excursions", build_email_absolute_url(request, reverse('excursion_list')))
                         
                         if not request.user.is_staff:
                             builder.p("We hope to see you on another adventure soon!")
@@ -1386,8 +1401,8 @@ def send_booking_confirmation_email(booking, request):
             return False
         
         # Build booking URL
-        booking_url = request.build_absolute_uri(
-            reverse('booking_detail', kwargs={'pk': booking.pk})
+        booking_url = build_email_absolute_url(
+            request, reverse('booking_detail', kwargs={'pk': booking.pk})
         )
         if booking.access_token:
             booking_url += f'?token={booking.access_token}'
@@ -1458,8 +1473,8 @@ def send_admin_payment_notification(booking, request, status, order_status=None)
         customer_name = booking.guest_name or (booking.user.get_full_name() if booking.user else 'Guest')
         order_id = booking.jcc_order_id or 'N/A'
         
-        booking_url = request.build_absolute_uri(
-            reverse('booking_detail', kwargs={'pk': booking.pk})
+        booking_url = build_email_absolute_url(
+            request, reverse('booking_detail', kwargs={'pk': booking.pk})
         )
         if booking.access_token:
             booking_url += f'?token={booking.access_token}'
@@ -1636,7 +1651,7 @@ def booking_detail(request, pk):
                             "If this was a mistake or you'd like to rebook, "
                             "you can browse our available excursions below."
                         )
-                        builder.button("Browse Excursions", request.build_absolute_uri(reverse('excursion_list')))
+                        builder.button("Browse Excursions", build_email_absolute_url(request, reverse('excursion_list')))
                         builder.p(
                             "We sincerely apologize for any inconvenience. If you've already made payment, "
                             "a full refund will be processed within 5-7 business days."
@@ -2165,8 +2180,8 @@ def payment_fail(request, booking_pk=None):
         
         if customer_email:
             # Build checkout URL
-            checkout_url = request.build_absolute_uri(
-                reverse('checkout', kwargs={'booking_pk': booking.pk})
+            checkout_url = build_email_absolute_url(
+                request, reverse('checkout', kwargs={'booking_pk': booking.pk})
             )
             if booking.access_token:
                 checkout_url += f'?token={booking.access_token}'
@@ -2268,7 +2283,9 @@ def signup(request):
                 
                 # Create verification URL
                 uid = urlsafe_base64_encode(force_bytes(user.pk))
-                verification_url = f"{request.scheme}://{request.get_host()}/verify_email/{uid}/{token}/"
+                verification_url = build_email_absolute_url(
+                    request, reverse('verify_email', kwargs={'uidb64': uid, 'token': token})
+                )
                 
                 # Build verification email
                 builder = EmailBuilder()
@@ -2426,7 +2443,9 @@ def resend_verification_email(request):
     user_profile.save(update_fields=['email_verification_token'])
 
     uid = urlsafe_base64_encode(force_bytes(user.pk))
-    verification_url = f"{request.scheme}://{request.get_host()}/verify_email/{uid}/{token}/"
+    verification_url = build_email_absolute_url(
+        request, reverse('verify_email', kwargs={'uidb64': uid, 'token': token})
+    )
     name = user_profile.name or user.get_full_name() or 'User'
     builder = EmailBuilder()
     builder.h2(f"Hello {name}!")
@@ -2491,7 +2510,9 @@ def password_reset_form(request):
                 return render(request, 'main/accounts/password_reset_form.html')
             
             # Build reset URL
-            reset_url = f"{request.scheme}://{request.get_host()}/password_reset_token/{token}/"
+            reset_url = build_email_absolute_url(
+                request, reverse('password_reset_token', kwargs={'token': token})
+            )
             user_name = user_profile.name or user.username
             
             # Build email content
@@ -3290,11 +3311,11 @@ def send_pickup_times_to_customers(request, group):
                 "Wear comfortable clothing and shoes",
                 "Don't forget water, sunscreen, and a camera!"
             ])
-            confirm_url = request.build_absolute_uri(reverse('confirm_pickup_time', kwargs={'pk': booking.pk}))
+            confirm_url = build_email_absolute_url(request, reverse('confirm_pickup_time', kwargs={'pk': booking.pk}))
             if booking.access_token:
                 confirm_url += f'?token={booking.access_token}'
             builder.button("Confirm pickup time", confirm_url)
-            booking_url = request.build_absolute_uri(reverse('booking_detail', kwargs={'pk': booking.pk}))
+            booking_url = build_email_absolute_url(request, reverse('booking_detail', kwargs={'pk': booking.pk}))
             if booking.access_token:
                 booking_url += f'?token={booking.access_token}'
             builder.p(f'<a href="{booking_url}" style="color:#666;font-size:14px;">View your booking</a>')
