@@ -86,7 +86,7 @@ class Command(BaseCommand):
                         if booking.access_token:
                             checkout_path += f'?token={booking.access_token}'
                         # Note: In production, prepend your site URL
-                        checkout_url = f"http://localhost:8000{checkout_path}"  # Update with your domain
+                        checkout_url = f"https://www.igocyprus.com.cy{checkout_path}"  # Update with your domain
                         
                         # Build email content
                         builder = EmailBuilder()
