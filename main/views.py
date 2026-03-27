@@ -4310,10 +4310,13 @@ def admin_reservations(request):
 def bookings_list(request):
 
     search_query = request.GET.get('search', '')
+    date_from = request.GET.get('date_from', '')
+    date_to = request.GET.get('date_to', '')
+
     bookings = Booking.objects.all().select_related(
         'user', 'excursion_availability', 'excursion', 'pickup_point', 'voucher_id'
     ).order_by('-id')
-    
+
     # Apply search filter if search query is provided
     if search_query:
         bookings = bookings.filter(
@@ -4321,16 +4324,23 @@ def bookings_list(request):
             Q(guest_email__icontains=search_query) |
             Q(payment_status__icontains=search_query) |
             Q(excursion_availability__excursion__title__icontains=search_query)
-        )    
+        )
+
+    # Apply date range filters if provided
+    if date_from:
+        bookings = bookings.filter(created_at__date__gte=date_from)
+    if date_to:
+        bookings = bookings.filter(created_at__date__lte=date_to)
 
     paginator = Paginator(bookings, 15)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
-    
     return render(request, 'main/bookings/bookings_list.html', {
         'bookings': page_obj.object_list,
         'search_query': search_query,
+        'date_from': date_from,
+        'date_to': date_to,
         'page_obj': page_obj,
     })
 # ?? CONFIRM IF NEEDED
