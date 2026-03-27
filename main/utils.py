@@ -1380,7 +1380,7 @@ class RevenueAnalyticsService:
             revenue=Sum(revenue_expression),
             booking_count=Count('id')
         ).order_by('-revenue')[:10]
-        
+
         for item in excursion_data:
             revenue_by_excursion.append({
                 'excursion_id': item['excursion__id'],
@@ -1388,6 +1388,11 @@ class RevenueAnalyticsService:
                 'revenue': item['revenue'],
                 'bookings': item['booking_count']
             })
+
+        # Bookings for deleted excursions (excursion IS NULL)
+        orphaned_bookings = bookings.filter(excursion__isnull=True)
+        orphaned_bookings_count = orphaned_bookings.count()
+        orphaned_revenue = orphaned_bookings.aggregate(total=Sum(revenue_expression))['total'] or Decimal('0')
         
         # Revenue by provider (via booking.excursion)
         revenue_by_provider = []
@@ -1486,6 +1491,8 @@ class RevenueAnalyticsService:
             'revenue_by_representative': revenue_by_representative,
             'revenue_by_agent': revenue_by_agent,
             'revenue_by_referral_channel': revenue_by_referral_channel,
+            'orphaned_bookings_count': orphaned_bookings_count,
+            'orphaned_revenue': orphaned_revenue,
         }
 
 
