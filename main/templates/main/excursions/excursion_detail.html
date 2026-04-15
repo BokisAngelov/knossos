@@ -52,7 +52,7 @@
     </div>
 
     <!-- Image Gallery Section: stacked on small screens, 2-col on md, 2+3 split on lg+ -->
-    <div class="grid grid-cols-1 gap-4 sm:gap-6 p-3 sm:p-4 lg:p-6 {% if excursion.images.exists %}md:grid-cols-2 lg:grid-cols-5{% endif %}">
+    <div class="grid grid-cols-1 gap-4 sm:gap-6 py-3 sm:py-4 lg:py-6 {% if excursion.images.exists %}md:grid-cols-2 lg:grid-cols-5{% endif %}">
         <!-- Main Image -->
         <div class="{% if excursion.images.exists %}lg:col-span-2{% endif %} relative bg-gray-100 overflow-hidden rounded-lg shadow-sm h-56 sm:h-72 md:h-80 lg:h-96 min-h-0">
             <img src="{% if excursion.intro_image %}{{ excursion.intro_image.url }}{% else %}{% static 'main/images/excursion-default.jpg' %}{% endif %}" 
