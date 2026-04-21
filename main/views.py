@@ -1087,12 +1087,15 @@ def excursion_create(request):
 @user_passes_test(is_staff)
 def excursion_update(request, pk):
     excursion = get_object_or_404(Excursion, pk=pk)
+    print('description: ')
+    print(excursion.description)
     
     if request.method == 'POST':
         form = ExcursionForm(request.POST, request.FILES, instance=excursion)
         formset = ExcursionImageFormSet(request.POST, request.FILES, instance=excursion)
         
         if form.is_valid() and formset.is_valid():
+            print(form.cleaned_data)
             try:
                 with transaction.atomic():
                     excursion = form.save()

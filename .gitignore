@@ -14,11 +14,13 @@ local_settings.py
 db.sqlite3
 media/
 staticfiles/
+static/
 .env
 venv/
 env/
 .venv/
 knossos/settings.py
+knossos/settings_server.py
 
 
 # IDE
@@ -31,3 +33,4 @@ knossos/settings.py
 Thumbs.db
 ehthumbs.db
 Icon?
+requirements.txt

@@ -412,6 +412,15 @@ document.addEventListener('DOMContentLoaded', function() {
     
     form.addEventListener('submit', function(e) {
         e.preventDefault();
+
+        // Sync CKEditor content into the textarea before FormData snapshot.
+        if (window.CKEDITOR && CKEDITOR.instances) {
+            Object.values(CKEDITOR.instances).forEach(instance => {
+                if (instance && typeof instance.updateElement === 'function') {
+                    instance.updateElement();
+                }
+            });
+        }
         
         // Get form data
         const formData = new FormData(form);
