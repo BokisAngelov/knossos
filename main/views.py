@@ -683,9 +683,9 @@ def excursion_detail(request, pk):
     })
 
 
-def _render_excursion_without_availability(request, excursion, feedbacks, user_has_feedback):
+def _render_excursion_without_availability(request, excursion, feedbacks, user_has_feedback, feedback_form=None):
     """Render excursion detail page when no availability exists."""
-    feedback_form = _get_feedback_form(request.user, user_has_feedback, excursion)
+    feedback_form = feedback_form or _get_feedback_form(request.user, user_has_feedback, excursion)
     booking_form = BookingForm(user=request.user)
 
     return render(request, 'main/excursions/excursion_detail.html', {
@@ -795,11 +795,55 @@ def _handle_feedback_submission(request, excursion, user_has_feedback, pk):
             messages.success(request, 'Thank you for your feedback.')
         except ValidationError as e:
             messages.error(request, str(e))
-    else:
-        # Form has errors, will be displayed in template
-        pass
-    
-    return redirect('excursion_detail', pk)
+        return redirect('excursion_detail', pk)
+
+    # Invalid form: re-render page with bound form so inline field errors are displayed.
+    feedbacks = excursion.feedback_entries.all()
+    excursion_availabilities = ExcursionAvailability.objects.filter(
+        excursion=excursion,
+        status='active',
+        is_active=True,
+        end_date__gte=timezone.now().date(),
+    )
+    excursion_availability = excursion_availabilities.first()
+
+    if not excursion_availability:
+        return _render_excursion_without_availability(
+            request,
+            excursion,
+            feedbacks,
+            user_has_feedback,
+            feedback_form=feedback_form
+        )
+
+    availability_dates_by_region, pickup_points_by_region, region_availability_map = ExcursionService.get_availability_data(
+        excursion_availabilities
+    )
+    region_map = ExcursionService.get_region_map(availability_dates_by_region)
+    regions = Region.objects.filter(id__in=availability_dates_by_region.keys())
+    user_pickup_point_id, user_region_id = _get_user_default_pickup_point(
+        request, excursion_availabilities, pickup_points_by_region
+    )
+    remaining_seats = excursion_availability.max_guests - excursion_availability.booked_guests
+    booking_form = BookingForm(user=request.user)
+
+    return render(request, 'main/excursions/excursion_detail.html', {
+        'excursion': excursion,
+        'feedbacks': feedbacks,
+        'feedback_form': feedback_form,
+        'excursion_availabilities': excursion_availabilities,
+        'excursion_availability': excursion_availability,
+        'booking_form': booking_form,
+        'availability_dates_by_region': availability_dates_by_region,
+        'pickup_points_by_region': pickup_points_by_region,
+        'region_availability_map': region_availability_map,
+        'user_has_feedback': user_has_feedback,
+        'region_map': region_map,
+        'remaining_seats': remaining_seats,
+        'regions': regions,
+        'user_pickup_point_id': user_pickup_point_id,
+        'user_region_id': user_region_id,
+    })
 
 
 def _handle_ajax_booking_submission(request, excursion_availability):
