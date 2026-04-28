@@ -246,6 +246,7 @@ function initExcursionDetailPage() {
 
     function initGalleryLightbox() {
         const galleryItems = document.querySelectorAll(".gallery-item");
+        const gallerySourceItems = document.querySelectorAll(".gallery-source-item");
         const mainImage = document.querySelector(".main-image");
         const lightbox = document.getElementById("gallery-lightbox");
         const lightboxImage = document.getElementById("lightbox-image");
@@ -265,7 +266,9 @@ function initExcursionDetailPage() {
             });
         }
 
-        Array.from(galleryItems).forEach((item) => {
+        const sourceItems = gallerySourceItems.length > 0 ? gallerySourceItems : galleryItems;
+
+        Array.from(sourceItems).forEach((item) => {
             images.push({
                 url: item.dataset.imageUrl,
                 alt: item.dataset.alt || ""
@@ -305,7 +308,9 @@ function initExcursionDetailPage() {
 
         galleryItems.forEach((item, index) => {
             item.addEventListener("click", () => {
-                showLightbox(index + 1);
+                const galleryIndex = parseInt(item.dataset.galleryIndex, 10);
+                const normalizedIndex = Number.isNaN(galleryIndex) ? index : galleryIndex;
+                showLightbox(normalizedIndex + 1);
             });
         });
 
