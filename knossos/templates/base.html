@@ -209,7 +209,7 @@
   {% not_accepted_or_declined_cookie_groups request as undecided_cookie_groups %}
   {% if undecided_cookie_groups or not request.COOKIES.cookie_consent and not request.COOKIES.cookie_consent_dismissed %}
   <!-- Cookie Consent Banner (left notification) -->
-  <div id="cookie-consent-banner" class="fixed bottom-4 right-50 z-50 w-full max-w-lg bg-white border border-gray-200 rounded-lg shadow-lg p-4 transform transition-transform duration-300 -translate-x-full">
+  <div id="cookie-consent-banner" class="fixed bottom-8 right-0 z-50 w-full max-w-lg bg-white border border-gray-200 rounded-lg shadow-lg p-4 transform transition-transform duration-300 -translate-x-full md:bottom-4 md:right-50">
     <div class="text-gray-600 text-sm mb-3 [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:space-y-1">
       <p class="mb-3">At <strong>igoCyprus</strong>, your journey and your data are in safe hands. Here is a quick summary of how we
 use your information:</p>
